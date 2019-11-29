@@ -6,6 +6,19 @@
 import time
 import numpy
 
+import os
+import serial
+# chose an implementation, depending on os
+#~ if sys.platform == 'cli':
+#~ else:
+if os.name == 'nt':  # sys.platform == 'win32':
+    from serial.tools.list_ports_windows import comports
+elif os.name == 'posix':
+    from serial.tools.list_ports_posix import comports
+#~ elif os.name == 'java':
+else:
+    raise ImportError("Sorry: no implementation for your platform ('{}') available".format(os.name))
+
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
 from tango.server import Device, attribute, command, pipe, device_property
@@ -23,32 +36,32 @@ class TDKLamda(Device):
     onoff = attribute(label="on/off", dtype=bool,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
-                        unit="", format="%s",
+                        unit="", format="",
                         doc="device type")
 
     voltage = attribute(label="Voltage", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="V", format="8.4f",
-                        doc="output voltage")
+                        doc="Measured voltage")
 
-    set_voltage = attribute(label="Voltage", dtype=float,
+    prorgammed_voltage = attribute(label="Voltage", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
                         unit="V", format="8.4f",
-                        doc="set voltage")
+                        doc="Programmed voltage")
 
     current = attribute(label="Current", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
                         unit="A", format="8.4f",
-                        doc="output current")
+                        doc="Measured current")
 
-    set_current = attribute(label="Current", dtype=float,
+    prorgammed_current = attribute(label="Current", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
                         unit="A", format="8.4f",
-                        doc="set current")
+                        doc="Programmed current")
 
     host = device_property(dtype=str)
     port = device_property(dtype=int, default_value=9788)
