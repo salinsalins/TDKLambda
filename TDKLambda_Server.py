@@ -177,7 +177,16 @@ class TDKLamda(Device):
         return self.read_response()
 
     def read_response(self):
+        time0 = time.time()
         data = self.com.read()
+        while len(data) <= 0:
+            dt = time.time() - time0
+            if dt > self.timeout:
+                self.io_timeout(dt)
+            data = self.com.read()
+
+
+
         print(time.time(), data)
         return True
 
