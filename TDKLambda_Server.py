@@ -9,19 +9,16 @@ import numpy
 import os
 import serial
 # chose an implementation, depending on os
-#~ if sys.platform == 'cli':
-#~ else:
 if os.name == 'nt':  # sys.platform == 'win32':
     from serial.tools.list_ports_windows import comports
 elif os.name == 'posix':
     from serial.tools.list_ports_posix import comports
-#~ elif os.name == 'java':
 else:
-    raise ImportError("Sorry: no implementation for your platform ('{}') available".format(os.name))
+    raise ImportError("No implementation for platform ('{}') is available".format(os.name))
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
-from tango.server import Device, attribute, command, device_property
+from tango.server import Device, attribute, command
 
 
 class TDKLamda(Device):
@@ -123,35 +120,22 @@ class TDKLamda(Device):
         # create TDKLamda device
         self.com = serial.Serial(self.port, baudrate=9600, timeout=0)
         # create variables
-        self.error_count = 0
-        self.time = None
-        self.reconnect_timeout = int(self.get_device_property('reconnect_timeout', 5000))
+        self.time = time.time()
+        self.reconnect_timeout = self.get_device_property('reconnect_timeout', 5000)
+        self.error_retries = self.get_device_property('error_retries', 3)
         # add device to list
         TDKLamda.devices.append(self)
         msg = 'TDKLamda device at %s %d has been created' % (self.port, self.addr)
         print(msg)
         self.info_stream(msg)
-
-
-
-        db = tango.Database()
-        try:
-            self.device_info = db.get_device_info('test/power_supply/1')
-            print(self.device_info)
-        except:
-            pass
-        self.__current = 0.0
-        self.set_state(DevState.STANDBY)
-
-
-        # if device type is recognized
-        if self.et._name != 0:
+        # initilize device type
+        self.type = self.read_devicetype()
+        if self.type is not None:
             # set state to running
             self.set_state(DevState.RUNNING)
         else:
             # unknown device type
             self.set_state(DevState.FAULT)
-
 
     def read_voltage(self):
         self.info_stream("read_voltage(%s, %d)", self.host, self.port)
@@ -182,8 +166,24 @@ class TDKLamda(Device):
                                    version_number=123)
 
     @DebugIt()
-    def read_noise(self):
-        return numpy.random.random_integers(1000, size=(100, 100))
+    def read_devicetype(self):
+        return 'TDKLambda'
+
+    def send_command(self, cmd):
+        self.com.write(b'ADR %d\r' % self.addr)
+        if self.read_response() != 'OK':
+            self.io_error()
+        self.com.write(cmd)
+        return self.read_response()
+
+    def read_response(self):
+        data = self.com.read()
+        print(time.time(), data)
+        return True
+
+    # process error reding or writing
+    def io_error(self):
+        return True
 
     @command
     def TurnOn(self):
@@ -194,13 +194,6 @@ class TDKLamda(Device):
     def TurnOff(self):
         # turn off the actual power supply here
         self.set_state(DevState.OFF)
-
-    @command(dtype_in=float, doc_in="Ramp target current",
-             dtype_out=bool, doc_out="True if ramping went well, "
-             "False otherwise")
-    def Ramp(self, target_current):
-        # should do the ramping
-        return True
 
 
 if __name__ == "__main__":
