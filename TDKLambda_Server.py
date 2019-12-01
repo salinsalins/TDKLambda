@@ -20,6 +20,8 @@ import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
 from tango.server import Device, attribute, command
 
+MAX_TIMEOUT = 3.0   # sec
+MIN_TIMEOUT = 0.05  # sec
 
 class TDKLamda(Device):
     ports = []
@@ -179,11 +181,15 @@ class TDKLamda(Device):
     def read_response(self):
         time0 = time.time()
         data = self.com.read()
+        dt = time.time() - time0
         while len(data) <= 0:
-            dt = time.time() - time0
             if dt > self.timeout:
-                self.io_timeout(dt)
+                self.timeout = min(1.5*dt, MAX_TIMEOUT)
+                return None
             data = self.com.read()
+            dt = time.time() - time0
+        self.timeout = max(2.0*dt, MIN_TIMEOUT)
+        return data
 
 
 
