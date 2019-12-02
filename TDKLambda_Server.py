@@ -23,7 +23,7 @@ from tango.server import Device, attribute, command
 MAX_TIMEOUT = 3.0   # sec
 MIN_TIMEOUT = 0.1   # sec
 
-class TDKLambda(Device):
+class TDKLambda_Server(Device):
     ports = []
     devices = []
 
