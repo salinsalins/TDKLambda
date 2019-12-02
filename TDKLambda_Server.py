@@ -21,7 +21,7 @@ from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
 from tango.server import Device, attribute, command
 
 MAX_TIMEOUT = 3.0   # sec
-MIN_TIMEOUT = 0.05  # sec
+MIN_TIMEOUT = 0.1   # sec
 
 class TDKLambda(Device):
     ports = []
@@ -130,7 +130,7 @@ class TDKLambda(Device):
         msg = 'TDKLambda device at %s %d has been created' % (self.port, self.addr)
         print(msg)
         self.info_stream(msg)
-        # initilize device type
+        # initialize device type
         self.type = self.read_devicetype()
         if self.type is not None:
             # set state to running
@@ -180,7 +180,7 @@ class TDKLambda(Device):
 
     def read_response(self):
         time0 = time.time()
-        data = self.com.read()
+        data = self.com.read(100)
         dt = time.time() - time0
         while len(data) <= 0:
             if dt > self.timeout:
@@ -191,7 +191,15 @@ class TDKLambda(Device):
         self.timeout = max(2.0*dt, MIN_TIMEOUT)
         return data
 
-
+        def read_cr(self):
+            result = b''
+            data = self.read_response()
+            while data is not None:
+                result += data
+                if '\r' in data:
+                    return result
+                data = self.read_response()
+            return result
 
         print(time.time(), data)
         return True
