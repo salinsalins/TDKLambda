@@ -23,7 +23,7 @@ from tango.server import Device, attribute, command
 MAX_TIMEOUT = 3.0   # sec
 MIN_TIMEOUT = 0.05  # sec
 
-class TDKLamda(Device):
+class TDKLambda(Device):
     ports = []
     devices = []
 
@@ -45,7 +45,7 @@ class TDKLamda(Device):
                         unit="V", format="8.4f",
                         doc="Measured voltage")
 
-    prorgammed_voltage = attribute(label="Voltage", dtype=float,
+    programmed_voltage = attribute(label="Voltage", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
                         unit="V", format="8.4f",
@@ -57,7 +57,7 @@ class TDKLamda(Device):
                         unit="A", format="8.4f",
                         doc="Measured current")
 
-    prorgammed_current = attribute(label="Current", dtype=float,
+    programmed_current = attribute(label="Current", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
                         unit="A", format="8.4f",
@@ -100,17 +100,17 @@ class TDKLamda(Device):
             self.set_state(DevState.FAULT)
             return
         # check if port an addr are in use
-        for d in TDKLamda.devices:
+        for d in TDKLambda.devices:
             if d.port == self.port and d.addr == self.addr:
                 msg = 'Address %s is in use for port %s device %s' % (self.addr, self.port, self)
                 print(msg)
                 self.error_stream(msg)
                 self.set_state(DevState.FAULT)
                 return
-        if len(TDKLamda.ports) == 0:
-            TDKLamda.ports = comports()
+        if len(TDKLambda.ports) == 0:
+            TDKLambda.ports = comports()
         found = False
-        for p in TDKLamda.ports:
+        for p in TDKLambda.ports:
             if p.name == self.port:
                 found = True
         if not found:
@@ -119,15 +119,15 @@ class TDKLamda(Device):
             self.error_stream(msg)
             self.set_state(DevState.FAULT)
             return
-        # create TDKLamda device
+        # create TDKLambda device
         self.com = serial.Serial(self.port, baudrate=9600, timeout=0)
         # create variables
         self.time = time.time()
         self.reconnect_timeout = self.get_device_property('reconnect_timeout', 5000)
         self.error_retries = self.get_device_property('error_retries', 3)
         # add device to list
-        TDKLamda.devices.append(self)
-        msg = 'TDKLamda device at %s %d has been created' % (self.port, self.addr)
+        TDKLambda.devices.append(self)
+        msg = 'TDKLambda device at %s %d has been created' % (self.port, self.addr)
         print(msg)
         self.info_stream(msg)
         # initilize device type
@@ -146,25 +146,25 @@ class TDKLamda(Device):
     def read_current(self):
         return self.__current
 
-    def read_prorgammed__voltage(self):
+    def read_programmed__voltage(self):
         # should set the power supply current
         self.__current = 0
 
-    def read_prorgammed__current(self):
+    def read_programmed__current(self):
         # should set the power supply current
         self.__current = 0
 
-    def write_prorgammed__voltage(self, v):
+    def write_programmed__voltage(self, v):
         # should set the power supply current
         self.__current = 0
 
-    def write_prorgammed__current(self, c):
+    def write_programmed__current(self, c):
         # should set the power supply current
         self.__current = 0
 
     def read_info(self):
         return 'Information', dict(manufacturer='Tango',
-                                   model='PS2000',
+                                   model='TDKLambda',
                                    version_number=123)
 
     @DebugIt()
@@ -212,4 +212,4 @@ class TDKLamda(Device):
 
 
 if __name__ == "__main__":
-    TDKLamda.run_server()
+    TDKLambda.run_server()
