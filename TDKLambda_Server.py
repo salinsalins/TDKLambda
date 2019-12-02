@@ -125,6 +125,7 @@ class TDKLambda(Device):
         self.time = time.time()
         self.reconnect_timeout = self.get_device_property('reconnect_timeout', 5000)
         self.error_retries = self.get_device_property('error_retries', 3)
+        self.timeout = MIN_TIMEOUT
         # add device to list
         TDKLambda.devices.append(self)
         msg = 'TDKLambda device at %s %d has been created' % (self.port, self.addr)
@@ -172,11 +173,18 @@ class TDKLambda(Device):
         return 'TDKLambda'
 
     def send_command(self, cmd):
-        self.com.write(b'ADR %d\r' % self.addr)
-        if self.read_response() != 'OK':
-            self.io_error()
+        if cmd[-1] != b'\r':
+            cmd += b'\r'
+        self.com.reset_input_buffer()
         self.com.write(cmd)
-        return self.read_response()
+        return self.read_cr()
+
+    def set_addr(self):
+        result = self.send_command(b'ADR %d\r' % self.addr)
+        if result != b'OK':
+            self.io_error()
+            return False
+        return True
 
     def read_response(self):
         time0 = time.time()
@@ -191,20 +199,18 @@ class TDKLambda(Device):
         self.timeout = max(2.0*dt, MIN_TIMEOUT)
         return data
 
-        def read_cr(self):
-            result = b''
+    def read_cr(self):
+        result = b''
+        data = self.read_response()
+        while data is not None:
+            result += data
+            if b'\r' in data:
+                return result
             data = self.read_response()
-            while data is not None:
-                result += data
-                if '\r' in data:
-                    return result
-                data = self.read_response()
-            return result
+        return result
 
-        print(time.time(), data)
-        return True
 
-    # process error reding or writing
+    # process error reading or writing
     def io_error(self):
         return True
 
