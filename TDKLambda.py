@@ -27,7 +27,7 @@ class TDKLambda():
             self.logger = logging.getLogger()
         else:
             self.logger = logger
-        if self.port is None or self.addr is None:
+        if port is None or addr is None:
             msg = 'Address or port not defined for %s' % self
             self.logger.error(msg)
             return
@@ -48,7 +48,7 @@ class TDKLambda():
             if p.name == self.port:
                 found = True
         if not found:
-            msg = 'COM port %s does not exist for %s' % (self.port, self)
+            msg = 'COM port %s does not exist %s' % (self.port, self)
             self.logger.error(msg)
             return
         # create TDKLambda device
@@ -67,7 +67,7 @@ class TDKLambda():
         #self.type = self.read_devicetype()
 
     def send_command(self, cmd):
-        if time.time() < self.suspent:
+        if time.time() < self.suspend:
             return b''
         if isinstance(cmd, str):
             cmd = str.encode(cmd)
@@ -134,4 +134,6 @@ class TDKLambda():
 
 if __name__ == "__main__":
     pass
-    #TDKLambda()
+    pdl = TDKLambda("COM3", 6)
+    while True:
+        print(pdl.send_command("PC?"))
