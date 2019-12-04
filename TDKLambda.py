@@ -44,13 +44,16 @@ class TDKLambda():
                 self.logger.error(msg)
                 return
         for p in TDKLambda.ports:
+            # com port exists
             if p.name == self.port:
                 self.com = p
         if self.com is None:
+            # create port
             try:
                 self.com = serial.Serial(self.port, baudrate=9600, timeout=0)
                 TDKLambda.ports.append(self.port)
             except:
+                self.com = None
                 msg = 'Error open %s port' % self.port
                 self.logger.error(msg)
                 return
@@ -62,7 +65,7 @@ class TDKLambda():
         #self.type = self.read_devicetype()
 
     def send_command(self, cmd):
-        if time.time() < self.suspend:
+        if self.com is None or time.time() < self.suspend:
             return b''
         if isinstance(cmd, str):
             cmd = str.encode(cmd)
@@ -70,10 +73,12 @@ class TDKLambda():
             cmd += b'\r'
         self.com.reset_input_buffer()
         self.com.write(cmd)
-        return self.read_to_cr()
+        result = self.read_to_cr()
+        if result is not None:
+            return result
 
     def _read(self):
-        if time.time() < self.suspend:
+        if self.com is None or time.time() < self.suspend:
             return None
         time0 = time.time()
         data = self.com.read(100)
@@ -92,7 +97,7 @@ class TDKLambda():
         return data
 
     def read(self):
-        if time.time() < self.suspend:
+        if self.com is None or time.time() < self.suspend:
             return None
         count = self.retries
         data = None
@@ -118,8 +123,8 @@ class TDKLambda():
 
     def set_addr(self):
         result = self.send_command(b'ADR %d\r' % self.addr)
-        if result != b'OK':
-            self.io_error()
+        if not result.startswith(b'OK'):
+            #self.io_error()
             return False
         return True
 
@@ -127,8 +132,13 @@ class TDKLambda():
     def io_error(self):
         return True
 
+    # process error reading or writing
+    def unexpected_reply(self):
+
+        return True
+
 if __name__ == "__main__":
     pass
     pdl = TDKLambda("COM3", 6)
     while True:
-        print(pdl.send_command("PC?"))
+        print(time.time(), pdl.send_command("PC?"), pdl.timeout)
