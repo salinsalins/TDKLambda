@@ -51,9 +51,9 @@ class TDKLambda():
         self.com = serial.Serial(self.port, baudrate=9600, timeout=0)
         # create variables
         self.time = time.time()
-        self.reconnect_timeout = self.get_device_property('reconnect_timeout', 5000)
-        self.error_retries = self.get_device_property('error_retries', 3)
-        self.timeout = MIN_TIMEOUT
+        #self.reconnect_timeout = self.get_device_property('reconnect_timeout', 5000)
+        #self.error_retries = self.get_device_property('error_retries', 3)
+        self.timeout = 2.0*MIN_TIMEOUT
         # add device to list
         TDKLambda.devices.append(self)
         msg = 'TDKLambda device at %s %d has been created' % (self.port, self.addr)
@@ -62,6 +62,8 @@ class TDKLambda():
         #self.type = self.read_devicetype()
 
     def send_command(self, cmd):
+        if isinstance(cmd, str):
+            cmd = str.encode(cmd)
         if cmd[-1] != b'\r':
             cmd += b'\r'
         self.com.reset_input_buffer()
