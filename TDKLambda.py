@@ -47,10 +47,10 @@ class TDKLambda():
         for p in TDKLambda.ports:
             if p.name == self.port:
                 found = True
-        if not found:
-            msg = 'COM port %s does not exist %s' % (self.port, self)
-            self.logger.error(msg)
-            return
+        #if not found:
+        #    msg = 'COM port %s does not exist %s' % (self.port, self)
+        #    self.logger.error(msg)
+        #    return
         # create TDKLambda device
         self.com = serial.Serial(self.port, baudrate=9600, timeout=0)
         # create variables
