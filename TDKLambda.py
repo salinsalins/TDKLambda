@@ -22,43 +22,38 @@ class TDKLambda():
     devices = []
     ports = []
 
-    def __init__(self, port=None, addr=None, logger=None):
-        if logger is None:
-            self.logger = logging.getLogger()
-        else:
-            self.logger = logger
-        if port is None or addr is None:
-            msg = 'Address or port not defined for %s' % self
-            self.logger.error(msg)
-            return
-        self.port = port
-        self.addr = addr
-        # check if port an addr are in use
-        found = False
-        for d in TDKLambda.devices:
-            if d.port == self.port:
-                found = True
-                if d.addr == self.addr:
-                    msg = 'Address %s is in use for port %s device %s' % (self.addr, self.port, self)
-                    self.logger.error(msg)
-                    return
-        if len(TDKLambda.ports) == 0:
-            TDKLambda.ports = comports()
-        for p in TDKLambda.ports:
-            if p.name == self.port:
-                found = True
-        #if not found:
-        #    msg = 'COM port %s does not exist %s' % (self.port, self)
-        #    self.logger.error(msg)
-        #    return
-        # create TDKLambda device
-        self.com = serial.Serial(self.port, baudrate=9600, timeout=0)
+    def __init__(self, port: str, addr=6, checksum=False, logger=None):
         # create variables
+        self.com = None
+        self.checksum = checksum
         self.time = time.time()
         self.suspend = time.time()
         #reconnect_timeout = self.get_device_property('reconnect_timeout', 5000)
         self.retries = RETRIES
         self.timeout = 2.0*MIN_TIMEOUT
+        if logger is None:
+            self.logger = logging.getLogger()
+        else:
+            self.logger = logger
+        self.port = port.upper()
+        self.addr = addr
+        # check if port an addr are in use
+        for d in TDKLambda.devices:
+            if d.port == self.port and d.addr == self.addr:
+                msg = 'Address %s is in use for port %s device %s' % (self.addr, self.port, self)
+                self.logger.error(msg)
+                return
+        for p in TDKLambda.ports:
+            if p.name == self.port:
+                self.com = p
+        if self.com is None:
+            try:
+                self.com = serial.Serial(self.port, baudrate=9600, timeout=0)
+                TDKLambda.ports.append(self.port)
+            except:
+                msg = 'Error open %s port' % self.port
+                self.logger.error(msg)
+                return
         # add device to list
         TDKLambda.devices.append(self)
         msg = 'TDKLambda device at %s %d has been created' % (self.port, self.addr)
