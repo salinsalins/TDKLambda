@@ -26,7 +26,7 @@ class TDKLambda():
         # create variables
         self.last_command = b''
         self.com = None
-        self.checksum = checksum
+        self.check = checksum
         self.time = time.time()
         self.suspend = time.time()
         #reconnect_timeout = self.get_device_property('reconnect_timeout', 5000)
