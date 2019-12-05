@@ -186,6 +186,14 @@ class TDKLambda():
         #print('read_value', dt)
         return v
 
+    def write_value(self, cmd=b'PV', value=0.0):
+        cmd = str.encode(cmd.upper()) + b' ' + str.encode(str(value))[:10] + b'\r'
+        result = self.send_command(cmd)
+        if not result.startswith(b'OK'):
+            self.unexpected_reply(result)
+            return False
+        return True
+
     def unexpected_reply(self, reply=b''):
         msg = 'Unexpected reply %s from %s : %d' % (reply, self.port, self.addr)
         self.logger.error(msg)
