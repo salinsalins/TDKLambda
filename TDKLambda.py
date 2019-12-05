@@ -62,12 +62,15 @@ class TDKLambda():
                 msg = 'Error open %s port' % self.port
                 self.logger.error(msg)
                 return
+        # set device address
+        self.set_addr()
+        # initialize device type and serial number
+        self.id = self.send_command(b'IDN?')
+        self.serial_number = self.send_command(b'SN?')
         # add device to list
         TDKLambda.devices.append(self)
         msg = 'TDKLambda device at %s %d has been created' % (self.port, self.addr)
         self.logger.info(msg)
-        # initialize device type
-        #self.type = self.read_devicetype()
 
     @staticmethod
     def checksum(cmd):
