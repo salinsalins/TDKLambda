@@ -82,6 +82,7 @@ class TDKLambda():
             cmd = str.encode(cmd)
         if cmd[-1] != b'\r':
             cmd += b'\r'
+        cmd = cmd.upper()
         self.last_command = cmd
         self.com.reset_input_buffer()
         self.com.write(cmd)
@@ -147,23 +148,30 @@ class TDKLambda():
     def set_addr(self):
         result = self.send_command(b'ADR %d\r' % self.addr)
         if not result.startswith(b'OK'):
-            #self.io_error()
+            self.unexpected_reply(result)
             return False
         return True
 
-    # process error reading or writing
-    def io_error(self):
-        return True
+    def read_value(self, cmd=b'MV?'):
+        reply = b''
+        try:
+            reply = self.send_command(cmd)
+            v = float(reply)
+        except:
+            self.unexpected_reply(reply)
+            v = float('Nan')
+        return v
 
     # process error reading or writing
-    def unexpected_reply(self):
-
+    def unexpected_reply(self, reply=b''):
+        msg = 'Unexpected reply %s from %s : %d' % (reply, self.port, self.addr)
+        self.logger.error(msg)
         return True
 
 if __name__ == "__main__":
     pass
     pdl = TDKLambda("COM3", 6)
-    t0 = time.time()
     while True:
-        print(time.time()-t0, pdl.send_command("PC?"), pdl.timeout)
         t0 = time.time()
+        v = pdl.read_value("PC?")
+        print(time.time()-t0, v, pdl.timeout)
