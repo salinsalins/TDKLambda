@@ -24,6 +24,7 @@ class TDKLambda():
 
     def __init__(self, port: str, addr=6, checksum=False, baudrate=9600, timeout=0, logger=None):
         # create variables
+        self.auto_addr = True
         self.last_command = b''
         self.com = None
         self.check = checksum
