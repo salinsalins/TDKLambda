@@ -63,7 +63,7 @@ class TDKLambda():
                 self.logger.error(msg)
                 return
         # set device address
-        self.set_addr()
+        self.online = self.set_addr()
         # initialize device type and serial number
         self.id = self.send_command(b'IDN?')
         self.serial_number = self.send_command(b'SN?')
