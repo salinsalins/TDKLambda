@@ -62,7 +62,7 @@ class TDKLambda():
                 msg = 'Error open %s port' % self.port
                 self.logger.error(msg)
                 return
-        # set device address
+        # set device address and check 'OK' response
         self.online = self.set_addr()
         # initialize device type and serial number
         self.id = self.send_command(b'IDN?')
