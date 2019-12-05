@@ -194,7 +194,7 @@ class TDKLambda():
     def write_value(self, cmd=b'PV', value=0.0):
         if self.auto_addr:
             self.set_addr()
-        cmd = str.encode(cmd.upper()) + b' ' + str.encode(str(value))[:10] + b'\r'
+        cmd = cmd.upper() + b' ' + str.encode(str(value))[:10] + b'\r'
         result = self.send_command(cmd)
         if not result.startswith(b'OK\r'):
             self.unexpected_reply(result)
