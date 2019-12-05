@@ -86,6 +86,12 @@ class TDKLambda():
         self.com.reset_input_buffer()
         self.com.write(cmd)
         result = self.read_to_cr()
+        if result is None:
+            msg = 'Repeat command %s' % cmd
+            self.logger.warning(msg)
+            self.com.reset_input_buffer()
+            self.com.write(cmd)
+            result = self.read_to_cr()
         return result
 
     def _read(self):
@@ -98,6 +104,8 @@ class TDKLambda():
             if dt > self.timeout:
                 self.timeout = min(1.5*dt, MAX_TIMEOUT)
                 self.timeout_flag = True
+                msg = 'Timeout increase to %f' % self.timeout
+                self.logger.info(msg)
                 # resend command
                 self.send_command(self.last_command)
                 return None
@@ -107,6 +115,8 @@ class TDKLambda():
         self.suspend = time.time()
         self.timeout = max(2.0*dt, MIN_TIMEOUT)
         self.timeout_flag = False
+        #msg = 'Timeout decrease to %f' % self.timeout
+        #self.logger.error(msg)
         return data
 
     def read(self):
@@ -153,5 +163,7 @@ class TDKLambda():
 if __name__ == "__main__":
     pass
     pdl = TDKLambda("COM3", 6)
+    t0 = time.time()
     while True:
-        print(time.time(), pdl.send_command("PC?"), pdl.timeout)
+        print(time.time()-t0, pdl.send_command("PC?"), pdl.timeout)
+        t0 = time.time()
