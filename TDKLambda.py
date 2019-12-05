@@ -17,6 +17,7 @@ MAX_TIMEOUT = 1.5   # sec
 MIN_TIMEOUT = 0.1   # sec
 RETRIES = 3
 SUSPEND = 5.0
+SLEEP = 0.03
 
 class TDKLambda():
     devices = []
@@ -33,6 +34,7 @@ class TDKLambda():
         #reconnect_timeout = self.get_device_property('reconnect_timeout', 5000)
         self.retries = RETRIES
         self.timeout = 2.0*MIN_TIMEOUT
+        self.sleep = SLEEP
         if logger is None:
             self.logger = logging.getLogger()
         else:
@@ -84,14 +86,21 @@ class TDKLambda():
             cmd += b'\r'
         cmd = cmd.upper()
         self.last_command = cmd
-        self.com.reset_input_buffer()
+        #t0 = time.time()
+        #if self.com.in_waiting() > 0:
+        #    self.com.reset_input_buffer()
+        self.com.read(10000)
+        #dt = time.time() - t0
+        #print('send_command', dt)
         self.com.write(cmd)
+        time.sleep(self.sleep)
         result = self.read_to_cr()
         if result is None:
             msg = 'Repeat command %s' % cmd
             self.logger.warning(msg)
             self.com.reset_input_buffer()
             self.com.write(cmd)
+            time.sleep(self.sleep)
             result = self.read_to_cr()
         return result
 
@@ -99,9 +108,9 @@ class TDKLambda():
         if self.com is None or time.time() < self.suspend:
             return None
         time0 = time.time()
-        data = self.com.read(100)
+        data = self.com.read(10000)
         dt = time.time() - time0
-        n = 1
+        #n = 1
         while len(data) <= 0:
             if dt > self.timeout:
                 self.timeout = min(1.5*dt, MAX_TIMEOUT)
@@ -111,21 +120,21 @@ class TDKLambda():
                 # resend command
                 self.send_command(self.last_command)
                 return None
-            data = self.com.read(100)
+            data = self.com.read(10000)
             dt = time.time() - time0
-            n += 1
-            print('_read', n, len(data), dt)
+            #n += 1
+            #print('_read', n, len(data), dt)
         self.time = time.time()
         self.suspend = time.time()
         self.timeout = max(2.0*dt, MIN_TIMEOUT)
         self.timeout_flag = False
         #msg = 'Timeout decrease to %f' % self.timeout
         #self.logger.error(msg)
-        print('_read', dt)
+        #print('_read', dt)
         return data
 
     def read(self):
-        time0 = time.time()
+        #time0 = time.time()
         if self.com is None or time.time() < self.suspend:
             return None
         count = self.retries
@@ -138,18 +147,23 @@ class TDKLambda():
                 self.logger.error(msg)
                 self.suspend = time.time() + SUSPEND
                 return None
-        dt = time.time() - time0
-        print('read', dt)
+        #dt = time.time() - time0
+        #print('read', dt)
         return data
 
     def read_to_cr(self):
+        #time0 = time.time()
         result = b''
         data = self.read()
         while data is not None:
             result += data
             if b'\r' in data:
+                #dt = time.time() - time0
+                #print('read_to_cr', dt)
                 return result
             data = self.read()
+        #dt = time.time() - time0
+        #print('read_to_cr', dt)
         return result
 
     def set_addr(self):
@@ -160,6 +174,7 @@ class TDKLambda():
         return True
 
     def read_value(self, cmd=b'MV?'):
+        #t0 = time.time()
         reply = b''
         try:
             reply = self.send_command(cmd)
@@ -167,9 +182,10 @@ class TDKLambda():
         except:
             self.unexpected_reply(reply)
             v = float('Nan')
+        #dt = time.time() - t0
+        #print('read_value', dt)
         return v
 
-    # process error reading or writing
     def unexpected_reply(self, reply=b''):
         msg = 'Unexpected reply %s from %s : %d' % (reply, self.port, self.addr)
         self.logger.error(msg)
@@ -181,4 +197,5 @@ if __name__ == "__main__":
     while True:
         t0 = time.time()
         v = pdl.read_value("PC?")
-        print(time.time()-t0, v, pdl.timeout)
+        dt = time.time()-t0
+        print(dt, v, pdl.timeout)
