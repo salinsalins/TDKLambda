@@ -101,6 +101,7 @@ class TDKLambda():
         time0 = time.time()
         data = self.com.read(100)
         dt = time.time() - time0
+        n = 1
         while len(data) <= 0:
             if dt > self.timeout:
                 self.timeout = min(1.5*dt, MAX_TIMEOUT)
@@ -112,15 +113,19 @@ class TDKLambda():
                 return None
             data = self.com.read(100)
             dt = time.time() - time0
+            n += 1
+            print('_read', n, len(data), dt)
         self.time = time.time()
         self.suspend = time.time()
         self.timeout = max(2.0*dt, MIN_TIMEOUT)
         self.timeout_flag = False
         #msg = 'Timeout decrease to %f' % self.timeout
         #self.logger.error(msg)
+        print('_read', dt)
         return data
 
     def read(self):
+        time0 = time.time()
         if self.com is None or time.time() < self.suspend:
             return None
         count = self.retries
@@ -133,6 +138,8 @@ class TDKLambda():
                 self.logger.error(msg)
                 self.suspend = time.time() + SUSPEND
                 return None
+        dt = time.time() - time0
+        print('read', dt)
         return data
 
     def read_to_cr(self):
