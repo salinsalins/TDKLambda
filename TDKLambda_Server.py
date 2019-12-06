@@ -109,9 +109,73 @@ class TDKLambda_Server(Device):
             # unknown device type
             self.set_state(DevState.FAULT)
 
-    def read_voltage(self):
-        self.info_stream("read_voltage(%s, %d)", self.host, self.port)
-        return 9.99, time.time(), AttrQuality.ATTR_WARNING
+    def read_voltage(self, attr: tango.Attribute):
+        if self.tdk.com is None:
+            return
+        val = self.tdk.read_float('MV?')
+        if val is float('nan'):
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            attr.set_value(float('nan'))
+            self.error_stream("Output voltage read error ")
+            return
+        else:
+            attr.set_value(val)
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+
+    def read_programmed_voltage(self, attr: tango.Attribute):
+        if self.tdk.com is None:
+            return
+        val = self.tdk.read_float('PV?')
+        if val is float('nan'):
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            attr.set_value(float('nan'))
+            self.error_stream("Programmed voltage read error ")
+            return
+        else:
+            attr.set_value(val)
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+
+    def write_programmed_voltage(self, attr: tango.WAttribute):
+        if self.tdk.com is None:
+            return
+        value = attr.get_write_value()
+        result = self.tdk.write_value('PV', value)
+        if result:
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+        else:
+            self.error_stream("Error writing programmed voltage")
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+
+    def write_programmed_current(self, attr: tango.WAttribute):
+        if self.tdk.com is None:
+            return
+        value = attr.get_write_value()
+        result = self.tdk.write_value('PC', value)
+        if result:
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+        else:
+            self.error_stream("Error writing programmed current")
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+
+    @command
+    def Reconnect(self):
+        self.info_stream(self, 'Reconnect')
+        if self.et is None:
+            self.init_device()
+            if self.et is None:
+                return
+        self.remove_io()
+        self.add_io()
+        # if device type is recognized
+        if self.et._name != 0:
+            # set state to running
+            self.set_state(DevState.RUNNING)
+        else:
+            # unknown device type
+            self.set_state(DevState.FAULT)
+
+
+
 
     def read_current(self):
         return self.__current
