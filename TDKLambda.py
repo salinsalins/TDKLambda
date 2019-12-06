@@ -186,20 +186,20 @@ class TDKLambda():
             return False
         return True
 
-    def read_float(self, cmd=b'MV?'):
+    def read_float(self, cmd):
         #t0 = time.time()
         reply = b''
         try:
             reply = self.send_command(cmd)
             v = float(reply)
         except:
-            self.check_response(reply)
+            self.check_response(response=b'Not a float:'+reply)
             v = float('Nan')
         #dt = time.time() - t0
         #print('read_value', dt)
         return v
 
-    def read_value(self, cmd=b'MV?', vtype=float):
+    def read_value(self, cmd, vtype=float):
         #t0 = time.time()
         reply = b''
         try:
@@ -212,7 +212,7 @@ class TDKLambda():
         #print('read_value', dt)
         return v
 
-    def read_bool(self, cmd=b'OUT?'):
+    def read_bool(self, cmd):
         response = self.send_command(cmd)
         if response.upper() in (b'ON', b'1'):
             return True
@@ -222,7 +222,7 @@ class TDKLambda():
         self.logger.warning(msg)
         return False
 
-    def write_value(self, cmd=b'PV', value='', response=b'OK\r'):
+    def write_value(self, cmd, value, response=b'OK'):
         cmd = cmd.upper() + b' ' + str.encode(str(value))[:10] + b'\r'
         self.send_command(cmd)
         return self.check_response(response)
@@ -232,8 +232,9 @@ class TDKLambda():
             response = self.last_response
         if not response.startswith(expect):
             self.unexpected_count += 1
-            msg = 'Unexpected reply %s from %s : %d' % (response, self.port, self.addr)
-            self.logger.error(msg)
+            msg = 'Unexpected response %s from %s : %d' % (response, self.port, self.addr)
+            print(msg)
+            #self.logger.error(msg)
             return False
         self.unexpected_count = 0
         return True
@@ -245,4 +246,4 @@ if __name__ == "__main__":
         t0 = time.time()
         v = pdl.read_float("PC?")
         dt = time.time()-t0
-        print(dt, v, pdl.timeout)
+        print('%5.3f'%dt,'PC?=', v, 'timeout=', '%5.3f'%pdl.timeout)

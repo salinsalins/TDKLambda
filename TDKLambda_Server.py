@@ -33,7 +33,7 @@ class TDKLambda_Server(Device):
                         unit="", format="%s",
                         doc="TDKLambda device type")
 
-    onoff = attribute(label="on/off", dtype=bool,
+    out = attribute(label="on/off", dtype=bool,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
                         unit="", format="",
@@ -122,6 +122,19 @@ class TDKLambda_Server(Device):
             attr.set_value(val)
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
 
+    def read_current(self, attr: tango.Attribute):
+        if self.tdk.com is None:
+            return
+        val = self.tdk.read_float('MC?')
+        if val is float('nan'):
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            attr.set_value(float('nan'))
+            self.error_stream("Output current read error ")
+            return
+        else:
+            attr.set_value(val)
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+
     def read_programmed_voltage(self, attr: tango.Attribute):
         if self.tdk.com is None:
             return
@@ -129,7 +142,20 @@ class TDKLambda_Server(Device):
         if val is float('nan'):
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
             attr.set_value(float('nan'))
-            self.error_stream("Programmed voltage read error ")
+            self.error_stream("Programmed voltage read error")
+            return
+        else:
+            attr.set_value(val)
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+
+    def read_programmed_current(self, attr: tango.Attribute):
+        if self.tdk.com is None:
+            return
+        val = self.tdk.read_float('PC?')
+        if val is float('nan'):
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            attr.set_value(float('nan'))
+            self.error_stream("Programmed current read error")
             return
         else:
             attr.set_value(val)
@@ -157,6 +183,36 @@ class TDKLambda_Server(Device):
             self.error_stream("Error writing programmed current")
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
 
+    def read_out(self, attr: tango.Attribute):
+        if self.tdk.com is None:
+            return
+        response = self.send_command(b'OUT?\r')
+        if response.upper() == b'ON':
+            attr.set_value(True)
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            return True
+        elif response.upper() == b'OFF':
+            attr.set_value(False)
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            return False
+        else:
+            attr.set_value(False)
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+
+    def write_out(self, attr: tango.WAttribute):
+        if self.tdk.com is None:
+            return
+        value = attr.get_write_value()
+        if value:
+            response = self.send_command(b'OUT ON\r')
+        else:
+            response = self.send_command(b'OUT OFF\r')
+        if response == b'OK':
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+        else:
+            self.error_stream("Error switch output")
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+
     @command
     def Reconnect(self):
         self.info_stream(self, 'Reconnect')
@@ -174,78 +230,15 @@ class TDKLambda_Server(Device):
             # unknown device type
             self.set_state(DevState.FAULT)
 
-
-
-
-    def read_current(self):
-        return self.__current
-
-    def read_programmed__voltage(self):
-        # should set the power supply current
-        self.__current = 0
-
-    def read_programmed__current(self):
-        # should set the power supply current
-        self.__current = 0
-
-    def write_programmed__voltage(self, v):
-        # should set the power supply current
-        self.__current = 0
-
-    def write_programmed__current(self, c):
-        # should set the power supply current
-        self.__current = 0
-
     def read_info(self):
         return 'Information', dict(manufacturer='Tango',
                                    model='TDKLambda',
-                                   version_number=123)
+                                   version_number=1)
 
-    @DebugIt()
     def read_devicetype(self):
-        return 'TDKLambda'
-
-    def send_command(self, cmd):
-        if cmd[-1] != b'\r':
-            cmd += b'\r'
-        self.com.reset_input_buffer()
-        self.com.write(cmd)
-        return self.read_cr()
-
-    def set_addr(self):
-        result = self.send_command(b'ADR %d\r' % self.addr)
-        if result != b'OK':
-            self.io_error()
-            return False
-        return True
-
-    def read_response(self):
-        time0 = time.time()
-        data = self.com.read(100)
-        dt = time.time() - time0
-        while len(data) <= 0:
-            if dt > self.timeout:
-                self.timeout = min(1.5*dt, MAX_TIMEOUT)
-                return None
-            data = self.com.read()
-            dt = time.time() - time0
-        self.timeout = max(2.0*dt, MIN_TIMEOUT)
-        return data
-
-    def read_cr(self):
-        result = b''
-        data = self.read_response()
-        while data is not None:
-            result += data
-            if b'\r' in data:
-                return result
-            data = self.read_response()
-        return result
-
-
-    # process error reading or writing
-    def io_error(self):
-        return True
+        if self.tdk.com is None:
+            return "Uninitialized"
+        return self.tdk.id
 
     @command
     def TurnOn(self):
