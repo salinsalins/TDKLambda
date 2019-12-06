@@ -165,7 +165,7 @@ class TDKLambda_Server(Device):
         if self.tdk.com is None:
             return
         value = attr.get_write_value()
-        result = self.tdk.write_value('PV', value)
+        result = self.tdk.write_value(b'PV', value)
         if result:
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
         else:
@@ -176,7 +176,7 @@ class TDKLambda_Server(Device):
         if self.tdk.com is None:
             return
         value = attr.get_write_value()
-        result = self.tdk.write_value('PC', value)
+        result = self.tdk.write_value(b'PC', value)
         if result:
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
         else:
@@ -216,19 +216,11 @@ class TDKLambda_Server(Device):
     @command
     def Reconnect(self):
         self.info_stream(self, 'Reconnect')
-        if self.et is None:
-            self.init_device()
-            if self.et is None:
-                return
-        self.remove_io()
-        self.add_io()
-        # if device type is recognized
-        if self.et._name != 0:
-            # set state to running
-            self.set_state(DevState.RUNNING)
-        else:
-            # unknown device type
-            self.set_state(DevState.FAULT)
+        if self in TDKLambda.devices:
+            TDKLambda.devices.remove(self)
+        if self.tdk.com is not None:
+            self.tdk.com.close()
+        self.init_device()
 
     def read_info(self):
         return 'Information', dict(manufacturer='Tango',
@@ -243,13 +235,15 @@ class TDKLambda_Server(Device):
     @command
     def TurnOn(self):
         # turn on the actual power supply here
-        self.set_state(DevState.ON)
+        self.out = True
+        #self.set_state(DevState.ON)
 
     @command
     def TurnOff(self):
         # turn off the actual power supply here
-        self.set_state(DevState.OFF)
+        self.out = False
+        #self.set_state(DevState.OFF)
 
 
 if __name__ == "__main__":
-    TDKLambda.run_server()
+    TDKLambda_Server.run_server()

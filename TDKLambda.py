@@ -221,7 +221,7 @@ class TDKLambda():
         self.check_response(response=b'Not boolean:' + response)
         return False
 
-    def write_value(self, cmd, value, expect=b'OK'):
+    def write_value(self, cmd: bytes, value, expect=b'OK'):
         cmd = cmd.upper() + b' ' + str.encode(str(value))[:10] + b'\r'
         self.send_command(cmd)
         return self.check_response(expect)
