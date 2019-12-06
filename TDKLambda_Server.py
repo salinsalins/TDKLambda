@@ -92,7 +92,7 @@ class TDKLambda_Server(Device):
         self.tdk = TDKLambda(port, addr)
         # check if device OK
         if self.com is None:
-            msg = 'TDKLambda device creation error %s' % self
+            msg = 'TDKLambda device creation error for %s' % self
             print(msg)
             self.error_stream(msg)
             self.set_state(DevState.FAULT)
@@ -102,7 +102,7 @@ class TDKLambda_Server(Device):
         if self.tdk.id != b'':
             # set state to running
             self.set_state(DevState.RUNNING)
-            msg = 'TDKLambda device %s at %s : %d has been created' % (self.tdk.id, self.tdk.port, self.tdk.addr)
+            msg = 'TDKLambda device %s at %s : %d has been successfully created' % (self.tdk.id, self.tdk.port, self.tdk.addr)
             print(msg)
             self.info_stream(msg)
         else:
