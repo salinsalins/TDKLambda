@@ -218,7 +218,7 @@ class TDKLambda():
             return True
         if response.upper() in (b'OFF', b'0'):
             return False
-        msg = 'Umbigous response %s for boolean, False returned.' % response
+        msg = 'Ambiguous response %s for boolean, False returned.' % response
         self.logger.warning(msg)
         return False
 
