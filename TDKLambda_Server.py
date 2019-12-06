@@ -20,8 +20,8 @@ import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
 from tango.server import Device, attribute, command
 
-MAX_TIMEOUT = 3.0   # sec
-MIN_TIMEOUT = 0.1   # sec
+from TDKLambda import TDKLambda
+
 
 class TDKLambda_Server(Device):
     ports = []
@@ -31,13 +31,13 @@ class TDKLambda_Server(Device):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
                         unit="", format="%s",
-                        doc="device type")
+                        doc="TDKLambda device type")
 
     onoff = attribute(label="on/off", dtype=bool,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
                         unit="", format="",
-                        doc="on/off")
+                        doc="Output state on/off")
 
     voltage = attribute(label="Voltage", dtype=float,
                         display_level=DispLevel.OPERATOR,
@@ -83,59 +83,28 @@ class TDKLambda_Server(Device):
             return result
 
     def init_device(self):
-        if hasattr(self, 'port') and self.port is not None:
-            self.port.close()
-            self.port = None
-            self.addr = None
         self.set_state(DevState.INIT)
         Device.init_device(self)
-        # get port and arrdess from property
-        self.port = self.get_device_property('port')
-        self.addr = self.get_device_property('addr')
-        # if port or address is not defined
-        if self.port is None or self.addr is None:
-            msg = 'Address or port not defined for %s' % self
-            print(msg)
-            self.error_stream(msg)
-            self.set_state(DevState.FAULT)
-            return
-        # check if port an addr are in use
-        for d in TDKLambda.devices:
-            if d.port == self.port and d.addr == self.addr:
-                msg = 'Address %s is in use for port %s device %s' % (self.addr, self.port, self)
-                print(msg)
-                self.error_stream(msg)
-                self.set_state(DevState.FAULT)
-                return
-        if len(TDKLambda.ports) == 0:
-            TDKLambda.ports = comports()
-        found = False
-        for p in TDKLambda.ports:
-            if p.name == self.port:
-                found = True
-        if not found:
-            msg = 'COM port %s does not exist for %s' % (self.port, self)
-            print(msg)
-            self.error_stream(msg)
-            self.set_state(DevState.FAULT)
-            return
+        # get port and address from property
+        port = self.get_device_property('port')
+        addr = self.get_device_property('addr')
         # create TDKLambda device
-        self.com = serial.Serial(self.port, baudrate=9600, timeout=0)
-        # create variables
-        self.time = time.time()
-        self.reconnect_timeout = self.get_device_property('reconnect_timeout', 5000)
-        self.error_retries = self.get_device_property('error_retries', 3)
-        self.timeout = MIN_TIMEOUT
+        self.tdk = TDKLambda(port, addr)
+        # check if device OK
+        if self.com is None:
+            msg = 'TDKLambda device creation error %s' % self
+            print(msg)
+            self.error_stream(msg)
+            self.set_state(DevState.FAULT)
+            return
         # add device to list
         TDKLambda.devices.append(self)
-        msg = 'TDKLambda device at %s %d has been created' % (self.port, self.addr)
-        print(msg)
-        self.info_stream(msg)
-        # initialize device type
-        self.type = self.read_devicetype()
-        if self.type is not None:
+        if self.tdk.id != b'':
             # set state to running
             self.set_state(DevState.RUNNING)
+            msg = 'TDKLambda device %s at %s : %d has been created' % (self.tdk.id, self.tdk.port, self.tdk.addr)
+            print(msg)
+            self.info_stream(msg)
         else:
             # unknown device type
             self.set_state(DevState.FAULT)

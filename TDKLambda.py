@@ -227,7 +227,7 @@ class TDKLambda():
         self.send_command(cmd)
         return self.check_response(response)
 
-    def check_response(self, expect=b'OK\r', response=None):
+    def check_response(self, expect=b'OK', response=None):
         if response is None:
             response = self.last_response
         if not response.startswith(expect):
