@@ -199,14 +199,14 @@ class TDKLambda():
         #print('read_value', dt)
         return v
 
-    def read_value(self, cmd, vtype=float):
+    def read_value(self, cmd, vtype=str):
         #t0 = time.time()
         reply = b''
         try:
             reply = self.send_command(cmd)
             v = vtype(reply)
         except:
-            self.check_response(b'!?!')
+            self.check_response(response=b'Wrong format:'+reply)
             v = None
         #dt = time.time() - t0
         #print('read_value', dt)
@@ -218,14 +218,13 @@ class TDKLambda():
             return True
         if response.upper() in (b'OFF', b'0'):
             return False
-        msg = 'Ambiguous response %s for boolean, False returned.' % response
-        self.logger.warning(msg)
+        self.check_response(response=b'Not boolean:' + response)
         return False
 
-    def write_value(self, cmd, value, response=b'OK'):
+    def write_value(self, cmd, value, expect=b'OK'):
         cmd = cmd.upper() + b' ' + str.encode(str(value))[:10] + b'\r'
         self.send_command(cmd)
-        return self.check_response(response)
+        return self.check_response(expect)
 
     def check_response(self, expect=b'OK', response=None):
         if response is None:
