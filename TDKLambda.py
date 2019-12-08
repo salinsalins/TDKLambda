@@ -53,18 +53,24 @@ class TDKLambda():
             # com port exists
             if p.name == self.port:
                 self.com = p
+                p._addr_list.append(self.addr)
         if self.com is None:
             # create new port
             try:
                 self.com = serial.Serial(self.port, baudrate=baudrate, timeout=timeout)
-                TDKLambda.ports.append(self.port)
+                self.com._addr_list = [self.addr]
+                TDKLambda.ports.append(self.com)
             except:
                 self.com = None
                 msg = 'Error open %s port' % self.port
                 self.logger.error(msg)
                 return
         # set device address and check 'OK' response
-        self.online = self.set_addr()
+        response = self.set_addr()
+        if response:
+            self.com._current_addr = self.addr
+        else:
+            self.com._current_addr = -1
         # initialize device type and serial number
         self.id = self._send_command(b'IDN?')
         self.serial_number = self._send_command(b'SN?')
@@ -72,6 +78,13 @@ class TDKLambda():
         TDKLambda.devices.append(self)
         msg = 'TDKLambda device at %s %d has been created' % (self.port, self.addr)
         self.logger.info(msg)
+
+    def __del__(self):
+        TDKLambda.devices.remove(self)
+        self.com._addr_list.remove(self.addr)
+        if len(self.com._addr_list) <= 0:
+            self.com.close()
+            TDKLambda.ports.remove(self.com)
 
     @staticmethod
     def checksum(cmd):
@@ -113,8 +126,11 @@ class TDKLambda():
         return result
 
     def send_command(self, cmd):
-        if self.auto_addr:
-            self.set_addr()
+        if self.auto_addr and self.com._current_addr != self.addr:
+            if self.set_addr():
+                self.com._current_addr = self.addr
+            else:
+               self.com._current_addr = -1
         return self._send_command(cmd)
 
     def _read(self):
@@ -248,7 +264,6 @@ class TDKLambda():
         return True
 
 if __name__ == "__main__":
-    pass
     pdl = TDKLambda("COM3", 6)
     while True:
         t0 = time.time()

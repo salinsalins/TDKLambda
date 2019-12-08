@@ -24,7 +24,6 @@ from TDKLambda import TDKLambda
 
 
 class TDKLambda_Server(Device):
-    ports = []
     devices = []
 
     devicetype = attribute(label="type", dtype=str,
@@ -98,7 +97,7 @@ class TDKLambda_Server(Device):
             self.set_state(DevState.FAULT)
             return
         # add device to list
-        TDKLambda.devices.append(self)
+        TDKLambda_Server.devices.append(self)
         if self.tdk.id != b'':
             # set state to running
             self.set_state(DevState.RUNNING)
@@ -108,6 +107,13 @@ class TDKLambda_Server(Device):
         else:
             # unknown device type
             self.set_state(DevState.FAULT)
+
+    def delete_device(self):
+        if self in TDKLambda_Server.devices:
+            TDKLambda_Server.devices.remove(self)
+            self.tdk.__del__()
+            msg = 'TDKLambda device %s at %s : %d has been deleetd' % (self.tdk.id, self.tdk.port, self.tdk.addr)
+            self.info_stream(msg)
 
     def read_voltage(self, attr: tango.Attribute):
         if self.tdk.com is None:
