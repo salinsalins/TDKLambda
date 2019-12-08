@@ -208,11 +208,9 @@ class TDKLambda_Server(Device):
 
     @command
     def Reconnect(self):
-        self.info_stream(self, 'Reconnect')
-        if self in TDKLambda.devices:
-            TDKLambda.devices.remove(self)
-        if self.tdk.com is not None:
-            self.tdk.com.close()
+        msg = 'Reconnect %s at %s : %d' % (self.tdk.id, self.tdk.port, self.tdk.addr)
+        self.info_stream(msg)
+        self.delete_device()
         self.init_device()
 
     def read_info(self):
