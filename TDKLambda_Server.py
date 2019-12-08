@@ -1,20 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Demo power supply tango device server"""
-
-import time
-import numpy
-
-import os
-import serial
-# chose an implementation, depending on os
-if os.name == 'nt':  # sys.platform == 'win32':
-    from serial.tools.list_ports_windows import comports
-elif os.name == 'posix':
-    from serial.tools.list_ports_posix import comports
-else:
-    raise ImportError("No implementation for platform ('{}') is available".format(os.name))
+"""TDK Lambda Genesis series power supply tango device server"""
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
