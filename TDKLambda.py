@@ -23,17 +23,16 @@ class TDKLambda():
     devices = []
     ports = []
 
-    def __init__(self, port: str, addr=6, checksum=False, baudrate=9600, timeout=0, logger=None):
+    def __init__(self, port: str, addr=6, checksum=False, auto_addr = True, baudrate=9600, timeout=0, logger=None):
         # create variables
+        self.last_command = b''
         self.last_response = b''
         self.unexpected_count = 0
-        self.auto_addr = True
-        self.last_command = b''
+        self.auto_addr = auto_addr
         self.com = None
         self.check = checksum
         self.time = time.time()
         self.suspend = time.time()
-        #reconnect_timeout = self.get_device_property('reconnect_timeout', 5000)
         self.retries = RETRIES
         self.timeout = 2.0*MIN_TIMEOUT
         self.sleep = SLEEP
@@ -90,6 +89,9 @@ class TDKLambda():
         if cmd[-1] != b'\r':
             cmd += b'\r'
         cmd = cmd.upper()
+        if self.check:
+            cs = self.checksum(cmd)
+            cmd += b'$' + cs
         self.last_command = cmd
         #t0 = time.time()
         #if self.com.in_waiting() > 0:
@@ -103,7 +105,8 @@ class TDKLambda():
         if result is None:
             msg = 'Repeat command %s' % cmd
             self.logger.warning(msg)
-            self.com.reset_input_buffer()
+            #self.com.reset_input_buffer()
+            self.com.read(10000)
             self.com.write(cmd)
             time.sleep(self.sleep)
             result = self.read_to_cr()
@@ -170,21 +173,27 @@ class TDKLambda():
             if b'\r' in data:
                 n = result.find(b'\r')
                 self.last_response = result[:n]
+                if self.check:
+                    m = result.find(b'$')
+                    if m < 0:
+                        self.logger.error('Incorrect checksum')
+                    else:
+                        cs = self.checksum(result[:m])
+                        if result[m+1:n] != cs:
+                            self.logger.error('Incorrect checksum')
                 #dt = time.time() - time0
                 #print('read_to_cr1', dt)
-                return result
+                return result[:n]
             data = self.read()
         self.last_response = result
+        self.logger.error('Response without CR')
         #dt = time.time() - time0
         #print('read_to_cr2', dt)
         return result
 
     def set_addr(self):
-        result = self._send_command(b'ADR %d\r' % self.addr)
-        if not result.startswith(b'OK'):
-            self.check_response(result)
-            return False
-        return True
+        self._send_command(b'ADR %d\r' % self.addr)
+        return self.check_response()
 
     def read_float(self, cmd):
         #t0 = time.time()
@@ -244,5 +253,5 @@ if __name__ == "__main__":
     while True:
         t0 = time.time()
         v = pdl.read_float("PC?")
-        dt = time.time()-t0
-        print('%5.3f'%dt,'PC?=', v, 'timeout=', '%5.3f'%pdl.timeout)
+        dt = int((time.time()-t0)*1000.0)    #ms
+        print('%4d ms '%dt,'PC?=', v, 'to=', '%5.3f'%pdl.timeout)
