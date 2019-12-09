@@ -23,7 +23,7 @@ class TDKLambda_Server(Device):
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
                         unit="", format="",
-                        doc="Output state on/off")
+                        doc="Output on/off state")
 
     voltage = attribute(label="Voltage", dtype=float,
                         display_level=DispLevel.OPERATOR,
