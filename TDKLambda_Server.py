@@ -19,7 +19,7 @@ class TDKLambda_Server(Device):
                         unit="", format="%s",
                         doc="TDKLambda device type")
 
-    out = attribute(label="on/off", dtype=bool,
+    output = attribute(label="Output", dtype=bool,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
                         unit="", format="",
@@ -166,15 +166,17 @@ class TDKLambda_Server(Device):
 
     def write_programmed_current(self, value):
         if self.tdk.com is None:
-            return
+            return False
         result = self.tdk.write_value(b'PC', value)
         if result:
             self.programmed_current.set_quality(tango.AttrQuality.ATTR_VALID)
+            return True
         else:
             self.error_stream("Error writing programmed current")
             self.programmed_current.set_quality(tango.AttrQuality.ATTR_INVALID)
+            return False
 
-    def read_out(self, attr: tango.Attribute):
+    def read_output(self, attr: tango.Attribute):
         if self.tdk.com is None:
             return
         response = self.send_command(b'OUT?\r')
@@ -189,19 +191,22 @@ class TDKLambda_Server(Device):
         else:
             attr.set_value(False)
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            return False
 
-    def write_out(self, value):
+    def write_output(self, value):
         if self.tdk.com is None:
-            return
+            return False
         if value:
-            response = self.send_command(b'OUT ON\r')
+            response = self.tdk.send_command(b'OUT ON\r')
         else:
-            response = self.send_command(b'OUT OFF\r')
+            response = self.tdk.send_command(b'OUT OFF\r')
         if response == b'OK':
-            self.out.set_quality(tango.AttrQuality.ATTR_VALID)
+            self.output.set_quality(tango.AttrQuality.ATTR_VALID)
+            return True
         else:
             self.error_stream("Error switch output")
-            self.out.set_quality(tango.AttrQuality.ATTR_INVALID)
+            self.output.set_quality(tango.AttrQuality.ATTR_INVALID)
+            return False
 
     @command
     def Reconnect(self):
