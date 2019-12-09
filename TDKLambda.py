@@ -39,6 +39,7 @@ class TDKLambda():
         self.sleep = SLEEP
         if logger is None:
             self.logger = logging.getLogger()
+            self.logger.setLevel(logging.DEBUG)
         else:
             self.logger = logger
         self.port = port.upper()
@@ -108,6 +109,7 @@ class TDKLambda():
             cs = self.checksum(cmd)
             cmd += b'$' + cs
         self.last_command = cmd
+        self.logger.debug(b'Send: '+cmd)
         #if self.com.in_waiting() > 0:
         #    self.com.reset_input_buffer()
         self.com.read(10000)
@@ -130,6 +132,7 @@ class TDKLambda():
                 self.logger.warning(msg)
         #dt = time.time() - t0
         #print('send_command2', dt)
+        self.logger.debug(b'Send result: '+result)
         return result
 
     def send_command(self, cmd):
@@ -291,8 +294,13 @@ class TDKLambda():
 
 if __name__ == "__main__":
     pdl = TDKLambda("COM3", 6)
+    pd2 = TDKLambda("COM3", 7)
     while True:
         t0 = time.time()
-        v = pdl.read_float("PC?")
-        dt = int((time.time()-t0)*1000.0)    #ms
-        print('%4d ms '%dt,'PC?=', v, 'to=', '%5.3f'%pdl.timeout)
+        v1 = pdl.read_float("PC?")
+        dt1 = int((time.time()-t0)*1000.0)    #ms
+        print('1: ', '%4d ms '%dt1,'PC?=', v1, 'to=', '%5.3f'%pdl.timeout)
+        t0 = time.time()
+        v2 = pd2.read_float("PC?")
+        dt2 = int((time.time()-t0)*1000.0)    #ms
+        print('2: ', '%4d ms '%dt2,'PC?=', v2, 'to=', '%5.3f'%pdl.timeout)
