@@ -122,7 +122,7 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__(parent)
 
         # Load the UI
-        uic.loadUi('PyTimerUI.ui', self)
+        uic.loadUi('Magnets_UI.ui', self)
         # Default window parameters
         self.setMinimumSize(QSize(480, 640))  # Set sizes
         self.resize(QSize(480, 640))
@@ -215,7 +215,7 @@ class MainWindow(QMainWindow):
             return True
         except :
             self.logger.log(logging.WARNING, 'Configuration save error to %s' % file_name)
-            self.print_exception_info()
+            print_exception_info()
             return False
         
     def restore_settings(self, file_name=CONFIG_FILE) :
