@@ -179,7 +179,7 @@ class TDKLambda_Server(Device):
     def read_output(self, attr: tango.Attribute):
         if self.tdk.com is None:
             return
-        response = self.send_command(b'OUT?\r')
+        response = self.tdk.send_command(b'OUT?\r')
         if response.upper() == b'ON':
             attr.set_value(True)
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
@@ -206,6 +206,8 @@ class TDKLambda_Server(Device):
         else:
             self.error_stream("Error switch output")
             self.output.set_quality(tango.AttrQuality.ATTR_INVALID)
+            v = self.read_output()
+            self.output.set_value(v)
             return False
 
     @command
