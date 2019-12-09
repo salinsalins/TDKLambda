@@ -102,7 +102,7 @@ class TDKLambda_Server(Device):
         if self in TDKLambda_Server.devices:
             TDKLambda_Server.devices.remove(self)
             self.tdk.__del__()
-            msg = 'TDKLambda device %s at %s : %d has been deleetd' % (self.tdk.id, self.tdk.port, self.tdk.addr)
+            msg = 'TDKLambda device %s at %s : %d has been deleted' % (self.tdk.id, self.tdk.port, self.tdk.addr)
             self.info_stream(msg)
 
     def read_voltage(self, attr: tango.Attribute):
