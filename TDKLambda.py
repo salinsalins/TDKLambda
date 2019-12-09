@@ -5,17 +5,10 @@ import time
 import os
 import logging
 import serial
-# chose an implementation, depending on os
-if os.name == 'nt':  # sys.platform == 'win32':
-    from serial.tools.list_ports_windows import comports
-elif os.name == 'posix':
-    from serial.tools.list_ports_posix import comports
-else:
-    raise ImportError("No implementation for platform ('{}') is available".format(os.name))
 
 MAX_TIMEOUT = 1.5   # sec
 MIN_TIMEOUT = 0.1   # sec
-#RETRIES = 3
+RETRIES = 3
 SUSPEND = 5.0
 SLEEP = 0.03
 MAX_ERROR_COUNT = 4
@@ -34,7 +27,7 @@ class TDKLambda():
         self.check = checksum
         self.time = time.time()
         self.suspend = time.time()
-        #self.retries = RETRIES
+        self.retries = 0
         self.timeout = 2.0*MIN_TIMEOUT
         self.sleep = SLEEP
         if logger is None:
@@ -85,7 +78,7 @@ class TDKLambda():
         self.serial_number = self._send_command(b'SN?')
         # add device to list
         TDKLambda.devices.append(self)
-        msg = 'TDKLambda device at %s %d has been created' % (self.port, self.addr)
+        msg = 'TDKLambda device at %s : %d has been created' % (self.port, self.addr)
         self.logger.info(msg)
 
     def __del__(self):
@@ -114,7 +107,7 @@ class TDKLambda():
         cmd = cmd.upper()
         if self.check:
             cs = self.checksum(cmd)
-            cmd += b'$' + cs
+            cmd = b'%s$%s\r' % (cmd[:-1], cs)
         self.last_command = cmd
         self.logger.debug(b'Send: '+cmd)
         #if self.com.in_waiting() > 0:
@@ -126,7 +119,7 @@ class TDKLambda():
         time.sleep(self.sleep)
         result = self.read_to_cr()
         if result is None:
-            msg = 'Writing error. Repeat command %s' % cmd
+            msg = 'Writing error, repeat command %s' % cmd
             self.logger.warning(msg)
             # if self.com.in_waiting() > 0:
             #    self.com.reset_input_buffer()
@@ -136,7 +129,9 @@ class TDKLambda():
             result = self.read_to_cr()
             if result is None:
                 msg = 'Repeated writing error for %s' % cmd
-                self.logger.warning(msg)
+                self.logger.error(msg)
+                self.error_count = MAX_ERROR_COUNT
+                self.check_suspend()
         #dt = time.time() - t0
         #print('send_command2', dt)
         self.logger.debug(b'Send result: '+result)
@@ -146,9 +141,11 @@ class TDKLambda():
         if self.auto_addr and self.com._current_addr != self.addr:
             if self.set_addr():
                 self.com._current_addr = self.addr
+                return self._send_command(cmd)
             else:
                 self.com._current_addr = -1
-        return self._send_command(cmd)
+                self.check_suspend()
+                return b''
 
     def check_response(self, expect=b'OK', response=None):
         if self.com is None or time.time() < self.suspend:
@@ -157,16 +154,11 @@ class TDKLambda():
         if response is None:
             response = self.last_response
         if not response.startswith(expect):
-            self.error_count += 1
             msg = 'Unexpected response %s from %s : %d' % (response, self.port, self.addr)
             #print(msg)
             self.logger.warning(msg)
-            if self.error_count > MAX_ERROR_COUNT:
-                msg = 'Too many unexpected responses from %s : %d, suspended' % (self.port, self.addr)
-                #print(msg)
-                self.logger.error(msg)
-                self.suspend = time.time() + 5.0
-                self.error_count = 0
+            msg = 'Too many unexpected responses from %s : %d, suspended' % (self.port, self.addr)
+            self.check_suspend(msg)
             return False
         self.error_count = 0
         return True
@@ -181,22 +173,19 @@ class TDKLambda():
         while len(data) <= 0:
             if dt > self.timeout:
                 self.timeout = min(1.5*dt, MAX_TIMEOUT)
-                self.timeout_flag = True
-                msg = 'Timeout increase to %f' % self.timeout
+                msg = 'Timeout increased to %f' % self.timeout
                 self.logger.info(msg)
-                # resend command
-                self._send_command(self.last_command)
                 return None
             data = self.com.read(10000)
             #dt = time.time() - time0
             #n += 1
             #print('_read', n, len(data), dt)
+        self.retries = 0
         self.time = time.time()
-        self.suspend = time.time()
-        self.error_count = 0
+        #self.suspend = time.time()
         self.timeout = max(2.0*dt, MIN_TIMEOUT)
-        #msg = 'Timeout decrease to %f' % self.timeout
-        #self.logger.error(msg)
+        #msg = 'Timeout set to %f' % self.timeout
+        #self.logger.debug(msg)
         #print('_read', dt)
         return data
 
@@ -204,20 +193,23 @@ class TDKLambda():
         #time0 = time.time()
         if self.com is None or time.time() < self.suspend:
             return None
-        #count = self.retries
-        data = None
+        data = self._read()
         while data is None:
-            data = self._read()
-            if self.check_suspend():
-                # dt = time.time() - time0
-                # print('read1', dt)
+            self.retries += 1
+            if self.retries >= RETRIES:
+                self.error_count = MAX_ERROR_COUNT
+                self.check_suspend()
                 return None
+            # dt = time.time() - time0
+            # print('read1', dt)
+            data = self._read()
         #dt = time.time() - time0
         #print('read2', dt)
-        self.error_count = 0
+        self.retries = 0
         return data
 
     def check_suspend(self, msg='Device is suspended for %d sec'%SUSPEND):
+        self.error_count += 1
         if self.error_count > MAX_ERROR_COUNT:
             self.suspend = time.time()
             self.error_count = 0
