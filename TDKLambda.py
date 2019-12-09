@@ -38,8 +38,15 @@ class TDKLambda():
         self.timeout = 2.0*MIN_TIMEOUT
         self.sleep = SLEEP
         if logger is None:
-            self.logger = logging.getLogger()
-            self.logger.setLevel(logging.DEBUG)
+            #self.logger = logging.getLogger()
+            #self.logger.setLevel(logging.DEBUG)
+            self.logger = logging.getLogger(__name__)
+            self.logger.setLevel(logging.INFO)
+            log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                                              datefmt='%H:%M:%S')
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(log_formatter)
+            self.logger.addHandler(console_handler)
         else:
             self.logger = logger
         self.port = port.upper()
@@ -102,7 +109,7 @@ class TDKLambda():
             return b''
         if isinstance(cmd, str):
             cmd = str.encode(cmd)
-        if cmd[-1] != b'\r':
+        if cmd[-1] != b'\r'[0]:
             cmd += b'\r'
         cmd = cmd.upper()
         if self.check:
@@ -299,7 +306,7 @@ if __name__ == "__main__":
         t0 = time.time()
         v1 = pdl.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
-        print('1: ', '%4d ms '%dt1,'PC?=', v1, 'to=', '%5.3f'%pdl.timeout)
+        print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pdl.timeout)
         t0 = time.time()
         v2 = pd2.read_float("PC?")
         dt2 = int((time.time()-t0)*1000.0)    #ms

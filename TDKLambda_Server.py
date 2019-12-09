@@ -28,25 +28,25 @@ class TDKLambda_Server(Device):
     voltage = attribute(label="Voltage", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
-                        unit="V", format="8.4f",
+                        unit="V", format="6.2f",
                         doc="Measured voltage")
 
-    programmed_voltage = attribute(label="Voltage", dtype=float,
+    programmed_voltage = attribute(label="Programmed Voltage", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
-                        unit="V", format="8.4f",
+                        unit="V", format="6.2f",
                         doc="Programmed voltage")
 
     current = attribute(label="Current", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
-                        unit="A", format="8.4f",
+                        unit="A", format="6.2f",
                         doc="Measured current")
 
-    programmed_current = attribute(label="Current", dtype=float,
+    programmed_current = attribute(label="Programmed Current", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
-                        unit="A", format="8.4f",
+                        unit="A", format="6.2f",
                         doc="Programmed current")
 
     def get_device_property(self, prop: str, default=None):
@@ -73,11 +73,11 @@ class TDKLambda_Server(Device):
         Device.init_device(self)
         # get port and address from property
         port = self.get_device_property('port')
-        addr = self.get_device_property('addr')
+        addr = int(self.get_device_property('addr'))
         # create TDKLambda device
         self.tdk = TDKLambda(port, addr)
         # check if device OK
-        if self.com is None:
+        if self.tdk.com is None:
             msg = 'TDKLambda device creation error for %s' % self
             print(msg)
             self.error_stream(msg)
@@ -154,27 +154,25 @@ class TDKLambda_Server(Device):
             attr.set_value(val)
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
 
-    def write_programmed_voltage(self, attr: tango.WAttribute):
+    def write_programmed_voltage(self, value):
         if self.tdk.com is None:
             return
-        value = attr.get_write_value()
         result = self.tdk.write_value(b'PV', value)
         if result:
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_VALID)
         else:
             self.error_stream("Error writing programmed voltage")
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
 
-    def write_programmed_current(self, attr: tango.WAttribute):
+    def write_programmed_current(self, value):
         if self.tdk.com is None:
             return
-        value = attr.get_write_value()
         result = self.tdk.write_value(b'PC', value)
         if result:
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            self.programmed_current.set_quality(tango.AttrQuality.ATTR_VALID)
         else:
             self.error_stream("Error writing programmed current")
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            self.programmed_current.set_quality(tango.AttrQuality.ATTR_INVALID)
 
     def read_out(self, attr: tango.Attribute):
         if self.tdk.com is None:
@@ -192,19 +190,18 @@ class TDKLambda_Server(Device):
             attr.set_value(False)
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
 
-    def write_out(self, attr: tango.WAttribute):
+    def write_out(self, value):
         if self.tdk.com is None:
             return
-        value = attr.get_write_value()
         if value:
             response = self.send_command(b'OUT ON\r')
         else:
             response = self.send_command(b'OUT OFF\r')
         if response == b'OK':
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            self.out.set_quality(tango.AttrQuality.ATTR_VALID)
         else:
             self.error_stream("Error switch output")
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            self.out.set_quality(tango.AttrQuality.ATTR_INVALID)
 
     @command
     def Reconnect(self):
