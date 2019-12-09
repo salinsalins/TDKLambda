@@ -171,7 +171,7 @@
                  </size>
                 </property>
                 <property name="model">
-                 <string>/binp/nbi/magnet1/out</string>
+                 <string>/binp/nbi/magnet1/output</string>
                 </property>
                </widget>
               </item>
@@ -240,7 +240,7 @@
               <item row="1" column="1">
                <widget class="TaurusValueCheckBox" name="taurusValueCheckBox_13">
                 <property name="model">
-                 <string>/binp/nbi/magnet1/out</string>
+                 <string>/binp/nbi/magnet1/output</string>
                 </property>
                 <property name="showText">
                  <bool>false</bool>
@@ -335,7 +335,7 @@
                  </size>
                 </property>
                 <property name="model">
-                 <string>/binp/nbi/magnet2/out</string>
+                 <string>/binp/nbi/magnet2/output</string>
                 </property>
                </widget>
               </item>
@@ -404,7 +404,7 @@
               <item row="1" column="1">
                <widget class="TaurusValueCheckBox" name="taurusValueCheckBox_11">
                 <property name="model">
-                 <string>/binp/nbi/magnet2/out</string>
+                 <string>/binp/nbi/magnet2/output</string>
                 </property>
                 <property name="showText">
                  <bool>false</bool>
