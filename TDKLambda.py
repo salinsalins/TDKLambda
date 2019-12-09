@@ -15,10 +15,10 @@ else:
 
 MAX_TIMEOUT = 1.5   # sec
 MIN_TIMEOUT = 0.1   # sec
-RETRIES = 3
+#RETRIES = 3
 SUSPEND = 5.0
 SLEEP = 0.03
-MAX_ERROR_COUNT = 3
+MAX_ERROR_COUNT = 4
 
 class TDKLambda():
     devices = []
@@ -34,7 +34,7 @@ class TDKLambda():
         self.check = checksum
         self.time = time.time()
         self.suspend = time.time()
-        self.retries = RETRIES
+        #self.retries = RETRIES
         self.timeout = 2.0*MIN_TIMEOUT
         self.sleep = SLEEP
         if logger is None:
@@ -96,6 +96,7 @@ class TDKLambda():
         return result.upper()
 
     def _send_command(self, cmd):
+        #t0 = time.time()
         if self.com is None or time.time() < self.suspend:
             return b''
         if isinstance(cmd, str):
@@ -107,23 +108,28 @@ class TDKLambda():
             cs = self.checksum(cmd)
             cmd += b'$' + cs
         self.last_command = cmd
-        #t0 = time.time()
         #if self.com.in_waiting() > 0:
         #    self.com.reset_input_buffer()
         self.com.read(10000)
         #dt = time.time() - t0
-        #print('send_command', dt)
+        #print('send_command1', dt)
         self.com.write(cmd)
         time.sleep(self.sleep)
         result = self.read_to_cr()
         if result is None:
-            msg = 'Repeat command %s' % cmd
+            msg = 'Writing error. Repeat command %s' % cmd
             self.logger.warning(msg)
-            #self.com.reset_input_buffer()
+            # if self.com.in_waiting() > 0:
+            #    self.com.reset_input_buffer()
             self.com.read(10000)
             self.com.write(cmd)
             time.sleep(self.sleep)
             result = self.read_to_cr()
+            if result is None:
+                msg = 'Repeated writing error for %s' % cmd
+                self.logger.warning(msg)
+        #dt = time.time() - t0
+        #print('send_command2', dt)
         return result
 
     def send_command(self, cmd):
@@ -149,6 +155,7 @@ class TDKLambda():
                 msg = 'Too many unexpected responses from %s : %d, suspended' % (self.port, self.addr)
                 #print(msg)
                 self.logger.error(msg)
+                self.suspend = time.time() + 5.0
                 self.error_count = 0
             return False
         self.error_count = 0
@@ -171,13 +178,13 @@ class TDKLambda():
                 self._send_command(self.last_command)
                 return None
             data = self.com.read(10000)
-            dt = time.time() - time0
+            #dt = time.time() - time0
             #n += 1
             #print('_read', n, len(data), dt)
         self.time = time.time()
         self.suspend = time.time()
+        self.error_count = 0
         self.timeout = max(2.0*dt, MIN_TIMEOUT)
-        self.timeout_flag = False
         #msg = 'Timeout decrease to %f' % self.timeout
         #self.logger.error(msg)
         #print('_read', dt)
@@ -187,21 +194,20 @@ class TDKLambda():
         #time0 = time.time()
         if self.com is None or time.time() < self.suspend:
             return None
-        count = self.retries
+        #count = self.retries
         data = None
         while data is None:
             data = self._read()
-            count -= 1
-            if count < 0:
-                msg = 'No response from %s addr %d - suspended' % (self.port, self.addr)
-                self.logger.error(msg)
-                self.suspend = time.time() + SUSPEND
+            if self.check_suspend():
+                # dt = time.time() - time0
+                # print('read1', dt)
                 return None
         #dt = time.time() - time0
-        #print('read', dt)
+        #print('read2', dt)
+        self.error_count = 0
         return data
 
-    def suspend(self, msg='Device is suspended for %d sec'%SUSPEND):
+    def check_suspend(self, msg='Device is suspended for %d sec'%SUSPEND):
         if self.error_count > MAX_ERROR_COUNT:
             self.suspend = time.time()
             self.error_count = 0
@@ -209,6 +215,8 @@ class TDKLambda():
             self.com.send_break()
             self.com.reset_input_buffer()
             self.com.reset_output_buffer()
+            return True
+        return False
 
     def read_to_cr(self):
         #time0 = time.time()
