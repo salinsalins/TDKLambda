@@ -18,6 +18,7 @@ MIN_TIMEOUT = 0.1   # sec
 RETRIES = 3
 SUSPEND = 5.0
 SLEEP = 0.03
+MAX_ERROR_COUNT = 3
 
 class TDKLambda():
     devices = []
@@ -27,7 +28,7 @@ class TDKLambda():
         # create variables
         self.last_command = b''
         self.last_response = b''
-        self.unexpected_count = 0
+        self.error_count = 0
         self.auto_addr = auto_addr
         self.com = None
         self.check = checksum
@@ -140,12 +141,17 @@ class TDKLambda():
         if response is None:
             response = self.last_response
         if not response.startswith(expect):
-            self.unexpected_count += 1
+            self.error_count += 1
             msg = 'Unexpected response %s from %s : %d' % (response, self.port, self.addr)
-            print(msg)
-            #self.logger.error(msg)
+            #print(msg)
+            self.logger.warning(msg)
+            if self.error_count > MAX_ERROR_COUNT:
+                msg = 'Too many unexpected responses from %s : %d, suspended' % (self.port, self.addr)
+                #print(msg)
+                self.logger.error(msg)
+                self.error_count = 0
             return False
-        self.unexpected_count = 0
+        self.error_count = 0
         return True
 
     def _read(self):
@@ -194,6 +200,15 @@ class TDKLambda():
         #dt = time.time() - time0
         #print('read', dt)
         return data
+
+    def suspend(self, msg='Device is suspended for %d sec'%SUSPEND):
+        if self.error_count > MAX_ERROR_COUNT:
+            self.suspend = time.time()
+            self.error_count = 0
+            self.logger.error(msg)
+            self.com.send_break()
+            self.com.reset_input_buffer()
+            self.com.reset_output_buffer()
 
     def read_to_cr(self):
         #time0 = time.time()
