@@ -18,6 +18,7 @@ class TDKLambda():
     ports = []
 
     def __init__(self, port: str, addr=6, checksum=False, auto_addr = True, baudrate=9600, timeout=0, logger=None):
+        print('__init__', port, addr)
         # create variables
         self.last_command = b''
         self.last_response = b''
@@ -35,7 +36,9 @@ class TDKLambda():
             #self.logger.setLevel(logging.DEBUG)
             self.logger = logging.getLogger(__name__)
             self.logger.setLevel(logging.INFO)
-            log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+            #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+            #                                  datefmt='%H:%M:%S')
+            log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(thread)s %(message)s',
                                               datefmt='%H:%M:%S')
             console_handler = logging.StreamHandler()
             console_handler.setFormatter(log_formatter)
@@ -65,6 +68,7 @@ class TDKLambda():
             except:
                 self.com = None
                 msg = 'Error open %s port' % self.port
+                print(msg)
                 self.logger.error(msg)
                 return
         # set device address and check 'OK' response
@@ -82,11 +86,15 @@ class TDKLambda():
         self.logger.info(msg)
 
     def __del__(self):
-        TDKLambda.devices.remove(self)
-        self.com._addr_list.remove(self.addr)
-        if len(self.com._addr_list) <= 0:
-            self.com.close()
-            TDKLambda.ports.remove(self.com)
+        print('__del__', self.port, self.addr)
+        if self in TDKLambda.devices:
+            TDKLambda.devices.remove(self)
+        if self.com is not None:
+            if self.addr in self.com._addr_list:
+                self.com._addr_list.remove(self.addr)
+            if len(self.com._addr_list) <= 0:
+                self.com.close()
+                TDKLambda.ports.remove(self.com)
 
     @staticmethod
     def checksum(cmd):
@@ -301,7 +309,7 @@ class TDKLambda():
 if __name__ == "__main__":
     pdl = TDKLambda("COM3", 6)
     pd2 = TDKLambda("COM3", 7)
-    while True:
+    while False:
         t0 = time.time()
         v1 = pdl.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
