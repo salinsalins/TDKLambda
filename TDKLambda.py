@@ -130,8 +130,23 @@ class TDKLambda():
             if self.set_addr():
                 self.com._current_addr = self.addr
             else:
-               self.com._current_addr = -1
+                self.com._current_addr = -1
         return self._send_command(cmd)
+
+    def check_response(self, expect=b'OK', response=None):
+        if self.com is None or time.time() < self.suspend:
+            # do not shout if device is suspended
+            return False
+        if response is None:
+            response = self.last_response
+        if not response.startswith(expect):
+            self.unexpected_count += 1
+            msg = 'Unexpected response %s from %s : %d' % (response, self.port, self.addr)
+            print(msg)
+            #self.logger.error(msg)
+            return False
+        self.unexpected_count = 0
+        return True
 
     def _read(self):
         if self.com is None or time.time() < self.suspend:
@@ -218,7 +233,7 @@ class TDKLambda():
             reply = self.send_command(cmd)
             v = float(reply)
         except:
-            self.check_response(response=b'Not a float:'+reply)
+            self.check_response(response=b'Not a float: '+reply)
             v = float('Nan')
         #dt = time.time() - t0
         #print('read_value', dt)
@@ -250,18 +265,6 @@ class TDKLambda():
         cmd = cmd.upper() + b' ' + str.encode(str(value))[:10] + b'\r'
         self.send_command(cmd)
         return self.check_response(expect)
-
-    def check_response(self, expect=b'OK', response=None):
-        if response is None:
-            response = self.last_response
-        if not response.startswith(expect):
-            self.unexpected_count += 1
-            msg = 'Unexpected response %s from %s : %d' % (response, self.port, self.addr)
-            print(msg)
-            #self.logger.error(msg)
-            return False
-        self.unexpected_count = 0
-        return True
 
 if __name__ == "__main__":
     pdl = TDKLambda("COM3", 6)
