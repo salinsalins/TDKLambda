@@ -26,7 +26,7 @@ class TDKLambda():
         self.com = None
         self.check = checksum
         self.time = time.time()
-        self.suspend = time.time()
+        self.suspend_to = time.time()
         self.retries = 0
         self.timeout = 2.0*MIN_TIMEOUT
         self.sleep = SLEEP
@@ -98,7 +98,7 @@ class TDKLambda():
 
     def _send_command(self, cmd):
         #t0 = time.time()
-        if self.com is None or time.time() < self.suspend:
+        if self.com is None or time.time() < self.suspend_to:
             return b''
         if isinstance(cmd, str):
             cmd = str.encode(cmd)
@@ -130,11 +130,11 @@ class TDKLambda():
             if result is None:
                 msg = 'Repeated writing error for %s' % cmd
                 self.logger.error(msg)
-                self.error_count = MAX_ERROR_COUNT
-                self.check_suspend()
+                self.suspend()
+                result = b''
         #dt = time.time() - t0
         #print('send_command2', dt)
-        self.logger.debug(b'Send result: '+result)
+        self.logger.debug(b'Send result: ' + result)
         return result
 
     def send_command(self, cmd):
@@ -144,11 +144,11 @@ class TDKLambda():
                 return self._send_command(cmd)
             else:
                 self.com._current_addr = -1
-                self.check_suspend()
+                self.inc_error_count()
                 return b''
 
     def check_response(self, expect=b'OK', response=None):
-        if self.com is None or time.time() < self.suspend:
+        if self.com is None or time.time() < self.suspend_to:
             # do not shout if device is suspended
             return False
         if response is None:
@@ -158,13 +158,13 @@ class TDKLambda():
             #print(msg)
             self.logger.warning(msg)
             msg = 'Too many unexpected responses from %s : %d, suspended' % (self.port, self.addr)
-            self.check_suspend(msg)
+            self.suspend(msg)
             return False
         self.error_count = 0
         return True
 
     def _read(self):
-        if self.com is None or time.time() < self.suspend:
+        if self.com is None or time.time() < self.suspend_to:
             return None
         time0 = time.time()
         data = self.com.read(10000)
@@ -191,14 +191,13 @@ class TDKLambda():
 
     def read(self):
         #time0 = time.time()
-        if self.com is None or time.time() < self.suspend:
+        if self.com is None or time.time() < self.suspend_to:
             return None
         data = self._read()
         while data is None:
             self.retries += 1
             if self.retries >= RETRIES:
-                self.error_count = MAX_ERROR_COUNT
-                self.check_suspend()
+                self.suspend()
                 return None
             # dt = time.time() - time0
             # print('read1', dt)
@@ -208,17 +207,20 @@ class TDKLambda():
         self.retries = 0
         return data
 
-    def check_suspend(self, msg='Device is suspended for %d sec'%SUSPEND):
+    def inc_error_count(self, msg='Device is suspended for %d sec'%SUSPEND):
         self.error_count += 1
         if self.error_count > MAX_ERROR_COUNT:
-            self.suspend = time.time()
-            self.error_count = 0
-            self.logger.error(msg)
-            self.com.send_break()
-            self.com.reset_input_buffer()
-            self.com.reset_output_buffer()
+            self.suspend(msg)
             return True
         return False
+
+    def suspend(self, msg='Device is suspended for %d sec'%SUSPEND):
+        self.suspend_to = time.time()
+        self.error_count = 0
+        self.logger.error(msg)
+        self.com.send_break()
+        self.com.reset_input_buffer()
+        self.com.reset_output_buffer()
 
     def read_to_cr(self):
         #time0 = time.time()
@@ -233,22 +235,27 @@ class TDKLambda():
                     m = result.find(b'$')
                     if m < 0:
                         self.logger.error('Incorrect checksum')
+                        self.inc_error_count()
                     else:
                         cs = self.checksum(result[:m])
                         if result[m+1:n] != cs:
                             self.logger.error('Incorrect checksum')
+                            self.inc_error_count()
+                        else:
+                            self.error_count = 0
                 #dt = time.time() - time0
                 #print('read_to_cr1', dt)
                 return result[:n]
             data = self.read()
-        self.last_response = result
         self.logger.error('Response without CR')
+        self.inc_error_count()
         #dt = time.time() - time0
         #print('read_to_cr2', dt)
+        self.last_response = result
         return result
 
     def set_addr(self):
-        self._send_command(b'ADR %d\r' % self.addr)
+        self._send_command(b'ADR %d' % self.addr)
         return self.check_response()
 
     def read_float(self, cmd):
