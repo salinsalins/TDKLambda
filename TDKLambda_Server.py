@@ -167,66 +167,75 @@ class TDKLambda_Server(Device):
 
     def write_programmed_voltage(self, value):
         if self.tdk.com is None:
-            return
-        result = self.tdk.write_value(b'PV', value)
+            self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
+            result = False
+        else:
+            result = self.tdk.write_value(b'PV', value)
         if result:
             self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_VALID)
         else:
             self.error_stream("Error writing programmed voltage")
             self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
+        msg = 'write_voltage: %s = %s' % (str(value), str(result))
+        print(msg)
+        return result
 
     def write_programmed_current(self, value):
         if self.tdk.com is None:
-            return False
-        result = self.tdk.write_value(b'PC', value)
+            self.programmed_current.set_quality(tango.AttrQuality.ATTR_INVALID)
+            result = False
+        else:
+            result = self.tdk.write_value(b'PC', value)
         if result:
             self.programmed_current.set_quality(tango.AttrQuality.ATTR_VALID)
-            return True
         else:
             self.error_stream("Error writing programmed current")
             self.programmed_current.set_quality(tango.AttrQuality.ATTR_INVALID)
-            return False
+        msg = 'write_current: %s = %s' % (str(value), str(result))
+        print(msg)
+        return result
 
     def read_output(self, attr: tango.Attribute):
         if self.tdk.com is None:
-            attr.set_value(False)
+            value = False
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            return False
-        response = self.tdk.send_command(b'OUT?')
-        if response.upper().startswith(b'ON'):
-            attr.set_value(True)
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            value = False
-        elif response.upper().startswith(b'OFF'):
-            attr.set_value(False)
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            value = False
         else:
-            attr.set_value(False)
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            value = False
+            response = self.tdk.send_command(b'OUT?')
+            if response.upper().startswith(b'ON'):
+                attr.set_quality(tango.AttrQuality.ATTR_VALID)
+                value = False
+            elif response.upper().startswith(b'OFF'):
+                attr.set_quality(tango.AttrQuality.ATTR_VALID)
+                value = False
+            else:
+                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+                value = False
         msg = 'read_output: ' + str(value)
         print(msg)
+        attr.set_value(value)
         return value
 
     def write_output(self, value):
-        msg = 'write_output: ' + str(value)
-        print(msg)
         if self.tdk.com is None:
-            return False
-        if value:
-            response = self.tdk.send_command(b'OUT ON')
-        else:
-            response = self.tdk.send_command(b'OUT OFF')
-        if response == b'OK':
-            self.output.set_quality(tango.AttrQuality.ATTR_VALID)
-            return True
-        else:
-            self.error_stream("Error switch output")
             self.output.set_quality(tango.AttrQuality.ATTR_INVALID)
-            v = self.read_output()
-            self.output.set_value(v)
-            return False
+            result = False
+        else:
+            if value:
+                response = self.tdk.send_command(b'OUT ON')
+            else:
+                response = self.tdk.send_command(b'OUT OFF')
+            if response.startswith(b'OK'):
+                self.output.set_quality(tango.AttrQuality.ATTR_VALID)
+                result = True
+            else:
+                self.error_stream("Error switch output")
+                self.output.set_quality(tango.AttrQuality.ATTR_INVALID)
+                v = self.read_output(self.output)
+                self.output.set_value(v)
+                result = False
+        msg = 'write_output: %s = %s' % (str(value), str(result))
+        print(msg)
+        return result
 
     @command
     def Reconnect(self):
