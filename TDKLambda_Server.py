@@ -120,8 +120,8 @@ class TDKLambda_Server(Device):
             self.error_stream("Output voltage read error ")
         else:
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
-        #msg = 'read_voltage: ' + str(val)
-        #print(msg)
+        msg = 'read_voltage: ' + str(val)
+        print(msg)
         return val
 
     def read_current(self, attr: tango.Attribute):

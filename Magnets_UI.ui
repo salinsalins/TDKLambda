@@ -6,20 +6,20 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>691</width>
-    <height>642</height>
+    <width>690</width>
+    <height>530</height>
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
   <property name="minimumSize">
    <size>
-    <width>0</width>
-    <height>0</height>
+    <width>690</width>
+    <height>530</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -37,12 +37,18 @@
    <string>Emittance Plot Processing</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_4">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout_2">
     <property name="spacing">
      <number>6</number>
     </property>
     <property name="sizeConstraint">
-     <enum>QLayout::SetMinimumSize</enum>
+     <enum>QLayout::SetFixedSize</enum>
     </property>
     <property name="leftMargin">
      <number>6</number>
@@ -190,6 +196,12 @@
               </item>
               <item row="1" column="3">
                <widget class="TaurusWheelEdit" name="taurusWheelEdit_5">
+                <property name="font">
+                 <font/>
+                </property>
+                <property name="minValue">
+                 <double>0.000000000000000</double>
+                </property>
                 <property name="model">
                  <string>/binp/nbi/magnet1/programmed_voltage</string>
                 </property>
@@ -225,6 +237,12 @@
                   <width>0</width>
                   <height>53</height>
                  </size>
+                </property>
+                <property name="font">
+                 <font/>
+                </property>
+                <property name="minValue">
+                 <double>0.000000000000000</double>
                 </property>
                 <property name="model">
                  <string>/binp/nbi/magnet1/programmed_current</string>
@@ -354,6 +372,12 @@
               </item>
               <item row="1" column="3">
                <widget class="TaurusWheelEdit" name="taurusWheelEdit_2">
+                <property name="font">
+                 <font/>
+                </property>
+                <property name="minValue">
+                 <double>0.000000000000000</double>
+                </property>
                 <property name="model">
                  <string>/binp/nbi/magnet2/programmed_voltage</string>
                 </property>
@@ -390,6 +414,12 @@
                   <height>53</height>
                  </size>
                 </property>
+                <property name="font">
+                 <font/>
+                </property>
+                <property name="minValue">
+                 <double>0.000000000000000</double>
+                </property>
                 <property name="model">
                  <string>/binp/nbi/magnet2/programmed_current</string>
                 </property>
@@ -413,6 +443,185 @@
               </item>
               <item row="0" column="4">
                <widget class="QLabel" name="label_5">
+                <property name="text">
+                 <string>Current</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_7">
+             <property name="font">
+              <font>
+               <weight>75</weight>
+               <bold>true</bold>
+              </font>
+             </property>
+             <property name="text">
+              <string>Plasma Grid</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignHCenter|Qt::AlignTop</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="frame_6">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,0,0,0,0,0">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <item row="0" column="2">
+               <widget class="QLabel" name="label_8">
+                <property name="text">
+                 <string>Voltage</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="4">
+               <widget class="TaurusLabel" name="taurusLabel_3">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="model">
+                 <string>/binp/nbi/pg_offset/current</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="TaurusLed" name="taurusLed_2">
+                <property name="maximumSize">
+                 <size>
+                  <width>30</width>
+                  <height>30</height>
+                 </size>
+                </property>
+                <property name="model">
+                 <string>/binp/nbi/pg_offset/output</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="TaurusLabel" name="taurusLabel_4">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="model">
+                 <string>/binp/nbi/pg_offset/voltage</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="3">
+               <widget class="TaurusWheelEdit" name="taurusWheelEdit_3">
+                <property name="font">
+                 <font/>
+                </property>
+                <property name="minValue">
+                 <double>0.000000000000000</double>
+                </property>
+                <property name="model">
+                 <string>/binp/nbi/pg_offset/programmed_voltage</string>
+                </property>
+                <property name="autoApply">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_9">
+                <property name="text">
+                 <string>Output</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0" colspan="6">
+               <widget class="Line" name="line_2">
+                <property name="lineWidth">
+                 <number>2</number>
+                </property>
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="5">
+               <widget class="TaurusWheelEdit" name="taurusWheelEdit_4">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>43</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font/>
+                </property>
+                <property name="showArrowButtons">
+                 <bool>true</bool>
+                </property>
+                <property name="minValue">
+                 <double>0.000000000000000</double>
+                </property>
+                <property name="model">
+                 <string>/binp/nbi/pg_offset/programmed_current</string>
+                </property>
+                <property name="autoApply">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0" colspan="2">
+               <widget class="TaurusFrame" name="taurusFrame_2"/>
+              </item>
+              <item row="1" column="1">
+               <widget class="TaurusValueCheckBox" name="taurusValueCheckBox_12">
+                <property name="model">
+                 <string>/binp/nbi/pg_offset/output</string>
+                </property>
+                <property name="showText">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="4">
+               <widget class="QLabel" name="label_10">
                 <property name="text">
                  <string>Current</string>
                 </property>
@@ -539,47 +748,6 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tabWidgetPage2">
-       <attribute name="title">
-        <string notr="true">Log</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_3">
-        <property name="leftMargin">
-         <number>0</number>
-        </property>
-        <property name="topMargin">
-         <number>0</number>
-        </property>
-        <property name="rightMargin">
-         <number>0</number>
-        </property>
-        <property name="bottomMargin">
-         <number>0</number>
-        </property>
-        <item>
-         <widget class="QPlainTextEdit" name="plainTextEdit">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="undoRedoEnabled">
-           <bool>false</bool>
-          </property>
-          <property name="readOnly">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
      </widget>
     </item>
    </layout>
@@ -589,7 +757,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>691</width>
+     <width>690</width>
      <height>23</height>
     </rect>
    </property>
@@ -613,7 +781,6 @@
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="actionOpen"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuView">
@@ -621,7 +788,6 @@
      <string>View</string>
     </property>
     <addaction name="actionPlot"/>
-    <addaction name="actionLog"/>
     <addaction name="actionParameters"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -640,6 +806,13 @@
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>12</pointsize>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
    </property>
   </widget>
   <action name="actionOpen">
