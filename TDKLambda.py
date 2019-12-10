@@ -38,7 +38,7 @@ class TDKLambda():
             self.logger.setLevel(logging.INFO)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
-            log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(thread)s %(message)s',
+            log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                                               datefmt='%H:%M:%S')
             console_handler = logging.StreamHandler()
             console_handler.setFormatter(log_formatter)
