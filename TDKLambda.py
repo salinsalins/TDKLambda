@@ -168,8 +168,7 @@ class TDKLambda():
             response = self.last_response
         if not response.startswith(expect):
             msg = 'Unexpected response %s (%s) from %s : %d' % (response, expect, self.port, self.addr)
-            #print(msg)
-            self.logger.info(msg)
+            self.logger.debug(msg)
             msg = 'Too many unexpected responses from %s : %d, suspended' % (self.port, self.addr)
             self.inc_error_count(msg)
             return False
@@ -229,16 +228,17 @@ class TDKLambda():
         if self.error_count > MAX_ERROR_COUNT:
             if msg is None:
                 msg = 'Error count exceeded for device at %s : %d' % (self.port, self.addr)
-            self.suspend(msg)
+            self.logger.debug(msg)
+            self.suspend()
             return True
         return False
 
     def suspend(self, msg=None, duration=SUSPEND):
         if msg is None:
             msg = 'Device at %s : %d is suspended for %d sec' % (self.port, self.addr, duration)
+        self.logger.debug(msg)
         self.suspend_to = time.time() + duration
         self.error_count = 0
-        self.logger.error(msg)
         self.com.send_break()
         self.com.reset_input_buffer()
         self.com.reset_output_buffer()
@@ -279,7 +279,7 @@ class TDKLambda():
         return result
 
     def set_addr(self):
-        self._send_command(b'ADR %d' % self.addr)
+        response = self._send_command(b'ADR %d' % self.addr)
         return self.check_response()
 
     def read_float(self, cmd):
