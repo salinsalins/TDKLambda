@@ -197,10 +197,15 @@
               <item row="1" column="3">
                <widget class="TaurusWheelEdit" name="taurusWheelEdit_5">
                 <property name="font">
-                 <font/>
+                 <font>
+                  <pointsize>12</pointsize>
+                 </font>
                 </property>
-                <property name="minValue">
-                 <double>0.000000000000000</double>
+                <property name="integerDigits" stdset="0">
+                 <number>3</number>
+                </property>
+                <property name="decimalDigits" stdset="0">
+                 <number>2</number>
                 </property>
                 <property name="model">
                  <string>/binp/nbi/magnet1/programmed_voltage</string>
@@ -235,14 +240,19 @@
                 <property name="minimumSize">
                  <size>
                   <width>0</width>
-                  <height>53</height>
+                  <height>43</height>
                  </size>
                 </property>
                 <property name="font">
-                 <font/>
+                 <font>
+                  <pointsize>12</pointsize>
+                 </font>
                 </property>
-                <property name="minValue">
-                 <double>0.000000000000000</double>
+                <property name="integerDigits" stdset="0">
+                 <number>3</number>
+                </property>
+                <property name="decimalDigits" stdset="0">
+                 <number>2</number>
                 </property>
                 <property name="model">
                  <string>/binp/nbi/magnet1/programmed_current</string>
@@ -373,10 +383,15 @@
               <item row="1" column="3">
                <widget class="TaurusWheelEdit" name="taurusWheelEdit_2">
                 <property name="font">
-                 <font/>
+                 <font>
+                  <pointsize>12</pointsize>
+                 </font>
                 </property>
-                <property name="minValue">
-                 <double>0.000000000000000</double>
+                <property name="integerDigits" stdset="0">
+                 <number>3</number>
+                </property>
+                <property name="decimalDigits" stdset="0">
+                 <number>2</number>
                 </property>
                 <property name="model">
                  <string>/binp/nbi/magnet2/programmed_voltage</string>
@@ -411,14 +426,25 @@
                 <property name="minimumSize">
                  <size>
                   <width>0</width>
-                  <height>53</height>
+                  <height>43</height>
                  </size>
                 </property>
                 <property name="font">
-                 <font/>
+                 <font>
+                  <pointsize>12</pointsize>
+                 </font>
                 </property>
-                <property name="minValue">
-                 <double>0.000000000000000</double>
+                <property name="showArrowButtons">
+                 <bool>true</bool>
+                </property>
+                <property name="integerDigits" stdset="0">
+                 <number>3</number>
+                </property>
+                <property name="decimalDigits" stdset="0">
+                 <number>2</number>
+                </property>
+                <property name="autoRepeatInterval">
+                 <number>100</number>
                 </property>
                 <property name="model">
                  <string>/binp/nbi/magnet2/programmed_current</string>
@@ -433,6 +459,9 @@
               </item>
               <item row="1" column="1">
                <widget class="TaurusValueCheckBox" name="taurusValueCheckBox_11">
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
                 <property name="model">
                  <string>/binp/nbi/magnet2/output</string>
                 </property>
@@ -549,10 +578,15 @@
               <item row="1" column="3">
                <widget class="TaurusWheelEdit" name="taurusWheelEdit_3">
                 <property name="font">
-                 <font/>
+                 <font>
+                  <pointsize>12</pointsize>
+                 </font>
                 </property>
-                <property name="minValue">
-                 <double>0.000000000000000</double>
+                <property name="integerDigits" stdset="0">
+                 <number>3</number>
+                </property>
+                <property name="decimalDigits" stdset="0">
+                 <number>2</number>
                 </property>
                 <property name="model">
                  <string>/binp/nbi/pg_offset/programmed_voltage</string>
@@ -591,13 +625,18 @@
                  </size>
                 </property>
                 <property name="font">
-                 <font/>
+                 <font>
+                  <pointsize>12</pointsize>
+                 </font>
                 </property>
                 <property name="showArrowButtons">
                  <bool>true</bool>
                 </property>
-                <property name="minValue">
-                 <double>0.000000000000000</double>
+                <property name="integerDigits" stdset="0">
+                 <number>3</number>
+                </property>
+                <property name="decimalDigits" stdset="0">
+                 <number>2</number>
                 </property>
                 <property name="model">
                  <string>/binp/nbi/pg_offset/programmed_current</string>
@@ -612,6 +651,9 @@
               </item>
               <item row="1" column="1">
                <widget class="TaurusValueCheckBox" name="taurusValueCheckBox_12">
+                <property name="checked">
+                 <bool>false</bool>
+                </property>
                 <property name="model">
                  <string>/binp/nbi/pg_offset/output</string>
                 </property>
