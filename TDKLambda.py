@@ -161,7 +161,7 @@ class TDKLambda():
         return result
 
     def check_response(self, expect=b'OK', response=None):
-        if self.com is None or time.time() < self.suspend_to:
+        if self.com is None or self.is_suspended():
             # do not shout if device is suspended
             return False
         if response is None:
@@ -244,6 +244,9 @@ class TDKLambda():
         self.com.reset_output_buffer()
         time.sleep(SLEEP)
         self.com.read(10000)
+
+    def is_suspended(self):
+        return time.time() < self.suspend_to
 
     def read_to_cr(self):
         result = b''
