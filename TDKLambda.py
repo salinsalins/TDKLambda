@@ -169,9 +169,9 @@ class TDKLambda():
         if not response.startswith(expect):
             msg = 'Unexpected response %s (%s) from %s : %d' % (response, expect, self.port, self.addr)
             #print(msg)
-            self.logger.warning(msg)
+            self.logger.info(msg)
             msg = 'Too many unexpected responses from %s : %d, suspended' % (self.port, self.addr)
-            self.suspend(msg)
+            self.inc_error_count(msg)
             return False
         self.error_count = 0
         return True
@@ -249,6 +249,7 @@ class TDKLambda():
         result = b''
         data = self.read()
         while data is not None:
+            self.suspend_to = time.time()
             result += data
             if b'\r' in data:
                 n = result.find(b'\r')
@@ -259,6 +260,7 @@ class TDKLambda():
                     if m < 0:
                         self.logger.error('Incorrect checksum')
                         self.inc_error_count()
+                        return result[:m]
                     else:
                         cs = self.checksum(result[:m])
                         if result[m+1:n] != cs:
@@ -269,7 +271,7 @@ class TDKLambda():
                         return result[:m]
                 return result[:m]
             data = self.read()
-        self.logger.error('Response without CR')
+        self.logger.debug('Response without CR')
         self.inc_error_count()
         #dt = time.time() - time0
         #print('read_to_cr2', dt)
@@ -330,7 +332,7 @@ if __name__ == "__main__":
         v1 = pdl.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
         print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pdl.timeout, pdl.port, pdl.addr)
-        t0 = time.time()
-        v2 = pd2.read_float("PC?")
-        dt2 = int((time.time()-t0)*1000.0)    #ms
-        print('2: ', '%4d ms '%dt2,'PC?=', v2, 'to=', '%5.3f'%pdl.timeout, pd2.port, pd2.addr)
+        #t0 = time.time()
+        #v2 = pd2.read_float("PC?")
+        #dt2 = int((time.time()-t0)*1000.0)    #ms
+        #print('2: ', '%4d ms '%dt2,'PC?=', v2, 'to=', '%5.3f'%pdl.timeout, pd2.port, pd2.addr)
