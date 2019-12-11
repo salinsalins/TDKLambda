@@ -17,6 +17,7 @@ MAX_ERROR_COUNT = 4
 class TDKLambda():
     devices = []
     ports = []
+    logger = None
 
     def __init__(self, port: str, addr=6, checksum=False, auto_addr = True, baudrate=9600, timeout=0, logger=None):
         #print('__init__', port, addr)
@@ -30,18 +31,20 @@ class TDKLambda():
         self.suspend_to = time.time()
         self.retries = 0
         self.timeout = MIN_TIMEOUT
-        if logger is None:
-            self.logger = logging.getLogger(__name__)
-            self.logger.setLevel(logging.DEBUG)
-            #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-            #                                  datefmt='%H:%M:%S')
-            log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                                              datefmt='%H:%M:%S')
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(log_formatter)
-            self.logger.addHandler(console_handler)
-        else:
+        if logger is not None:
             self.logger = logger
+        else:
+            if TDKLambda.logger is None:
+                TDKLambda.logger = logging.getLogger(__name__)
+                TDKLambda.logger.setLevel(logging.DEBUG)
+                #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                #                                  datefmt='%H:%M:%S')
+                log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                                                  datefmt='%H:%M:%S')
+                console_handler = logging.StreamHandler()
+                console_handler.setFormatter(log_formatter)
+                TDKLambda.logger.addHandler(console_handler)
+                self.logger = TDKLambda.logger
         self.port = port.upper().strip()
         self.addr = addr
         self.com = None
