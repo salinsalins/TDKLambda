@@ -17,7 +17,6 @@ MAX_ERROR_COUNT = 4
 class TDKLambda():
     devices = []
     ports = []
-    logger = None
 
     def __init__(self, port: str, addr=6, checksum=False, auto_addr = True, baudrate=9600, timeout=0, logger=None):
         #print('__init__', port, addr)
@@ -36,19 +35,18 @@ class TDKLambda():
         if logger is not None:
             self.logger = logger
         else:
-            if TDKLambda.logger is None:
-                TDKLambda.logger = logging.getLogger(__name__)
-                TDKLambda.logger.setLevel(logging.DEBUG)
-                #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                #                                  datefmt='%H:%M:%S')
-                f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
-                        '%s:%d '%(self.port, self.addr) +\
-                        '%(levelname)-8s %(message)s'
-                log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-                console_handler = logging.StreamHandler()
-                console_handler.setFormatter(log_formatter)
-                TDKLambda.logger.addHandler(console_handler)
-                self.logger = TDKLambda.logger
+            self.logger = logging.getLogger(str(self))
+            self.logger.propagate = False
+            self.logger.setLevel(logging.DEBUG)
+            #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+            #                                  datefmt='%H:%M:%S')
+            f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
+                    '%s:%d '%(self.port, self.addr) +\
+                    '%(levelname)-8s %(message)s'
+            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(log_formatter)
+            self.logger.addHandler(console_handler)
         self.com = None
         # check if port an addr are in use
         for d in TDKLambda.devices:
@@ -105,14 +103,16 @@ class TDKLambda():
         #print('__del__', self.port, self.addr)
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
+        self.close_com_port()
+
+    def close_com_port(self):
         if self.com is not None:
-            close_flag  = True
             for d in TDKLambda.devices:
                 if d.port == self.port:
-                    close_flag = False
-                    break
-            if close_flag:
-                self.com.close()
+                    return False
+            self.com.close()
+            return True
+        return False
 
     @staticmethod
     def checksum(cmd):
@@ -126,14 +126,10 @@ class TDKLambda():
         # print('_send_command: ', self.port, self.addr, end='')
         #t0 = time.time()
         if self.com is None:
-            #print('-offfline-')
-            msg = '(_send_command) %s:%d Device is offline' % (self.port, self.addr)
-            self.logger.debug(msg)
+            self.logger.debug('Device is offline')
             return b''
-        if time.time() < self.suspend_to:
-            #print('-suspended-')
-            msg = '(_send_command) %s:%d Device is suspended' % (self.port, self.addr)
-            self.logger.debug(msg)
+        if self.is_suspended():
+            self.logger.debug('Device is suspended')
             return b''
         if isinstance(cmd, str):
             cmd = str.encode(cmd)
@@ -143,7 +139,7 @@ class TDKLambda():
         if self.check:
             cs = self.checksum(cmd)
             cmd = b'%s$%s\r' % (cmd[:-1], cs)
-            msg = '(_send_command) %s:%d Command with checksum %s' % (self.port, self.addr, cmd)
+            msg = 'Command with checksum %s' % cmd
             self.logger.debug(msg)
         self.last_command = cmd
         # clear input buffer
@@ -153,7 +149,7 @@ class TDKLambda():
         time.sleep(SLEEP)
         result = self.read_to_cr()
         if result is None:
-            msg = 'Writing error for %s : %d %s, repeat command' % (self.port, self.addr, cmd)
+            msg = 'Writing error, repeat command'
             self.logger.warning(msg)
             time.sleep(SLEEP)
             # clear input buffer
@@ -162,7 +158,7 @@ class TDKLambda():
             time.sleep(SLEEP)
             result = self.read_to_cr()
             if result is None:
-                msg = 'Repeated writing error for %s : %d %s, suspended' % (self.port, self.addr, cmd)
+                msg = 'Repeated writing error'
                 self.logger.error(msg)
                 self.suspend()
                 result = b''
@@ -176,6 +172,7 @@ class TDKLambda():
                 self.com._current_addr = self.addr
                 result = self._send_command(cmd)
             else:
+                self.logger.error('Set address error')
                 self.com._current_addr = -1
                 self.suspend()
                 result = b''
@@ -185,24 +182,22 @@ class TDKLambda():
         return result
 
     def check_response(self, expect=b'OK', response=None):
-        if self.com is None or self.is_suspended():
-            # do not shout if device is suspended
+        if self.offline():
+            self.logger.debug('Device at offline')
             return False
         if response is None:
             response = self.last_response
         if not response.startswith(expect):
-            msg = 'Unexpected response %s (%s) from %s : %d' % (response, expect, self.port, self.addr)
+            msg = 'Unexpected response %s (%s)' % (response, expect)
             self.logger.debug(msg)
-            msg = 'Too many unexpected responses from %s : %d, suspended' % (self.port, self.addr)
-            self.inc_error_count(msg)
+            self.inc_error_count()
             return False
         self.error_count = 0
         return True
 
     def _read(self):
         if self.offline():
-            msg = '(_read) %s:%d Device at offline' % (self.port, self.addr)
-            self.logger.debug(msg)
+            self.logger.debug('Device at offline')
             return None
         t0 = time.time()
         data = self.com.read(10000)
@@ -211,19 +206,18 @@ class TDKLambda():
         while len(data) <= 0:
             if dt > self.timeout:
                 self.timeout = min(1.5*self.timeout, MAX_TIMEOUT)
-                msg = '(_read) %s:%d Timeout increased to= %f' % (self.port, self.addr, self.timeout)
+                msg = 'Timeout increased to= %f' % self.timeout
                 self.logger.debug(msg)
                 return None
             time.sleep(SLEEP_SMALL)
             data = self.com.read(10000)
             dt = time.time() - t0
             n += 1
-        msg = '(_read) %s:%d n=%d' % (self.port, self.addr, n)
-        self.logger.debug(msg)
+        self.logger.debug('n=%d' % n)
         self.suspend_to = time.time()
         dt = time.time() - t0
         self.timeout = max(2.0*dt, MIN_TIMEOUT)
-        msg = '(_read) %s:%d data= %s to=%f ' % (self.port, self.addr, data, self.timeout)
+        msg = 'data= %s to=%f' % (data, self.timeout)
         self.logger.debug(msg)
         return data
 
@@ -238,7 +232,7 @@ class TDKLambda():
         while data is None:
             self.retries += 1
             if self.retries >= RETRIES:
-                msg = '(read) %s:%d Reading reties limit, suspended' % (self.port, self.addr)
+                msg = '(read) %s:%d Reading reties limit' % (self.port, self.addr)
                 self.logger.debug(msg)
                 self.suspend()
                 return None
@@ -258,7 +252,7 @@ class TDKLambda():
         self.error_count += 1
         if self.error_count > MAX_ERROR_COUNT:
             if msg is None:
-                msg = 'Error count exceeded for device at %s : %d' % (self.port, self.addr)
+                msg = 'Error count exceeded'
             self.logger.debug(msg)
             self.suspend()
             return True
@@ -266,7 +260,7 @@ class TDKLambda():
 
     def suspend(self, msg=None, duration=SUSPEND):
         if msg is None:
-            msg = 'Device at %s : %d is suspended for %d sec' % (self.port, self.addr, duration)
+            msg = 'Suspended for %d sec' % duration
         self.logger.debug(msg)
         self.suspend_to = time.time() + duration
         self.error_count = 0
