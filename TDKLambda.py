@@ -161,7 +161,10 @@ class TDKLambda():
         return result
 
     def send_command(self, cmd):
-        if self.auto_addr and self.com is not None and self.com._current_addr != self.addr:
+        if self.offline():
+            self.logger.debug('Device is offline')
+            return b''
+        if self.auto_addr and self.com._current_addr != self.addr:
             result = self.set_addr()
             if result:
                 self.com._current_addr = self.addr
@@ -270,7 +273,7 @@ class TDKLambda():
 
     def offline(self):
         if self.com is None:
-            self.logger.debug('Device is offline')
+            #self.logger.debug('Device is offline')
             return True
         return self.suspended()
 
