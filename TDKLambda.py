@@ -31,6 +31,8 @@ class TDKLambda():
         self.suspend_to = time.time()
         self.retries = 0
         self.timeout = MIN_TIMEOUT
+        self.port = port.upper().strip()
+        self.addr = addr
         if logger is not None:
             self.logger = logger
         else:
@@ -39,14 +41,14 @@ class TDKLambda():
                 TDKLambda.logger.setLevel(logging.DEBUG)
                 #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                 #                                  datefmt='%H:%M:%S')
-                log_formatter = logging.Formatter('%(asctime)s %(funcName)s(%(lineno)s) %(levelname)-8s %(message)s',
-                                                  datefmt='%H:%M:%S')
+                f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
+                        '%s:%d '%(self.port, self.addr) +\
+                        '%(levelname)-8s %(message)s'
+                log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
                 console_handler = logging.StreamHandler()
                 console_handler.setFormatter(log_formatter)
                 TDKLambda.logger.addHandler(console_handler)
                 self.logger = TDKLambda.logger
-        self.port = port.upper().strip()
-        self.addr = addr
         self.com = None
         # check if port an addr are in use
         for d in TDKLambda.devices:
