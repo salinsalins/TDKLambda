@@ -125,11 +125,8 @@ class TDKLambda():
     def _send_command(self, cmd):
         # print('_send_command: ', self.port, self.addr, end='')
         #t0 = time.time()
-        if self.com is None:
+        if self.offline():
             self.logger.debug('Device is offline')
-            return b''
-        if self.is_suspended():
-            self.logger.debug('Device is suspended')
             return b''
         if isinstance(cmd, str):
             cmd = str.encode(cmd)
@@ -149,7 +146,7 @@ class TDKLambda():
         time.sleep(SLEEP)
         result = self.read_to_cr()
         if result is None:
-            msg = 'Writing error, repeat command'
+            msg = 'Writing error, repeat %s' % cmd
             self.logger.warning(msg)
             time.sleep(SLEEP)
             # clear input buffer
@@ -183,7 +180,7 @@ class TDKLambda():
 
     def check_response(self, expect=b'OK', response=None):
         if self.offline():
-            self.logger.debug('Device at offline')
+            self.logger.debug('Device is offline')
             return False
         if response is None:
             response = self.last_response
@@ -197,7 +194,7 @@ class TDKLambda():
 
     def _read(self):
         if self.offline():
-            self.logger.debug('Device at offline')
+            self.logger.debug('Device is offline')
             return None
         t0 = time.time()
         data = self.com.read(10000)
@@ -213,7 +210,7 @@ class TDKLambda():
             data = self.com.read(10000)
             dt = time.time() - t0
             n += 1
-        self.logger.debug('n=%d' % n)
+        #self.logger.debug('n=%d' % n)
         self.suspend_to = time.time()
         dt = time.time() - t0
         self.timeout = max(2.0*dt, MIN_TIMEOUT)
@@ -225,26 +222,23 @@ class TDKLambda():
         #t0 = time.time()
         # print('read: ', self.port, self.addr, end='')
         if self.offline():
-            msg = '(read) %s:%d Device offline' % (self.port, self.addr)
-            self.logger.debug(msg)
+            self.logger.debug('Device is offline')
             return None
         data = self._read()
         while data is None:
             self.retries += 1
             if self.retries >= RETRIES:
-                msg = '(read) %s:%d Reading reties limit' % (self.port, self.addr)
-                self.logger.debug(msg)
+                self.logger.debug('Reading reties limit')
                 self.suspend()
                 return None
             # print('t1=', time.time() - t0, end='')
-            msg = '(read) %s:%d Retry reading' % (self.port, self.addr)
-            self.logger.debug(msg)
+            self.logger.debug('Retry reading')
             time.sleep(SLEEP)
             data = self._read()
         self.retries = 0
         self.suspend_to = time.time()
         #print(data, 't2=', time.time() - t0)
-        msg = '(read) %s:%d data = %s' % (self.port, self.addr, data)
+        msg = 'data = %s' % data
         self.logger.debug(msg)
         return data
 
@@ -270,11 +264,17 @@ class TDKLambda():
         time.sleep(SLEEP)
         self.com.read(10000)
 
-    def is_suspended(self):
-        return time.time() < self.suspend_to
+    def suspended(self):
+        if time.time() < self.suspend_to:
+            self.logger.debug('Device is suspended')
+            return True
+        return False
 
     def offline(self):
-        return self.com is None or self.is_suspended()
+        if self.com is None:
+            self.logger.debug('Device is offline')
+            return True
+        return self.suspended()
 
     def read_to_cr(self):
         result = b''
@@ -282,8 +282,13 @@ class TDKLambda():
         while data is not None:
             self.suspend_to = time.time()
             result += data
-            if b'\r' in data:
-                n = result.find(b'\r')
+            n = result.find(b'\r')
+            if n >= 0:
+                n1 = result[n+1:].find(b'\r')
+                if n1 >= 0:
+                    result = result[n+1:]
+                    n = result.find(b'\r')
+                    self.logger.debug('Second CR in respolse, %s used' % result)
                 m = n
                 self.last_response = result[:n]
                 if self.check:
@@ -300,12 +305,11 @@ class TDKLambda():
                         else:
                             self.error_count = 0
                         return result[:m]
+                self.error_count = 0
                 return result[:m]
             data = self.read()
         self.logger.debug('Response without CR')
         self.inc_error_count()
-        #dt = time.time() - time0
-        #print('read_to_cr2', dt)
         self.last_response = result
         return result
 
@@ -314,8 +318,8 @@ class TDKLambda():
         if self.check_response():
             return True
         else:
-            msg = 'Cannot set address for %s : %d' % (self.port, self.addr)
-            self.logger.debug(msg)
+            self.logger.debug('Cannot set address')
+            self.suspended()
             return False
 
     def read_float(self, cmd):
