@@ -39,7 +39,7 @@ class TDKLambda():
                 TDKLambda.logger.setLevel(logging.DEBUG)
                 #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                 #                                  datefmt='%H:%M:%S')
-                log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                log_formatter = logging.Formatter('%(asctime)s %(funcName)s(%(lineno)s) %(levelname)-8s %(message)s',
                                                   datefmt='%H:%M:%S')
                 console_handler = logging.StreamHandler()
                 console_handler.setFormatter(log_formatter)
@@ -67,6 +67,8 @@ class TDKLambda():
                 self.com = None
                 msg = '%s open error' % self.port
                 self.logger.error(msg)
+                #print(self.logger.findCaller())
+                #self.logger.debug(msg, stack_info=True)
                 return
         # set device address and check 'OK' response
         response = self.set_addr()
