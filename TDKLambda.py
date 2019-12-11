@@ -76,9 +76,7 @@ class TDKLambda():
             self.com._current_addr = self.addr
         else:
             self.com = None
-            msg = 'Error address set for %s : %d' % (self.port, self.addr)
-            # print(msg)
-            self.logger.error(msg)
+            self.logger.error('Error address set')
             return
         # initialize device type and serial number
         self.id = self._send_command(b'IDN?').decode()
@@ -163,7 +161,7 @@ class TDKLambda():
         return result
 
     def send_command(self, cmd):
-        if self.auto_addr and self.com._current_addr != self.addr:
+        if self.auto_addr and self.com is not None and self.com._current_addr != self.addr:
             result = self.set_addr()
             if result:
                 self.com._current_addr = self.addr
@@ -316,9 +314,11 @@ class TDKLambda():
     def set_addr(self):
         self._send_command(b'ADR %d' % self.addr)
         if self.check_response():
+            self.com._current_addr = self.addr
             return True
         else:
             self.logger.debug('Cannot set address')
+            self.com._current_addr = -1
             self.suspended()
             return False
 
