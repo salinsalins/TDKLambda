@@ -334,7 +334,7 @@ class TDKLambda():
             #print('read_float1', cmd, reply, dt)
             v = float(reply)
         except:
-            self.check_response(response=b'Not a float: '+reply)
+            self.logger.debug('%s is not a float' % reply)
             v = float('Nan')
         #dt = time.time() - t0
         #print('read_float2', dt)
