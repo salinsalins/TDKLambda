@@ -20,24 +20,27 @@ class TDKLambda():
 
     def __init__(self, port: str, addr=6, checksum=False, auto_addr = True, baudrate=9600, timeout=0, logger=None):
         #print('__init__', port, addr)
+        # input parameters
+        self.port = port.upper().strip()
+        self.addr = addr
+        self.check = checksum
+        self.auto_addr = auto_addr
+        self.baud = baudrate
+        self.to = timeout
         # create variables
         self.last_command = b''
         self.last_response = b''
         self.error_count = 0
-        self.auto_addr = auto_addr
-        self.check = checksum
         self.time = time.time()
         self.suspend_to = time.time()
         self.retries = 0
         self.timeout = MIN_TIMEOUT
-        self.port = port.upper().strip()
-        self.addr = addr
         if logger is not None:
             self.logger = logger
         else:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.DEBUG)
+            self.logger.setLevel(logging.INFO)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
@@ -239,8 +242,8 @@ class TDKLambda():
         self.retries = 0
         self.suspend_to = time.time()
         #print(data, 't2=', time.time() - t0)
-        msg = 'data = %s' % data
-        self.logger.debug(msg)
+        #msg = 'data = %s' % data
+        #self.logger.debug(msg)
         return data
 
     def inc_error_count(self, msg=None):
@@ -314,7 +317,7 @@ class TDKLambda():
         self.last_response = result
         return result
 
-    def set_addr(self):
+    def _set_addr(self):
         self._send_command(b'ADR %d' % self.addr)
         if self.check_response():
             self.com._current_addr = self.addr
@@ -322,8 +325,17 @@ class TDKLambda():
         else:
             self.logger.debug('Cannot set address')
             self.com._current_addr = -1
-            self.suspended()
             return False
+
+    def set_addr(self):
+        count = 0
+        while count < MAX_ERROR_COUNT:
+            if self._set_addr():
+                return True
+            else:
+                count +=1
+        self.logger.error('Cannot set address. Devise is switched off.')
+        self.com = None
 
     def read_float(self, cmd):
         #t0 = time.time()
@@ -366,6 +378,11 @@ class TDKLambda():
         cmd = cmd.upper() + b' ' + str.encode(str(value))[:10] + b'\r'
         self.send_command(cmd)
         return self.check_response(expect)
+
+    def reset(self):
+        self.__del__()
+        self.__init__(self.port, self.addr, self.check, self.auto_addr, self.baud, self.to, self.logger)
+
 
 if __name__ == "__main__":
     pdl = TDKLambda("COM3", 6)

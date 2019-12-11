@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """TDK Lambda Genesis series power supply tango device server"""
+import logging
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
@@ -92,12 +93,12 @@ class TDKLambda_Server(Device):
         if self.tdk.id != b'':
             # set state to running
             self.set_state(DevState.RUNNING)
-            msg = 'TDKLambda device %s at %s : %d has been successfully created' % (self.tdk.id, self.tdk.port, self.tdk.addr)
+            msg = '%s:%d TDKLambda device %s has been successfully created' % (self.tdk.port, self.tdk.addr, self.tdk.id)
             print(msg)
             self.info_stream(msg)
         else:
             # unknown device type
-            msg = 'TDKLambda device %s at %s : %d has been created with errors' % (self.tdk.id, self.tdk.port, self.tdk.addr)
+            msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
             print(msg)
             self.info_stream(msg)
             self.set_state(DevState.FAULT)
@@ -106,8 +107,13 @@ class TDKLambda_Server(Device):
         if self in TDKLambda_Server.devices:
             TDKLambda_Server.devices.remove(self)
             self.tdk.__del__()
-            msg = 'TDKLambda device %s at %s : %d has been deleted' % (self.tdk.id, self.tdk.port, self.tdk.addr)
+            msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
             self.info_stream(msg)
+
+    def read_devicetype(self):
+        if self.tdk.com is None:
+            return "Uninitialized"
+        return self.tdk.id.decode()
 
     def read_voltage(self, attr: tango.Attribute):
         if self.tdk.com is None:
@@ -244,28 +250,34 @@ class TDKLambda_Server(Device):
 
     @command
     def Reconnect(self):
-        msg = 'Reconnect %s at %s : %d' % (self, self.tdk.port, self.tdk.addr)
-        #print(msg)
+        msg = '%s:%d reconnect %s' % (self, self.tdk.port, self.tdk.addr)
         self.info_stream(msg)
         self.delete_device()
         self.init_device()
 
     @command
     def Reset(self):
-        msg = 'Reset device at %s : %d' % (self, self.tdk.port, self.tdk.addr)
+        msg = 'Reset %s:%d' % (self.tdk.port, self.tdk.addr)
         self.info_stream(msg)
         #print(msg)
         self.tdk._send_command(b'RST')
 
-    def read_info(self):
-        return 'Information', dict(manufacturer='Tango',
-                                   model='TDKLambda',
-                                   version_number=1)
+    @command
+    def Debug(self):
+        msg = '%s:%d switch logging with DEBUG' % (self.tdk.port, self.tdk.addr)
+        self.info_stream(msg)
+        if self.tdk.logger.getEffectiveLevel() != logging.DEBUG:
+            self.Debug.last_level = self.tdk.logger.getEffectiveLevel()
+            self.tdk.logger.setLevel(logging.DEBUG)
+        else:
+            if hasattr(self.Debug, 'last_level'):
+                self.tdk.logger.setLevel(self.Debug.last_level)
 
-    def read_devicetype(self):
-        if self.tdk.com is None:
-            return "Uninitialized"
-        return self.tdk.id.decode()
+    @command(dtype_in=int)
+    def SetLogLevel(self, level):
+        msg = '%s:%d set log level to %d' % (self.tdk.port, self.tdk.addr, level)
+        self.info_stream(msg)
+        self.tdk.logger.setLevel(level)
 
     @command
     def TurnOn(self):
