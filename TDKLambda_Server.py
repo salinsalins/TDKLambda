@@ -20,7 +20,7 @@ class TDKLambda_Server(Device):
                         unit="", format="%s",
                         doc="TDKLambda device type")
 
-    output = attribute(label="Output", dtype=bool,
+    output_state = attribute(label="Output", dtype=bool,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ_WRITE,
                         unit="", format="",
@@ -206,7 +206,7 @@ class TDKLambda_Server(Device):
         #print(msg)
         return result
 
-    def read_output(self, attr: tango.Attribute):
+    def read_output_state(self, attr: tango.Attribute):
         if self.tdk.com is None:
             value = False
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
@@ -221,14 +221,14 @@ class TDKLambda_Server(Device):
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
                 value = False
-        #msg = 'read_output: ' + str(value)
+        #msg = 'read_output_state: ' + str(value)
         #print(msg)
         attr.set_value(value)
         return value
 
-    def write_output(self, value):
+    def write_output_state(self, value):
         if self.tdk.com is None:
-            self.output.set_quality(tango.AttrQuality.ATTR_INVALID)
+            self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
             result = False
         else:
             if value:
@@ -236,15 +236,15 @@ class TDKLambda_Server(Device):
             else:
                 response = self.tdk.send_command(b'OUT OFF')
             if response.startswith(b'OK'):
-                self.output.set_quality(tango.AttrQuality.ATTR_VALID)
+                self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
                 result = True
             else:
                 self.error_stream("Error switch output")
-                self.output.set_quality(tango.AttrQuality.ATTR_INVALID)
-                v = self.read_output(self.output)
-                self.output.set_value(v)
+                self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
+                v = self.read_output_state(self.output_state)
+                self.output_state.set_value(v)
                 result = False
-        #msg = 'write_output: %s = %s' % (str(value), str(result))
+        #msg = 'write_output_state: %s = %s' % (str(value), str(result))
         #print(msg)
         return result
 
@@ -282,13 +282,13 @@ class TDKLambda_Server(Device):
     @command
     def TurnOn(self):
         # turn on the actual power supply here
-        self.writ_output(True)
+        self.writ_output_state(True)
         #self.set_state(DevState.ON)
 
     @command
     def TurnOff(self):
         # turn off the actual power supply here
-        self.write_output(False)
+        self.write_output_state(False)
         #self.set_state(DevState.OFF)
 
 
