@@ -117,7 +117,7 @@ class TDKLambda_Server(Device):
 
     def read_voltage(self, attr: tango.Attribute):
         if self.tdk.com is None:
-            #print('read_voltage: com=None', self.tdk.port, self.tdk.addr)
+            self.warning_stream("Read from offline device")
             val = float('nan')
         else:
             val = self.tdk.read_float('MV?')
@@ -133,6 +133,7 @@ class TDKLambda_Server(Device):
 
     def read_current(self, attr: tango.Attribute):
         if self.tdk.com is None:
+            self.warning_stream("Read from offline device")
             val = float('nan')
         else:
             val = self.tdk.read_float('MC?')
@@ -148,6 +149,7 @@ class TDKLambda_Server(Device):
 
     def read_programmed_voltage(self, attr: tango.Attribute):
         if self.tdk.com is None:
+            self.warning_stream("Read from offline device")
             val = float('nan')
         else:
             val = self.tdk.read_float('PV?')
@@ -163,6 +165,7 @@ class TDKLambda_Server(Device):
 
     def read_programmed_current(self, attr: tango.Attribute):
         if self.tdk.com is None:
+            self.warning_stream("Read from offline device")
             val = float('nan')
         else:
             val = self.tdk.read_float('PC?')
@@ -241,8 +244,8 @@ class TDKLambda_Server(Device):
             else:
                 self.error_stream("Error switch output")
                 self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
-                v = self.read_output_state(self.output_state)
-                self.output_state.set_value(v)
+                #v = self.read_output_state(self.output_state)
+                #self.output_state.set_value(v)
                 result = False
         #msg = 'write_output_state: %s = %s' % (str(value), str(result))
         #print(msg)
