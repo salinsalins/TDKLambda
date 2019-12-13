@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+ORGANIZATION_NAME = 'BINP'
+APPLICATION_NAME = 'TDKLambda_Server'
+APPLICATION_NAME_SHORT = 'TDKLambda_Server'
+APPLICATION_VERSION = '1_0'
+#CONFIG_FILE = APPLICATION_NAME_SHORT + '.json'
+#UI_FILE = APPLICATION_NAME_SHORT + '.ui'
+
 """TDK Lambda Genesis series power supply tango device server"""
 import logging
 
