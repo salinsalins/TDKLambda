@@ -289,6 +289,76 @@ class TDKLambda_Server(Device):
         self.info_stream(msg)
         self.tdk.logger.setLevel(level)
 
+    """
+    Declares a new tango command in a :class:`Device`.
+    To be used like a decorator in the methods you want to declare as
+    tango commands. The following example declares commands:
+
+        * `void TurnOn(void)`
+        * `void Ramp(DevDouble current)`
+        * `DevBool Pressurize(DevDouble pressure)`
+
+    ::
+
+        class PowerSupply(Device):
+
+            @command
+            def TurnOn(self):
+                self.info_stream('Turning on the power supply')
+
+            @command(dtype_in=float)
+            def Ramp(self, current):
+                self.info_stream('Ramping on %f...' % current)
+
+            @command(dtype_in=float, doc_in='the pressure to be set',
+                     dtype_out=bool, doc_out='True if it worked, False otherwise')
+            def Pressurize(self, pressure):
+                self.info_stream('Pressurizing to %f...' % pressure)
+                return True
+
+    .. note::
+        avoid using *dformat* parameter. If you need a SPECTRUM
+        attribute of say, boolean type, use instead ``dtype=(bool,)``.
+
+    :param dtype_in:
+        a :ref:`data type <pytango-hlapi-datatypes>` describing the
+        type of parameter. Default is None meaning no parameter.
+    :param dformat_in: parameter data format. Default is None.
+    :type dformat_in: AttrDataFormat
+    :param doc_in: parameter documentation
+    :type doc_in: str
+
+    :param dtype_out:
+        a :ref:`data type <pytango-hlapi-datatypes>` describing the
+        type of return value. Default is None meaning no return value.
+    :param dformat_out: return value data format. Default is None.
+    :type dformat_out: AttrDataFormat
+    :param doc_out: return value documentation
+    :type doc_out: str
+    :param display_level: display level for the command (optional)
+    :type display_level: DispLevel
+    :param polling_period: polling period in milliseconds (optional)
+    :type polling_period: int
+    :param green_mode:
+        set green mode on this specific command. Default value is None meaning
+        use the server green mode. Set it to GreenMode.Synchronous to force
+        a non green command in a green server.
+
+    .. versionadded:: 8.1.7
+        added green_mode option
+
+    .. versionadded:: 9.2.0
+        added display_level and polling_period optional argument
+    """
+
+    @command(dtype_in=str, doc_in='directly send command to the device',
+             dtype_out=str, doc_out='response from device without final CR')
+    def SendCommand(self, cmd):
+        rsp = self.tdk.send_command(cmd).decode()
+        msg = '%s:%d command %s ; respobse %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
+        self.info_stream(msg)
+        return rsp
+
     @command
     def TurnOn(self):
         # turn on the actual power supply here
