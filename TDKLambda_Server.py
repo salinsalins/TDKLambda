@@ -83,9 +83,13 @@ class TDKLambda_Server(Device):
     def init_device(self):
         self.set_state(DevState.INIT)
         Device.init_device(self)
-        # get port and address from property
-        port = self.get_device_property('port')
-        addr = int(self.get_device_property('addr'))
+        try:
+            # get port and address from property
+            port = self.get_device_property('port')
+            addr = int(self.get_device_property('addr'))
+        except:
+            port = 'COM1'
+            addr = 6
         # create TDKLambda device
         self.tdk = TDKLambda(port, addr)
         # check if device OK
@@ -124,7 +128,7 @@ class TDKLambda_Server(Device):
 
     def read_voltage(self, attr: tango.Attribute):
         if self.tdk.com is None:
-            self.warning_stream("Read from offline device")
+            self.error_stream("Read from offline device")
             val = float('nan')
         else:
             val = self.tdk.read_float('MV?')
@@ -140,7 +144,7 @@ class TDKLambda_Server(Device):
 
     def read_current(self, attr: tango.Attribute):
         if self.tdk.com is None:
-            self.warning_stream("Read from offline device")
+            self.warn_stream("Read from offline device")
             val = float('nan')
         else:
             val = self.tdk.read_float('MC?')
@@ -156,7 +160,7 @@ class TDKLambda_Server(Device):
 
     def read_programmed_voltage(self, attr: tango.Attribute):
         if self.tdk.com is None:
-            self.warning_stream("Read from offline device")
+            self.warn_stream("Read from offline device")
             val = float('nan')
         else:
             val = self.tdk.read_float('PV?')
@@ -172,7 +176,7 @@ class TDKLambda_Server(Device):
 
     def read_programmed_current(self, attr: tango.Attribute):
         if self.tdk.com is None:
-            self.warning_stream("Read from offline device")
+            self.warn_stream("Read from offline device")
             val = float('nan')
         else:
             val = self.tdk.read_float('PC?')
