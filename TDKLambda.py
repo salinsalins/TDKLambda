@@ -26,7 +26,6 @@ class TDKLambda():
         self.check = checksum
         self.auto_addr = auto_addr
         self.baud = baudrate
-        self.to = timeout
         # create variables
         self.last_command = b''
         self.last_response = b''
@@ -34,7 +33,11 @@ class TDKLambda():
         self.time = time.time()
         self.suspend_to = time.time()
         self.retries = 0
+        self.min_timeout = MIN_TIMEOUT
+        self.max_timeout = MAX_TIMEOUT
         self.timeout = MIN_TIMEOUT
+        self.sleep_small = SLEEP_SMALL
+        self.sleep = SLEEP
         if logger is not None:
             self.logger = logger
         else:
@@ -137,23 +140,31 @@ class TDKLambda():
         if self.check:
             cs = self.checksum(cmd)
             cmd = b'%s$%s\r' % (cmd[:-1], cs)
-            msg = 'Command with checksum %s' % cmd
-            self.logger.debug(msg)
+            self.logger.debug('Command with checksum %s' % cmd)
         self.last_command = cmd
+        t0 = time.time()
         # clear input buffer
-        self.com.read(10000)
+        time.sleep(self.sleep_small)
+        smbl = self.com.read(10000)
         #print('t1=', time.time() - t0, end='')
+        while len(smbl) > 0:
+            if time.time() - t0 > self.max_timeout:
+                self.logger.error('Timeout clear input buffer')
+                self.suspend()
+                return b''
+            time.sleep(self.sleep_small)
+            smbl = self.com.read(10000)
         self.com.write(cmd)
-        time.sleep(SLEEP)
+        time.sleep(self.sleep)
         result = self.read_to_cr()
         if result is None:
             msg = 'Writing error, repeat %s' % cmd
             self.logger.warning(msg)
-            time.sleep(SLEEP)
+            time.sleep(self.sleep)
             # clear input buffer
             self.com.read(10000)
             self.com.write(cmd)
-            time.sleep(SLEEP)
+            time.sleep(self.sleep)
             result = self.read_to_cr()
             if result is None:
                 msg = 'Repeated writing error'
@@ -206,18 +217,18 @@ class TDKLambda():
         n = 0
         while len(data) <= 0:
             if dt > self.timeout:
-                self.timeout = min(1.5*self.timeout, MAX_TIMEOUT)
+                self.timeout = min(1.5*self.timeout, self.max_timeout)
                 msg = 'Timeout increased to= %f' % self.timeout
                 self.logger.debug(msg)
                 return None
-            time.sleep(SLEEP_SMALL)
+            time.sleep(self.sleep_small)
             data = self.com.read(10000)
             dt = time.time() - t0
             n += 1
         #self.logger.debug('n=%d' % n)
         self.suspend_to = time.time()
         dt = time.time() - t0
-        self.timeout = max(2.0*dt, MIN_TIMEOUT)
+        self.timeout = max(2.0*dt, self.min_timeout)
         msg = 'data= %s to=%f' % (data, self.timeout)
         self.logger.debug(msg)
         return data
@@ -237,7 +248,7 @@ class TDKLambda():
                 return None
             # print('t1=', time.time() - t0, end='')
             self.logger.debug('Retry reading')
-            time.sleep(SLEEP)
+            time.sleep(self.sleep)
             data = self._read()
         self.retries = 0
         self.suspend_to = time.time()
@@ -265,7 +276,7 @@ class TDKLambda():
         self.com.send_break()
         self.com.reset_input_buffer()
         self.com.reset_output_buffer()
-        time.sleep(SLEEP)
+        time.sleep(self.sleep)
         self.com.read(10000)
 
     def suspended(self):
