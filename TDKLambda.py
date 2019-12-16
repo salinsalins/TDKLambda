@@ -181,12 +181,8 @@ class TDKLambda():
         if self.auto_addr and self.com._current_addr != self.addr:
             result = self.set_addr()
             if result:
-                self.com._current_addr = self.addr
                 result = self._send_command(cmd)
             else:
-                self.logger.error('Set address error')
-                self.com._current_addr = -1
-                self.suspend()
                 result = b''
         else:
             result = self._send_command(cmd)
@@ -309,16 +305,16 @@ class TDKLambda():
                 if self.check:
                     m = result.find(b'$')
                     if m < 0:
-                        self.logger.error('Incorrect checksum')
+                        self.logger.error('No checksum')
                         self.inc_error_count()
-                        return result[:m]
+                        return None
                     else:
                         cs = self.checksum(result[:m])
                         if result[m+1:n] != cs:
                             self.logger.error('Incorrect checksum')
                             self.inc_error_count()
-                        else:
-                            self.error_count = 0
+                            return None
+                        self.error_count = 0
                         return result[:m]
                 self.error_count = 0
                 return result[:m]
@@ -326,7 +322,7 @@ class TDKLambda():
         self.logger.debug('Response without CR')
         self.inc_error_count()
         self.last_response = result
-        return result
+        return None
 
     def _set_addr(self):
         self._send_command(b'ADR %d' % self.addr)
@@ -392,7 +388,7 @@ class TDKLambda():
 
     def reset(self):
         self.__del__()
-        self.__init__(self.port, self.addr, self.check, self.auto_addr, self.baud, self.to, self.logger)
+        self.__init__(self.port, self.addr, self.check, self.auto_addr, self.baud, 0, self.logger)
 
 
 if __name__ == "__main__":
