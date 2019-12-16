@@ -35,112 +35,80 @@ class DelegateADC_Server(Device):
         #print("Reading attribute %s %s" % (self.ip, attr.get_name()))
         #self.info_stream("Reading attribute %s", attr.get_name())
         name = attr.get_name()
-        chan = int(name[-2:])
-        ad = name[:2]
-        if ad == 'ai':
-            val = self.et.read_AI_channel(chan)
-        elif ad == 'di':
-            val = self.et.read_DI_channel(chan)
-        elif ad == 'do':
-            val = self.et.read_DO_channel(chan)
-        elif ad == 'ao':
-            val = self.et.read_AO_channel(chan)
+        if self.atts[name]['last_shot'] == self.read_shot():
+            val = self.atts[name]['last_data']
         else:
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            self.error_stream("Read for unknown attribute %s", name)
-            return
-        if val is not None:
-            self.time = None
-            self.error_count = 0
-            attr.set_value(val)
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
-        else:
-            self.error_count += 1
-            self.error_stream("Error reading %s", name)
-            if ad == 'ai':
-                attr.set_value(float('nan'))
-            elif ad == 'ao':
-                attr.set_value(float('nan'))
-            elif ad == 'di':
-                attr.set_value(False)
-            elif ad == 'do':
-                attr.set_value(False)
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            if self.time is None:
-                self.time = time.time()
-            else:
-                if time.time() - self.time > self.reconnect_timeout/1000.0:
-                    self.error_stream("Reconnect timeout exceeded for %s", name)
-                    self.Reconnect()
-                    self.time = None
+            val = self.read_attribute_value(name)
+        attr.set_value(val)
+        attr.set_quality(tango.AttrQuality.ATTR_VALID)
 
-    def write_general(self, attr: tango.WAttribute):
-        #print("Writing attribute %s %s" % (self.ip, attr.get_name()))
-        #self.info_stream("Writing attribute %s", attr.get_name())
-        if self.et is None:
-            return
-        #attr.set_quality(tango.AttrQuality.ATTR_CHANGING)
-        #lst = []
-        value = attr.get_write_value()
-        #print(value, lst)
-        name = attr.get_name()
-        chan = int(name[-2:])
-        ad = name[:2]
-        if ad  == 'ao':
-            #print(chan, value)
-            result = self.et.write_AO_channel(chan, value)
-        elif ad == 'do':
-            result = self.et.write_DO_channel(chan, value)
-        else:
-            print("Write to unknown attribute %s" % name)
-            self.error_stream("Write to unknown attribute %s", name)
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            return
-        if result:
-            self.time = None
-            self.error_count = 0
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
-        else:
-            self.error_count += 1
-            self.error_stream("Error writing %s", name)
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            if self.time is None:
-                self.time = time.time()
-            else:
-                if time.time() - self.time > self.reconnect_timeout/1000.0:
-                    self.error_stream("Reconnect timeout exceeded for %s", name)
-                    self.Reconnect()
-                    self.time = None
+    # read shot number
+    def read_shot(self):
+        shattr = self.device.read_attribute('Shot_id')
+        return shattr.value
 
-    @command
-    def Reconnect(self):
-        self.info_stream(self, 'Reconnect')
-        if self.et is None:
-            self.init_device()
-            if self.et is None:
-                return
-        self.remove_io()
-        self.add_io()
-        # if device type is recognized
-        if self.et._name != 0:
-            # set state to running
-            self.set_state(DevState.RUNNING)
-        else:
-            # unknown device type
-            self.set_state(DevState.FAULT)
+    # read attribute value
+    def read_attribute_value(self, name):
+        at = self.device.read_attribute(name)
 
-    def init_attr(self):
-        #self.info_stream(self, 'init_attr')
-        # copy attributes
+        return at.value
+
+    def init_atts(self):
+        self.info_stream(self, 'init_atts')
+        self.atts = {}
+        if self.device is None:
+            self.info_stream(self, 'Inintialized device')
+            return
+        shot = self.read_shot()
+        # copy attributes from original device
         attributes = self.device.get_attribute_list()
-        for atn in attributes:
-            #AttributeInfoEx
-            aie = self.device.get_attribute_config_ex(atn)
-            attr = tango.AttrData(attr_info=aie)
-            self.add_attribute(attr, self.read_general)
-            print('attribute %s added' % atn)
+        for atbt in attributes:
+            # save last attribute value and shot number
+            atp = {}
+            atp['last_shot'] = shot
+            # read attribute
+            old_attr = self.device.read_attribute(atbt)
+            val = old_attr.value
+            db = tango.Database()
+            # read attribute properties
+            props = db.get_device_attribute_property(self.adc, atbt)
+            # average attribute value
+            avgc = 0
+            if atbt.startswith("chanx"):
+                atbt_y = atbt.replace('x', 'y')
+                props_y = db.get_device_attribute_property(self.adc, atbt_y)
+                if 'save_avg' in props_y[atbt_y]:
+                    try:
+                        avgc = int(props[atbt]['save_avg'][0])
+                    except:
+                        pass
+            if 'save_avg' in props[atbt]:
+                try:
+                    avgc = int(props[atbt]['save_avg'][0])
+                except:
+                    self.error_stream(self, 'save_avg invalid for %s' % atbt)
+            if avgc > 0:
+                m = len(val)
+                m1 = int(m/avgc)
+                value = numpy.zeros(m1)
+                for n in numpy.arange(m1):
+                    value[n] = numpy.average(val[n*avgc:(n+1)*avgc])
+                props[atbt]['save_avg'] = ['1']
+            else:
+                value = val
+            atp['lasd_data'] = value
+            self.atts[atbt] = atp
+            # create new attribute
+            # read AttributeInfoEx
+            old_aie = self.device.get_attribute_config_ex(atbt)
+            old_aie.max_dim_x = len(value)
+            new_attr = tango.Attr(atbt, tango.DevDouble, tango.AttrWriteType.READ)
+            new_attr
             # copy attribute properties
             # TO-DO
+            # add new attribute
+            self.add_attribute(new_attr, self.read_general)
+            print('attribute %s added' % atbt)
         self.set_state(DevState.RUNNING)
 
     def get_device_property(self, prop: str, default=None):
@@ -170,13 +138,14 @@ class DelegateADC_Server(Device):
         # create ADC device
         try:
             self.device = tango.DeviceProxy(self.adc)
+            msg = 'Connected to Adlink ADC %s' % self.adc
         except:
             self.device = None
+            msg = 'Adlink ADC %s connection errror' % self.adc
         DelegateADC_Server.devices.append(self)
-        msg = 'Connected to Adlink ADC %s' % self.adc
         print(msg)
         self.info_stream(msg)
-        # if device type is recognized
+        # set proper device state
         if self.device is not None:
             # set state to running
             self.set_state(DevState.RUNNING)
@@ -188,7 +157,7 @@ def post_init_callback():
     for dev in DelegateADC_Server.devices:
         #print(dev)
         #if hasattr(dev, 'init_attr'):
-        dev.init_attr()
+        dev.init_atts()
         print(' ')
 
 if __name__ == "__main__":

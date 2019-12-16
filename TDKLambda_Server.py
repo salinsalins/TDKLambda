@@ -12,7 +12,7 @@ APPLICATION_VERSION = '1_1'
 import logging
 
 import tango
-from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt
+from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
 from tango.server import Device, attribute, command
 
 from TDKLambda import TDKLambda
