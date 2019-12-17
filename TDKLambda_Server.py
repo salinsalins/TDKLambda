@@ -226,9 +226,10 @@ class TDKLambda_Server(Device):
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
         else:
             response = self.tdk.send_command(b'OUT?')
+            print(response)
             if response.upper().startswith(b'ON'):
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
-                value = False
+                value = True
             elif response.upper().startswith(b'OFF'):
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
                 value = False
