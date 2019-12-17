@@ -43,7 +43,7 @@ class TDKLambda():
         else:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.INFO)
+            self.logger.setLevel(logging.DEBUG)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
@@ -128,7 +128,8 @@ class TDKLambda():
 
     def _send_command(self, cmd):
         # print('_send_command: ', self.port, self.addr, end='')
-        #t0 = time.time()
+        t0 = time.time()
+        self.logger.debug(' command %s' % cmd)
         if self.offline():
             self.logger.debug('Device is offline')
             return b''
@@ -154,9 +155,11 @@ class TDKLambda():
                 return b''
             time.sleep(self.sleep_small)
             smbl = self.com.read(10000)
+            self.logger.error('Clear input buffer')
         self.com.write(cmd)
         time.sleep(self.sleep)
         result = self.read_to_cr()
+        self.logger.debug('response %s %f' % (result, (time.time()-t0)*1000.0))
         if result is None:
             msg = 'Writing error, repeat %s' % cmd
             self.logger.warning(msg)
@@ -340,9 +343,14 @@ class TDKLambda():
             if self._set_addr():
                 return True
             else:
+                self.logger.warning('Set address error. %s %d %d' % (self.last_response, self.addr, self.com._current_addr) )
                 count +=1
-        self.logger.error('Cannot set address. Device is switched off.')
-        self.com = None
+                time.sleep(2*self.sleep)
+                self.com.read(10000)
+        self.logger.error('Cannot set address.')
+        #self.logger.error('Cannot set address. Device is switched off.')
+        #self.com = None
+        return False
 
     def read_float(self, cmd):
         #t0 = time.time()
@@ -394,7 +402,7 @@ class TDKLambda():
 if __name__ == "__main__":
     pdl = TDKLambda("COM3", 6)
     pd2 = TDKLambda("COM3", 7)
-    for i in range(1000):
+    for i in range(100):
         t0 = time.time()
         v1 = pdl.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
