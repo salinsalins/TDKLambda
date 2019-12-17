@@ -367,7 +367,7 @@ class TDKLambda_Server(Device):
     @command
     def TurnOn(self):
         # turn on the actual power supply here
-        self.writ_output_state(True)
+        self.write_output_state(True)
         #self.set_state(DevState.ON)
 
     @command
