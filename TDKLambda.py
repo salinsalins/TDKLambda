@@ -341,7 +341,7 @@ class TDKLambda():
                 return True
             else:
                 count +=1
-        self.logger.error('Cannot set address. Devise is switched off.')
+        self.logger.error('Cannot set address. Device is switched off.')
         self.com = None
 
     def read_float(self, cmd):
