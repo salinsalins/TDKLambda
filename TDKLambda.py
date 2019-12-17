@@ -126,9 +126,20 @@ class TDKLambda():
         result = str.encode(hex(s)[-2:])
         return result.upper()
 
+    def clear_input_buffer(self):
+        t0 = time.time()
+        time.sleep(self.sleep_small)
+        smbl = self.com.read(10000)
+        while len(smbl) > 0:
+            if time.time() - t0 > self.max_timeout:
+                self.logger.error('Timeout clear input buffer')
+                self.suspend()
+                return False
+            time.sleep(self.sleep_small)
+            smbl = self.com.read(10000)
+        return True
+
     def _send_command(self, cmd):
-        # print('_send_command: ', self.port, self.addr, end='')
-        #t0 = time.time()
         if self.offline():
             self.logger.debug('Device is offline')
             return b''
@@ -146,7 +157,6 @@ class TDKLambda():
         # clear input buffer
         time.sleep(self.sleep_small)
         smbl = self.com.read(10000)
-        #print('t1=', time.time() - t0, end='')
         while len(smbl) > 0:
             if time.time() - t0 > self.max_timeout:
                 self.logger.error('Timeout clear input buffer')
@@ -154,9 +164,13 @@ class TDKLambda():
                 return b''
             time.sleep(self.sleep_small)
             smbl = self.com.read(10000)
+        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         self.com.write(cmd)
+        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         time.sleep(self.sleep)
+        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         result = self.read_to_cr()
+        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         if result is None:
             msg = 'Writing error, repeat %s' % cmd
             self.logger.warning(msg)
