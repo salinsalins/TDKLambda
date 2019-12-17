@@ -124,7 +124,7 @@ class TDKLambda_Server(Device):
     def read_devicetype(self):
         if self.tdk.com is None:
             return "Uninitialized"
-        return self.tdk.id.decode()
+        return self.tdk.id
 
     def read_voltage(self, attr: tango.Attribute):
         if self.tdk.com is None:

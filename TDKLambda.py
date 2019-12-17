@@ -93,7 +93,7 @@ class TDKLambda():
         n2 = self.id.find('-')
         if n1 >= 0 and n2 >= 0:
             try:
-                self.max_voltage = float(self.id[n1:n2])
+                self.max_voltage = float(self.id[n1+3:n2])
                 self.max_current = float(self.id[n2+1:])
             except:
                 pass
@@ -132,11 +132,11 @@ class TDKLambda():
         if self.offline():
             self.logger.debug('Device is offline')
             return b''
+        cmd = cmd.upper().strip()
         if isinstance(cmd, str):
             cmd = str.encode(cmd)
         if cmd[-1] != b'\r'[0]:
             cmd += b'\r'
-        cmd = cmd.upper().strip()
         if self.check:
             cs = self.checksum(cmd)
             cmd = b'%s$%s\r' % (cmd[:-1], cs)
@@ -299,7 +299,7 @@ class TDKLambda():
                 if n1 >= 0:
                     result = result[n+1:]
                     n = result.find(b'\r')
-                    self.logger.debug('Second CR in respolse, %s used' % result)
+                    self.logger.debug('Second CR in response, %s used' % result)
                 m = n
                 self.last_response = result[:n]
                 if self.check:
@@ -394,12 +394,12 @@ class TDKLambda():
 if __name__ == "__main__":
     pdl = TDKLambda("COM3", 6)
     pd2 = TDKLambda("COM3", 7)
-    for i in range(10):
+    for i in range(1000):
         t0 = time.time()
         v1 = pdl.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
         print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pdl.timeout, pdl.port, pdl.addr)
-        #t0 = time.time()
-        #v2 = pd2.read_float("PC?")
-        #dt2 = int((time.time()-t0)*1000.0)    #ms
-        #print('2: ', '%4d ms '%dt2,'PC?=', v2, 'to=', '%5.3f'%pdl.timeout, pd2.port, pd2.addr)
+        t0 = time.time()
+        v2 = pd2.read_float("PC?")
+        dt2 = int((time.time()-t0)*1000.0)    #ms
+        print('2: ', '%4d ms '%dt2,'PC?=', v2, 'to=', '%5.3f'%pdl.timeout, pd2.port, pd2.addr)
