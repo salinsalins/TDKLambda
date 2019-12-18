@@ -230,8 +230,8 @@ class TDKLambda():
         while len(data) <= 0:
             if dt > self.timeout:
                 self.timeout = min(1.5*self.timeout, self.max_timeout)
-                msg = 'Timeout increased to= %f' % self.timeout
-                self.logger.debug(msg)
+                msg = 'reading timeout, increased to %5.2f s' % self.timeout
+                self.logger.info(msg)
                 return None
             time.sleep(self.sleep_small)
             data = self.com.read(10000)
@@ -243,11 +243,11 @@ class TDKLambda():
         self.timeout = max(2.0*(dt+self.sleep), self.min_timeout)
         ##msg = '%s %d %4.0f ms' % (data, n, dt*1000.0)
         ##self.logger.debug(msg)
+        self.logger.debug('-> %s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
         return data
 
     def read(self):
-        #t0 = time.time()
-        # print('read: ', self.port, self.addr, end='')
+        t0 = time.time()
         if self.offline():
             self.logger.debug('Device is offline')
             return None
@@ -259,14 +259,12 @@ class TDKLambda():
                 self.suspend()
                 return None
             # print('t1=', time.time() - t0, end='')
-            self.logger.info('Retry reading')
+            self.logger.info('Retry reading %d' % self.retries)
             time.sleep(self.sleep)
             data = self._read()
         self.retries = 0
         self.suspend_to = time.time()
-        #print(data, 't2=', time.time() - t0)
-        #msg = 'data = %s' % data
-        #self.logger.debug(msg)
+        self.logger.debug('-> %s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
         return data
 
     def inc_error_count(self, msg=None):
