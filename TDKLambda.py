@@ -100,7 +100,7 @@ class TDKLambda():
         self.serial_number = self._send_command(b'SN?').decode()
         # add device to list
         TDKLambda.devices.append(self)
-        msg = 'TDKLambda %s at %s : %d has been created' % (self.id, self.port, self.addr)
+        msg = 'TDKLambda %s has been created' % self.id
         self.logger.info(msg)
 
     def __del__(self):
