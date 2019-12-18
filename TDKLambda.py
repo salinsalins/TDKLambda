@@ -159,7 +159,7 @@ class TDKLambda():
         self.com.write(cmd)
         time.sleep(self.sleep)
         result = self.read_to_cr()
-        self.logger.debug('response %s %f' % (result, (time.time()-t0)*1000.0))
+        self.logger.debug('response %s %4.0f ms' % (result, (time.time()-t0)*1000.0))
         if result is None:
             msg = 'Writing error, repeat %s' % cmd
             self.logger.warning(msg)
@@ -227,8 +227,8 @@ class TDKLambda():
         #self.logger.debug('n=%d' % n)
         self.suspend_to = time.time()
         dt = time.time() - t0
-        self.timeout = max(2.0*dt, self.min_timeout)
-        msg = 'data= %s to=%f' % (data, self.timeout)
+        self.timeout = max(2.0*(dt+self.sleep), self.min_timeout)
+        msg = '%s %d %4.0f ms' % (data, n, dt*1000.0)
         self.logger.debug(msg)
         return data
 
@@ -333,7 +333,7 @@ class TDKLambda():
             self.com._current_addr = self.addr
             return True
         else:
-            self.logger.debug('Cannot set address')
+            self.logger.debug('Error set address')
             self.com._current_addr = -1
             return False
 
@@ -343,11 +343,12 @@ class TDKLambda():
             if self._set_addr():
                 return True
             else:
-                self.logger.warning('Set address error. %s %d %d' % (self.last_response, self.addr, self.com._current_addr) )
+                self.logger.warning('Set address error. %s %d' % (self.last_response, self.com._current_addr) )
                 count +=1
                 time.sleep(2*self.sleep)
                 self.com.read(10000)
         self.logger.error('Cannot set address.')
+        self.suspend()
         #self.logger.error('Cannot set address. Device is switched off.')
         #self.com = None
         return False
