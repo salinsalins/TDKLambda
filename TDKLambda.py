@@ -43,7 +43,7 @@ class TDKLambda():
         else:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.DEBUG)
+            self.logger.setLevel(logging.INFO)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
@@ -126,6 +126,19 @@ class TDKLambda():
         result = str.encode(hex(s)[-2:])
         return result.upper()
 
+    def clear_input_buffer(self):
+        t0 = time.time()
+        time.sleep(self.sleep_small)
+        smbl = self.com.read(10000)
+        while len(smbl) > 0:
+            if time.time() - t0 > self.max_timeout:
+                self.logger.error('Timeout clear input buffer')
+                self.suspend()
+                return False
+            time.sleep(self.sleep_small)
+            smbl = self.com.read(10000)
+        return True
+
     def _send_command(self, cmd):
         # print('_send_command: ', self.port, self.addr, end='')
         t0 = time.time()
@@ -156,10 +169,14 @@ class TDKLambda():
             time.sleep(self.sleep_small)
             smbl = self.com.read(10000)
             self.logger.error('Clear input buffer')
+        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         self.com.write(cmd)
+        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         time.sleep(self.sleep)
+        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         result = self.read_to_cr()
         self.logger.debug('response %s %4.0f ms' % (result, (time.time()-t0)*1000.0))
+        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         if result is None:
             msg = 'Writing error, repeat %s' % cmd
             self.logger.warning(msg)
@@ -333,7 +350,7 @@ class TDKLambda():
             self.com._current_addr = self.addr
             return True
         else:
-            self.logger.debug('Error set address')
+            self.logger.debug('Cannot set address')
             self.com._current_addr = -1
             return False
 

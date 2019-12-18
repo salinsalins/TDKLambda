@@ -19,6 +19,7 @@ from TDKLambda import TDKLambda
 
 
 class TDKLambda_Server(Device):
+    green_mode = tango.GreenMode.Gevent
     devices = []
 
     devicetype = attribute(label="type", dtype=str,
