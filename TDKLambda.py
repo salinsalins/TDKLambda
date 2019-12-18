@@ -9,9 +9,9 @@ import serial
 MAX_TIMEOUT = 1.5   # sec
 MIN_TIMEOUT = 0.1   # sec
 RETRIES = 3
-SUSPEND = 1.0
+SUSPEND = 2.0
 SLEEP = 0.03
-SLEEP_SMALL = 0.005
+SLEEP_SMALL = 0.015
 MAX_ERROR_COUNT = 4
 
 class TDKLambda():
@@ -140,9 +140,6 @@ class TDKLambda():
         return True
 
     def _send_command(self, cmd):
-        # print('_send_command: ', self.port, self.addr, end='')
-        t0 = time.time()
-        self.logger.debug(' command %s' % cmd)
         if self.offline():
             self.logger.debug('Device is offline')
             return b''
@@ -156,11 +153,13 @@ class TDKLambda():
             cmd = b'%s$%s\r' % (cmd[:-1], cs)
             self.logger.debug('Command with checksum %s' % cmd)
         self.last_command = cmd
+        ##self.logger.debug('%s' % cmd)
         t0 = time.time()
         # clear input buffer
         time.sleep(self.sleep_small)
+        ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         smbl = self.com.read(10000)
-        #print('t1=', time.time() - t0, end='')
+        ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         while len(smbl) > 0:
             if time.time() - t0 > self.max_timeout:
                 self.logger.error('Timeout clear input buffer')
@@ -169,29 +168,27 @@ class TDKLambda():
             time.sleep(self.sleep_small)
             smbl = self.com.read(10000)
             self.logger.error('Clear input buffer')
-        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
+        ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         self.com.write(cmd)
-        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
+        ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         time.sleep(self.sleep)
-        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
+        #self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         result = self.read_to_cr()
-        self.logger.debug('response %s %4.0f ms' % (result, (time.time()-t0)*1000.0))
-        self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
+        self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time()-t0)*1000.0))
+        ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
         if result is None:
-            msg = 'Writing error, repeat %s' % cmd
-            self.logger.warning(msg)
+            self.logger.warning('Writing error, repeat %s' % cmd)
             time.sleep(self.sleep)
             # clear input buffer
             self.com.read(10000)
             self.com.write(cmd)
             time.sleep(self.sleep)
             result = self.read_to_cr()
+            self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
             if result is None:
-                msg = 'Repeated writing error'
-                self.logger.error(msg)
+                self.logger.error('Repeated writing error')
                 self.suspend()
                 result = b''
-        #print(result, 't2=', time.time() - t0)
         return result
 
     def send_command(self, cmd):
@@ -206,7 +203,6 @@ class TDKLambda():
                 result = b''
         else:
             result = self._send_command(cmd)
-        #print('send_command', cmd, result)
         return result
 
     def check_response(self, expect=b'OK', response=None):
@@ -217,7 +213,7 @@ class TDKLambda():
             response = self.last_response
         if not response.startswith(expect):
             msg = 'Unexpected response %s (%s)' % (response, expect)
-            self.logger.debug(msg)
+            self.logger.info(msg)
             self.inc_error_count()
             return False
         self.error_count = 0
@@ -245,8 +241,8 @@ class TDKLambda():
         self.suspend_to = time.time()
         dt = time.time() - t0
         self.timeout = max(2.0*(dt+self.sleep), self.min_timeout)
-        msg = '%s %d %4.0f ms' % (data, n, dt*1000.0)
-        self.logger.debug(msg)
+        ##msg = '%s %d %4.0f ms' % (data, n, dt*1000.0)
+        ##self.logger.debug(msg)
         return data
 
     def read(self):
@@ -259,11 +255,11 @@ class TDKLambda():
         while data is None:
             self.retries += 1
             if self.retries >= RETRIES:
-                self.logger.debug('Reading reties limit')
+                self.logger.warning('Reading reties limit')
                 self.suspend()
                 return None
             # print('t1=', time.time() - t0, end='')
-            self.logger.debug('Retry reading')
+            self.logger.info('Retry reading')
             time.sleep(self.sleep)
             data = self._read()
         self.retries = 0
@@ -278,15 +274,15 @@ class TDKLambda():
         if self.error_count > MAX_ERROR_COUNT:
             if msg is None:
                 msg = 'Error count exceeded'
-            self.logger.debug(msg)
+            self.logger.warning(msg)
             self.suspend()
             return True
         return False
 
     def suspend(self, msg=None, duration=SUSPEND):
         if msg is None:
-            msg = 'Suspended for %d sec' % duration
-        self.logger.debug(msg)
+            msg = 'Suspended for %5.2f sec' % duration
+        self.logger.warning(msg)
         self.suspend_to = time.time() + duration
         self.error_count = 0
         self.com.send_break()
@@ -297,13 +293,13 @@ class TDKLambda():
 
     def suspended(self):
         if time.time() < self.suspend_to:
-            self.logger.debug('Device is suspended')
+            ##self.logger.debug('Device is suspended')
             return True
         return False
 
     def offline(self):
         if self.com is None:
-            #self.logger.debug('Device is offline')
+            ##self.logger.debug('Device is offline')
             return True
         return self.suspended()
 
@@ -319,7 +315,7 @@ class TDKLambda():
                 if n1 >= 0:
                     result = result[n+1:]
                     n = result.find(b'\r')
-                    self.logger.debug('Second CR in response, %s used' % result)
+                    self.logger.warning('Second CR in response, %s used' % result)
                 m = n
                 self.last_response = result[:n]
                 if self.check:
@@ -339,19 +335,26 @@ class TDKLambda():
                 self.error_count = 0
                 return result[:m]
             data = self.read()
-        self.logger.debug('Response without CR')
+        self.logger.warning('Response without CR')
         self.inc_error_count()
         self.last_response = result
         return None
 
     def _set_addr(self):
+        if hasattr(self.com, '_current_addr'):
+            a0 = self.com._current_addr
+        else:
+            a0 = -1
         self._send_command(b'ADR %d' % self.addr)
         if self.check_response():
             self.com._current_addr = self.addr
+            self.logger.debug('address %d -> %d' % (a0, self.addr))
             return True
         else:
-            self.logger.debug('Cannot set address')
-            self.com._current_addr = -1
+            self.logger.warning('Cannot set address %d -> %d' % (a0, self.addr))
+            if self.com is not None:
+                self.com._current_addr = -1
+            self.suspend()
             return False
 
     def set_addr(self):
@@ -360,11 +363,11 @@ class TDKLambda():
             if self._set_addr():
                 return True
             else:
-                self.logger.warning('Set address error. %s %d' % (self.last_response, self.com._current_addr) )
+                ##self.logger.warning('Set address error. %s %d' % (self.last_response, self.com._current_addr) )
                 count +=1
                 time.sleep(2*self.sleep)
                 self.com.read(10000)
-        self.logger.error('Cannot set address.')
+        self.logger.error('Cannot set address with retries')
         self.suspend()
         #self.logger.error('Cannot set address. Device is switched off.')
         #self.com = None
@@ -420,7 +423,7 @@ class TDKLambda():
 if __name__ == "__main__":
     pdl = TDKLambda("COM3", 6)
     pd2 = TDKLambda("COM3", 7)
-    for i in range(100):
+    for i in range(2):
         t0 = time.time()
         v1 = pdl.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms

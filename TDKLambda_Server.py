@@ -84,6 +84,7 @@ class TDKLambda_Server(Device):
     def init_device(self):
         self.set_state(DevState.INIT)
         Device.init_device(self)
+        self.last_level = logging.INFO
         try:
             # get port and address from property
             port = self.get_device_property('port')
@@ -283,11 +284,10 @@ class TDKLambda_Server(Device):
         msg = '%s:%d switch logging with DEBUG' % (self.tdk.port, self.tdk.addr)
         self.info_stream(msg)
         if self.tdk.logger.getEffectiveLevel() != logging.DEBUG:
-            self.Debug.last_level = self.tdk.logger.getEffectiveLevel()
+            self.last_level = self.tdk.logger.getEffectiveLevel()
             self.tdk.logger.setLevel(logging.DEBUG)
         else:
-            if hasattr(self.Debug, 'last_level'):
-                self.tdk.logger.setLevel(self.Debug.last_level)
+            self.tdk.logger.setLevel(self.last_level)
 
     @command(dtype_in=int)
     def SetLogLevel(self, level):
