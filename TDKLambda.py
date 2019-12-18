@@ -237,13 +237,10 @@ class TDKLambda():
             data = self.com.read(10000)
             dt = time.time() - t0
             n += 1
-        #self.logger.debug('n=%d' % n)
         self.suspend_to = time.time()
         dt = time.time() - t0
         self.timeout = max(2.0*(dt+self.sleep), self.min_timeout)
-        ##msg = '%s %d %4.0f ms' % (data, n, dt*1000.0)
-        ##self.logger.debug(msg)
-        self.logger.debug('-> %s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
+        self.logger.debug('-> %s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         return data
 
     def read(self):
@@ -259,7 +256,7 @@ class TDKLambda():
                 self.suspend()
                 return None
             # print('t1=', time.time() - t0, end='')
-            self.logger.info('Retry reading %d' % self.retries)
+            self.logger.debug('Retry reading %d' % self.retries)
             time.sleep(self.sleep)
             data = self._read()
         self.retries = 0
@@ -283,9 +280,9 @@ class TDKLambda():
         self.logger.warning(msg)
         self.suspend_to = time.time() + duration
         self.error_count = 0
-        self.com.send_break()
-        self.com.reset_input_buffer()
-        self.com.reset_output_buffer()
+        #self.com.send_break()
+        #self.com.reset_input_buffer()
+        #self.com.reset_output_buffer()
         time.sleep(self.sleep)
         self.com.read(10000)
 
