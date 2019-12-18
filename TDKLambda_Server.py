@@ -218,8 +218,6 @@ class TDKLambda_Server(Device):
         else:
             self.error_stream("Error writing programmed current")
             self.programmed_current.set_quality(tango.AttrQuality.ATTR_INVALID)
-        #msg = 'write_current: %s = %s' % (str(value), str(result))
-        #print(msg)
         return result
 
     def read_output_state(self, attr: tango.Attribute):
@@ -236,6 +234,7 @@ class TDKLambda_Server(Device):
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
                 value = False
             else:
+                self.error_stream("Read output error")
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
                 value = False
         #msg = 'read_output_state: ' + str(value)
@@ -247,6 +246,7 @@ class TDKLambda_Server(Device):
         if self.tdk.com is None:
             self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
             result = False
+            self.debug_stream('Device offline')
         else:
             if value:
                 response = self.tdk.send_command(b'OUT ON')
@@ -262,8 +262,6 @@ class TDKLambda_Server(Device):
                 #v = self.read_output_state(self.output_state)
                 #self.output_state.set_value(v)
                 result = False
-        #msg = 'write_output_state: %s = %s' % (str(value), str(result))
-        #print(msg)
         return result
 
     @command

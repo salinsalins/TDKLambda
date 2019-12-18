@@ -44,12 +44,12 @@ class TDKLambda():
         else:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.INFO)
+            self.logger.setLevel(logging.DEBUG)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
-                    '%s:%d '%(self.port, self.addr) +\
-                    '%(levelname)-8s %(message)s'
+                    '%s:%d ' % (self.port, self.addr) +\
+                    '%(levelname)-7s %(message)s'
             log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
             console_handler = logging.StreamHandler()
             console_handler.setFormatter(log_formatter)
@@ -58,7 +58,7 @@ class TDKLambda():
         # check if port an addr are in use
         for d in TDKLambda.devices:
             if d.port == self.port and d.addr == self.addr:
-                msg = 'Address %s is in use for port %s' % (self.addr, self.port)
+                msg = 'Address is in use'
                 self.logger.error(msg)
                 return
         # assign com port
@@ -143,6 +143,7 @@ class TDKLambda():
     def _send_command(self, cmd):
         if self.offline():
             self.logger.debug('Device is offline')
+            print('Device is offline')
             return b''
         cmd = cmd.upper().strip()
         if isinstance(cmd, str):
@@ -253,7 +254,7 @@ class TDKLambda():
         while data is None:
             self.retries += 1
             if self.retries >= RETRIES:
-                self.logger.warning('Reading reties limit')
+                self.logger.warning('Reading retries limit')
                 self.suspend()
                 return None
             # print('t1=', time.time() - t0, end='')
@@ -373,18 +374,12 @@ class TDKLambda():
         return False
 
     def read_float(self, cmd):
-        #t0 = time.time()
-        reply = b''
+        reply = self.send_command(cmd)
         try:
-            reply = self.send_command(cmd)
-            #dt = time.time() - t0
-            #print('read_float1', cmd, reply, dt)
             v = float(reply)
         except:
-            self.logger.debug('%s is not a float' % reply)
+            self.logger.error('%s is not a float' % reply)
             v = float('Nan')
-        #dt = time.time() - t0
-        #print('read_float2', dt)
         return v
 
     def read_value(self, cmd, vtype=str):
@@ -410,7 +405,7 @@ class TDKLambda():
         return False
 
     def write_value(self, cmd: bytes, value, expect=b'OK'):
-        cmd = cmd.upper() + b' ' + str.encode(str(value))[:10] + b'\r'
+        cmd = cmd.upper().strip() + b' ' + str.encode(str(value))[:10] + b'\r'
         self.send_command(cmd)
         return self.check_response(expect)
 
