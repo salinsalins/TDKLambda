@@ -256,7 +256,8 @@ class TDKLambda_Server(Device):
                 self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
                 result = True
             else:
-                self.error_stream("Error switch output")
+                msg = '%s:%d Error switch output' % (self.tdk.port, self.tdk.addr)
+                self.error_stream(msg)
                 self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
                 #v = self.read_output_state(self.output_state)
                 #self.output_state.set_value(v)
@@ -267,27 +268,28 @@ class TDKLambda_Server(Device):
 
     @command
     def Reconnect(self):
-        msg = '%s:%d reconnect %s' % (self, self.tdk.port, self.tdk.addr)
+        msg = '%s:%d Reconnect' % (self.tdk.port, self.tdk.addr)
         self.info_stream(msg)
         self.delete_device()
         self.init_device()
 
     @command
     def Reset(self):
-        msg = 'Reset %s:%d' % (self.tdk.port, self.tdk.addr)
+        msg = '%s:%d Reset' % (self.tdk.port, self.tdk.addr)
         self.info_stream(msg)
-        #print(msg)
         self.tdk._send_command(b'RST')
 
     @command
     def Debug(self):
-        msg = '%s:%d switch logging with DEBUG' % (self.tdk.port, self.tdk.addr)
-        self.info_stream(msg)
         if self.tdk.logger.getEffectiveLevel() != logging.DEBUG:
             self.last_level = self.tdk.logger.getEffectiveLevel()
             self.tdk.logger.setLevel(logging.DEBUG)
+            msg = '%s:%d switch logging to DEBUG' % (self.tdk.port, self.tdk.addr)
+            self.info_stream(msg)
         else:
             self.tdk.logger.setLevel(self.last_level)
+            msg = '%s:%d switch logging from DEBUG' % (self.tdk.port, self.tdk.addr)
+            self.info_stream(msg)
 
     @command(dtype_in=int)
     def SetLogLevel(self, level):
