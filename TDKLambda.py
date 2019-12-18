@@ -23,7 +23,8 @@ class TDKLambda():
         # input parameters
         self.port = port.upper().strip()
         self.addr = addr
-        self.check = checksum
+        #self.check = checksum
+        self.check = False
         self.auto_addr = auto_addr
         self.baud = baudrate
         # create variables
@@ -349,19 +350,22 @@ class TDKLambda():
             self.logger.warning('Cannot set address %d -> %d' % (a0, self.addr))
             if self.com is not None:
                 self.com._current_addr = -1
-            self.suspend()
             return False
 
     def set_addr(self):
         count = 0
+        result = self._set_addr()
         while count < MAX_ERROR_COUNT:
-            if self._set_addr():
+            if result:
                 return True
             else:
                 ##self.logger.warning('Set address error. %s %d' % (self.last_response, self.com._current_addr) )
                 count +=1
                 time.sleep(2*self.sleep)
                 self.com.read(10000)
+                result = self._set_addr()
+        if result:
+            return True
         self.logger.error('Cannot set address with retries')
         self.suspend()
         #self.logger.error('Cannot set address. Device is switched off.')
@@ -424,6 +428,6 @@ if __name__ == "__main__":
         dt1 = int((time.time()-t0)*1000.0)    #ms
         print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pdl.timeout, pdl.port, pdl.addr)
         t0 = time.time()
-        v2 = pd2.read_float("PC?")
-        dt2 = int((time.time()-t0)*1000.0)    #ms
-        print('2: ', '%4d ms '%dt2,'PC?=', v2, 'to=', '%5.3f'%pdl.timeout, pd2.port, pd2.addr)
+        #v2 = pd2.read_float("PC?")
+        #dt2 = int((time.time()-t0)*1000.0)    #ms
+        #print('2: ', '%4d ms '%dt2,'PC?=', v2, 'to=', '%5.3f'%pdl.timeout, pd2.port, pd2.addr)
