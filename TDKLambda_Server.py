@@ -199,6 +199,7 @@ class TDKLambda_Server(Device):
     def write_programmed_voltage(self, value):
         if self.tdk.com is None:
             self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
+            print(self.tdk.port, self.tdk.addr, 'write_programmed_voltage to offline device')
             result = False
         else:
             result = self.tdk.write_value(b'PV', value)
@@ -207,6 +208,7 @@ class TDKLambda_Server(Device):
         else:
             self.error_stream("Error writing programmed voltage")
             self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
+        print(self.tdk.port, self.tdk.addr, 'write_programmed_voltage value: ', value, result)
         #msg = 'write_voltage: %s = %s' % (str(value), str(result))
         #print(msg)
         return result
