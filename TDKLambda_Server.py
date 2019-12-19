@@ -103,7 +103,7 @@ class TDKLambda_Server(Device):
             return
         # add device to list
         TDKLambda_Server.devices.append(self)
-        if self.tdk.id != b'':
+        if self.tdk.id is not None and self.tdk.id != b'':
             # set state to running
             self.set_state(DevState.RUNNING)
             msg = '%s:%d TDKLambda device %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)

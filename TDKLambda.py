@@ -39,6 +39,9 @@ class TDKLambda():
         self.timeout = MIN_TIMEOUT
         self.sleep_small = SLEEP_SMALL
         self.sleep = SLEEP
+        self.com = None
+        self.id = None
+        self.sn = None
         if logger is not None:
             self.logger = logger
         else:
@@ -54,7 +57,6 @@ class TDKLambda():
             console_handler = logging.StreamHandler()
             console_handler.setFormatter(log_formatter)
             self.logger.addHandler(console_handler)
-        self.com = None
         # check if port an addr are in use
         for d in TDKLambda.devices:
             if d.port == self.port and d.addr == self.addr:
@@ -417,12 +419,12 @@ class TDKLambda():
 if __name__ == "__main__":
     pdl = TDKLambda("COM3", 6)
     pd2 = TDKLambda("COM3", 7)
-    for i in range(2):
+    for i in range(10):
         t0 = time.time()
         v1 = pdl.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
         print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pdl.timeout, pdl.port, pdl.addr)
         t0 = time.time()
-        #v2 = pd2.read_float("PC?")
-        #dt2 = int((time.time()-t0)*1000.0)    #ms
-        #print('2: ', '%4d ms '%dt2,'PC?=', v2, 'to=', '%5.3f'%pdl.timeout, pd2.port, pd2.addr)
+        v2 = pd2.read_float("PC?")
+        dt2 = int((time.time()-t0)*1000.0)    #ms
+        print('2: ', '%4d ms '%dt2,'PC?=', v2, 'to=', '%5.3f'%pdl.timeout, pd2.port, pd2.addr)
