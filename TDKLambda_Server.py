@@ -87,51 +87,54 @@ class TDKLambda_Server(Device):
             return result
 
     def init_device(self):
-        self.set_state(DevState.INIT)
-        Device.init_device(self)
-        self.last_level = logging.INFO
-        try:
-            # get port and address from property
-            port = self.get_device_property('port')
-            addr = int(self.get_device_property('addr'))
-        except:
-            port = 'COM1'
-            addr = 6
-        # create TDKLambda device
-        self.tdk = TDKLambda(port, addr)
-        # check if device OK
-        if self.tdk.com is None:
-            msg = 'TDKLambda device creation error for %s' % self
-            print(msg)
-            self.error_stream(msg)
-            self.set_state(DevState.FAULT)
-            return
-        # add device to list
-        TDKLambda_Server.devices.append(self)
-        if self.tdk.id is not None and self.tdk.id != b'':
-            # set state to running
-            self.set_state(DevState.RUNNING)
-            msg = '%s:%d TDKLambda device %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
-            print(msg)
-            self.info_stream(msg)
-        else:
-            # unknown device type
-            msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
-            print(msg)
-            self.info_stream(msg)
-            self.set_state(DevState.FAULT)
+        with _lock:
+            self.set_state(DevState.INIT)
+            Device.init_device(self)
+            self.last_level = logging.INFO
+            try:
+                # get port and address from property
+                port = self.get_device_property('port')
+                addr = int(self.get_device_property('addr'))
+            except:
+                port = 'COM1'
+                addr = 6
+            # create TDKLambda device
+            self.tdk = TDKLambda(port, addr)
+            # check if device OK
+            if self.tdk.com is None:
+                msg = 'TDKLambda device creation error for %s' % self
+                print(msg)
+                self.error_stream(msg)
+                self.set_state(DevState.FAULT)
+                return
+            # add device to list
+            TDKLambda_Server.devices.append(self)
+            if self.tdk.id is not None and self.tdk.id != b'':
+                # set state to running
+                self.set_state(DevState.RUNNING)
+                msg = '%s:%d TDKLambda device %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
+                print(msg)
+                self.info_stream(msg)
+            else:
+                # unknown device type
+                msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
+                print(msg)
+                self.info_stream(msg)
+                self.set_state(DevState.FAULT)
 
     def delete_device(self):
-        if self in TDKLambda_Server.devices:
-            TDKLambda_Server.devices.remove(self)
-            self.tdk.__del__()
-            msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
-            self.info_stream(msg)
+        with _lock:
+            if self in TDKLambda_Server.devices:
+                TDKLambda_Server.devices.remove(self)
+                self.tdk.__del__()
+                msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
+                self.info_stream(msg)
 
     def read_devicetype(self):
-        if self.tdk.com is None:
-            return "Uninitialized"
-        return self.tdk.id
+        with _lock:
+            if self.tdk.com is None:
+                return "Uninitialized"
+            return self.tdk.id
 
     def read_voltage(self, attr: tango.Attribute):
         with _lock:
