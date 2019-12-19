@@ -34,9 +34,9 @@ from PyQt5.QtGui import QFont
 import PyQt5.QtGui as QtGui
 import PyQt5
 
-from taurus.external.qt import Qt
-from taurus.qt.qtgui.application import TaurusApplication
-from taurus.qt.qtgui.display import TaurusLabel
+#from taurus.external.qt import Qt
+#from taurus.qt.qtgui.application import TaurusApplication
+#from taurus.qt.qtgui.display import TaurusLabel
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Magnets_UI'
@@ -115,7 +115,7 @@ class MainWindow(QMainWindow):
         # Load the UI
         uic.loadUi(UI_FILE, self)
         # Default window parameters
-        self.setMinimumSize(QSize(480, 640))  # Set sizes
+        #self.setMinimumSize(QSize(480, 640))  # Set sizes
         self.resize(QSize(480, 640))
         self.move(QPoint(50, 50))
         self.setWindowTitle(APPLICATION_NAME)  # Set a title
@@ -138,7 +138,6 @@ class MainWindow(QMainWindow):
         #self.doubleSpinBox_4.setSingleStep(0.1)
         # Clock at status bar
         self.clock = QLabel(" ")
-        ##self.clock.setFont(QFont('Open Sans Bold', 12, weight=QFont.Bold))
         self.statusBar().addPermanentWidget(self.clock)
 
         print(APPLICATION_NAME + ' version ' + APPLICATION_VERSION + ' started')
