@@ -107,7 +107,7 @@ class TDKLambda():
         self.logger.info(msg)
 
     def __del__(self):
-        #print('__del__', self.port, self.addr)
+        #print(self.port, self.addr, '__del__')
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
         self.close_com_port()
@@ -126,8 +126,8 @@ class TDKLambda():
         s = 0
         for b in cmd:
             s += int(b)
-        result = str.encode(hex(s)[-2:])
-        return result.upper()
+        result = str.encode(hex(s)[-2:].upper())
+        return result
 
     def clear_input_buffer(self):
         t0 = time.time()
