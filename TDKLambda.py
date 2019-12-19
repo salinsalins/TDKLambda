@@ -47,7 +47,7 @@ class TDKLambda():
         else:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.DEBUG)
+            self.logger.setLevel(logging.INFO)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
@@ -312,9 +312,9 @@ class TDKLambda():
             if n >= 0:
                 n1 = result[n+1:].find(b'\r')
                 if n1 >= 0:
+                    self.logger.warning('Second CR in response %s, %s used' % (result, result[n+1:]))
                     result = result[n+1:]
                     n = result.find(b'\r')
-                    self.logger.warning('Second CR in response, %s used' % result)
                 m = n
                 self.last_response = result[:n]
                 if self.check:
@@ -417,8 +417,8 @@ class TDKLambda():
 
 
 if __name__ == "__main__":
-    pdl = TDKLambda("COM3", 6)
-    pd2 = TDKLambda("COM3", 7)
+    pdl = TDKLambda("COM4", 6)
+    pd2 = TDKLambda("COM4", 7)
     for i in range(10):
         t0 = time.time()
         v1 = pdl.read_float("PC?")
