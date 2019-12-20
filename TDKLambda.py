@@ -166,7 +166,7 @@ class TDKLambda():
             if self.check:
                 cs = self.checksum(cmd)
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
-             self.last_command = cmd
+            self.last_command = cmd
             ##self.logger.debug('%s' % cmd)
             t0 = time.time()
             # clear input buffer
