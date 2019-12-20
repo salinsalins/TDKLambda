@@ -206,7 +206,7 @@ class TDKLambda_Server(Device):
         if result:
             self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_VALID)
         else:
-            self.error_stream("Error writing programmed voltage")
+            self.error_stream("Error writing programmed_voltage")
             self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
         print(self.tdk.port, self.tdk.addr, 'write_programmed_voltage value: ', value, result)
         #msg = 'write_voltage: %s = %s' % (str(value), str(result))
