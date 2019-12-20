@@ -388,7 +388,7 @@ class TDKLambda_Server(Device):
     def SendCommand(self, cmd):
         with _lock:
             rsp = self.tdk.send_command(cmd).decode()
-            msg = '%s:%d command %s ; respobse %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
+            msg = '%s:%d %s -> %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
             self.info_stream(msg)
             return rsp
 
