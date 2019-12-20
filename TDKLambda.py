@@ -141,6 +141,16 @@ class TDKLambda():
             smbl = self.com.read(10000)
         return True
 
+    def _write_command(self, cmd):
+        # clear input buffer
+        if not self.clear_input_buffer():
+            return False
+        # write command
+        self.com.write(cmd)
+        time.sleep(self.sleep)
+        result = self.read_to_cr()
+        return result
+
     def _send_command(self, cmd):
         try:
             if self.offline():
@@ -160,16 +170,9 @@ class TDKLambda():
             ##self.logger.debug('%s' % cmd)
             t0 = time.time()
             # clear input buffer
-            time.sleep(self.sleep_small)
-            smbl = self.com.read(10000)
-            while len(smbl) > 0:
-                if time.time() - t0 > self.max_timeout:
-                    self.logger.error('Timeout clear input buffer')
-                    self.suspend()
-                    return b''
-                time.sleep(self.sleep_small)
-                smbl = self.com.read(10000)
-                self.logger.error('Clear input buffer')
+            if not self.clear_input_buffer():
+                self.suspend()
+                return b''
             # write command
             self.com.write(cmd)
             time.sleep(self.sleep)
@@ -178,9 +181,9 @@ class TDKLambda():
             ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
             if result is None:
                 self.logger.warning('Writing error, repeat %s' % cmd)
-                time.sleep(self.sleep)
-                # clear input buffer
-                self.com.read(10000)
+                if not self.clear_input_buffer():
+                    self.suspend()
+                    return b''
                 self.com.write(cmd)
                 time.sleep(self.sleep)
                 result = self.read_to_cr()
