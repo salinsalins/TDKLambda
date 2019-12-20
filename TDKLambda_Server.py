@@ -141,19 +141,19 @@ class TDKLambda_Server(Device):
             ##print('read_voltage')
             if self.tdk.com is None:
                 self.error_stream("Read from offline device")
-                print("Read from offline device")
+                ##print("Read from offline device")
                 val = float('nan')
             else:
                 val = self.tdk.read_float('MV?')
-            print(self.tdk.port, self.tdk.addr, 'read_voltage val: ', val)
+            ##print(self.tdk.port, self.tdk.addr, 'read_voltage val: ', val)
             attr.set_value(val)
             if val is float('nan'):
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
                 self.error_stream("Output voltage read error ")
-                print("Output voltage read error ")
+                ##print("Output voltage read error ")
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            #print('read_voltage:', val, self.tdk.port, self.tdk.addr)
+            ##print('read_voltage:', val, self.tdk.port, self.tdk.addr)
             return val
 
     def read_current(self, attr: tango.Attribute):
@@ -170,7 +170,7 @@ class TDKLambda_Server(Device):
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
             #msg = 'read_current: ' + str(val)
-            #print(msg)
+            ##print(msg)
             return val
 
     def read_programmed_voltage(self, attr: tango.Attribute):
@@ -180,7 +180,7 @@ class TDKLambda_Server(Device):
                 val = float('nan')
             else:
                 val = self.tdk.read_float('PV?')
-            print(self.tdk.port, self.tdk.addr, 'read_programmed_voltage val: ', val)
+            ##print(self.tdk.port, self.tdk.addr, 'read_programmed_voltage val: ', val)
             attr.set_value(val)
             if val is float('nan'):
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
@@ -188,7 +188,7 @@ class TDKLambda_Server(Device):
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
             #msg = 'read_programmed_voltage: ' + str(val)
-            #print(msg)
+            ##print(msg)
             return val
 
     def read_programmed_current(self, attr: tango.Attribute):
@@ -205,14 +205,14 @@ class TDKLambda_Server(Device):
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
             #msg = 'read_programmed_current: ' + str(val)
-            #print(msg)
+            ##print(msg)
             return val
 
     def write_programmed_voltage(self, value):
         with _lock:
             if self.tdk.com is None:
                 self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
-                print(self.tdk.port, self.tdk.addr, 'write_programmed_voltage to offline device')
+                ##print(self.tdk.port, self.tdk.addr, 'write_programmed_voltage to offline device')
                 result = False
             else:
                 result = self.tdk.write_value(b'PV', value)
@@ -221,7 +221,7 @@ class TDKLambda_Server(Device):
             else:
                 self.error_stream("Error writing programmed voltage")
                 self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
-            print(self.tdk.port, self.tdk.addr, 'write_programmed_voltage value: ', value, result)
+            ##print(self.tdk.port, self.tdk.addr, 'write_programmed_voltage value: ', value, result)
             #msg = 'write_voltage: %s = %s' % (str(value), str(result))
             #print(msg)
             return result
@@ -247,7 +247,7 @@ class TDKLambda_Server(Device):
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
             else:
                 response = self.tdk.send_command(b'OUT?')
-                #print(response)
+                ##print(response)
                 if response.upper().startswith(b'ON'):
                     attr.set_quality(tango.AttrQuality.ATTR_VALID)
                     value = True
@@ -259,7 +259,7 @@ class TDKLambda_Server(Device):
                     attr.set_quality(tango.AttrQuality.ATTR_INVALID)
                     value = False
             #msg = 'read_output_state: ' + str(value)
-            #print(msg)
+            ##print(msg)
             attr.set_value(value)
             return value
 
