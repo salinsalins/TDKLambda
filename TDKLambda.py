@@ -107,7 +107,7 @@ class TDKLambda():
         self.logger.info(msg)
 
     def __del__(self):
-        #print('__del__', self.port, self.addr)
+        #print(self.port, self.addr, '__del__')
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
         self.close_com_port()
@@ -126,8 +126,8 @@ class TDKLambda():
         s = 0
         for b in cmd:
             s += int(b)
-        result = str.encode(hex(s)[-2:])
-        return result.upper()
+        result = str.encode(hex(s)[-2:].upper())
+        return result
 
     def clear_input_buffer(self):
         t0 = time.time()
@@ -136,64 +136,66 @@ class TDKLambda():
         while len(smbl) > 0:
             if time.time() - t0 > self.max_timeout:
                 self.logger.error('Timeout clear input buffer')
-                self.suspend()
                 return False
             time.sleep(self.sleep_small)
             smbl = self.com.read(10000)
         return True
 
-    def _send_command(self, cmd):
-        if self.offline():
-            self.logger.debug('Device is offline')
-            print('Device is offline')
-            return b''
-        cmd = cmd.upper().strip()
-        if isinstance(cmd, str):
-            cmd = str.encode(cmd)
-        if cmd[-1] != b'\r'[0]:
-            cmd += b'\r'
-        if self.check:
-            cs = self.checksum(cmd)
-            cmd = b'%s$%s\r' % (cmd[:-1], cs)
-            self.logger.debug('Command with checksum %s' % cmd)
-        self.last_command = cmd
-        ##self.logger.debug('%s' % cmd)
-        t0 = time.time()
+    def _write_command(self, cmd):
         # clear input buffer
-        time.sleep(self.sleep_small)
-        ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
-        smbl = self.com.read(10000)
-        ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
-        while len(smbl) > 0:
-            if time.time() - t0 > self.max_timeout:
-                self.logger.error('Timeout clear input buffer')
+        if not self.clear_input_buffer():
+            return False
+        # write command
+        self.com.write(cmd)
+        time.sleep(self.sleep)
+        result = self.read_to_cr()
+        return result
+
+    def _send_command(self, cmd):
+        try:
+            if self.offline():
+                self.logger.debug('Device is offline')
+                print('Device is offline')
+                return b''
+            cmd = cmd.upper().strip()
+            if isinstance(cmd, str):
+                cmd = str.encode(cmd)
+            if cmd[-1] != b'\r'[0]:
+                cmd += b'\r'
+            # commands with checksumm
+            if self.check:
+                cs = self.checksum(cmd)
+                cmd = b'%s$%s\r' % (cmd[:-1], cs)
+             self.last_command = cmd
+            ##self.logger.debug('%s' % cmd)
+            t0 = time.time()
+            # clear input buffer
+            if not self.clear_input_buffer():
                 self.suspend()
                 return b''
-            time.sleep(self.sleep_small)
-            smbl = self.com.read(10000)
-            self.logger.error('Clear input buffer')
-        ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
-        self.com.write(cmd)
-        ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
-        time.sleep(self.sleep)
-        #self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
-        result = self.read_to_cr()
-        self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time()-t0)*1000.0))
-        ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
-        if result is None:
-            self.logger.warning('Writing error, repeat %s' % cmd)
-            time.sleep(self.sleep)
-            # clear input buffer
-            self.com.read(10000)
+            # write command
             self.com.write(cmd)
             time.sleep(self.sleep)
             result = self.read_to_cr()
-            self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
+            self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time()-t0)*1000.0))
+            ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
             if result is None:
-                self.logger.error('Repeated writing error')
-                self.suspend()
-                result = b''
-        return result
+                self.logger.warning('Writing error, repeat %s' % cmd)
+                if not self.clear_input_buffer():
+                    self.suspend()
+                    return b''
+                self.com.write(cmd)
+                time.sleep(self.sleep)
+                result = self.read_to_cr()
+                self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
+                if result is None:
+                    self.logger.error('Repeated writing error')
+                    self.suspend()
+                    result = b''
+            return result
+        except:
+            self.logger.error('Unexpected exception')
+            self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
 
     def send_command(self, cmd):
         if self.offline():
