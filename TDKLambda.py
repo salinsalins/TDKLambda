@@ -18,17 +18,17 @@ class TDKLambda():
     devices = []
     ports = []
 
-    def __init__(self, port: str, addr=6, checksum=False, auto_addr = True, baudrate=9600, timeout=0, logger=None):
+    def __init__(self, port: str, addr=6, checksum=False, baudrate=9600, logger=None):
         #print('__init__', port, addr)
 
         # input parameters
         self.port = port.upper().strip()
         self.addr = addr
         self.check = False # = checksum
-        self.auto_addr = auto_addr
         self.baud = baudrate
-        self.timeout = timeout
         self.logger = logger
+        self.auto_addr = True
+        self.com_timeout = 0
         # create variables
         self.last_command = b''
         self.last_response = b''
@@ -39,7 +39,7 @@ class TDKLambda():
         # timeouts
         self.min_timeout = MIN_TIMEOUT
         self.max_timeout = MAX_TIMEOUT
-        self.timeout = MIN_TIMEOUT
+        self.com_timeout = MIN_TIMEOUT
         self.timeout_cear_input = 0.5
         # sleep timings
         self.sleep_small = SLEEP_SMALL
@@ -50,6 +50,8 @@ class TDKLambda():
         self.com = None
         self.id = None
         self.sn = None
+        self.max_voltage = float('inf')
+        self.max_current = float('inf')
 
         # configure logger
         if self.logger is None:
@@ -79,7 +81,13 @@ class TDKLambda():
                 self.com = d.com
         self.init_com_port()
         if self.com is None:
+            self.suspend()
             self.logger.error('Error creation COM port')
+            return
+
+        if self.addr <= 0:
+            self.logger.error('Wrong device address')
+            self.suspend(3.1e7)
             return
 
         # set device address and check response
@@ -88,14 +96,13 @@ class TDKLambda():
             self.com._current_addr = self.addr
         else:
             self.com._current_addr = -1
-            self.addr = -self.addr
+            self.addr = -abs(self.addr)
+            self.suspend()
             self.logger.error('Error address set')
             return
         # initialize device type and serial number
         self.id = self._send_command(b'IDN?').decode()
         # determine max current and voltage from model name
-        self.max_voltage = float('inf')
-        self.max_current = float('inf')
         n1 = self.id.find('GEN')
         n2 = self.id.find('-')
         if n1 >= 0 and n2 >= 0:
@@ -126,18 +133,22 @@ class TDKLambda():
         return False
 
     def init_com_port(self):
+        # try to close port
         try:
             if self.com is not None:
                 self.com.close()
+                self.logger.debug('COM port closed')
             else:
                 for d in TDKLambda.devices:
                     if d.port == self.port:
                         if d.com is not None:
                             d.com.close()
         except:
-            pass
+            self.logger.debug('COM port can not be closed')
+        # try to create port
         try:
-            self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.timeout)
+            self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
+            self.logger.debug('COM port created')
             self.com.last_addr = -1
         except:
             self.com = None
@@ -183,10 +194,6 @@ class TDKLambda():
 
     def _send_command(self, cmd):
         try:
-            if self.offline():
-                self.logger.debug('Device is offline')
-                print('Device is offline')
-                return b''
             cmd = cmd.upper().strip()
             if isinstance(cmd, str):
                 cmd = str.encode(cmd)
@@ -197,7 +204,9 @@ class TDKLambda():
                 cs = self.checksum(cmd)
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
             self.last_command = cmd
-            ##self.logger.debug('%s' % cmd)
+            if self.suspended():
+                self.last_response = b''
+                return b''
             t0 = time.time()
             # write command
             self._write(cmd)
@@ -212,17 +221,17 @@ class TDKLambda():
                 if result is None:
                     self.logger.error('Repeated writing error')
                     self.suspend()
+                    self.last_response = b''
                     result = b''
             return result
         except:
             self.logger.error('Unexpected exception')
             self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
+            self.suspend()
+            self.last_response = b''
             return b''
 
     def send_command(self, cmd):
-        if self.offline():
-            self.logger.debug('Device is offline')
-            return b''
         if self.auto_addr and self.com._current_addr != self.addr:
             result = self.set_addr()
             if result:
@@ -256,9 +265,9 @@ class TDKLambda():
         dt = time.time() - t0
         n = 0
         while len(data) <= 0:
-            if dt > self.timeout:
-                self.timeout = min(1.5*self.timeout, self.max_timeout)
-                msg = 'reading timeout, increased to %5.2f s' % self.timeout
+            if dt > self.com_timeout:
+                self.com_timeout = min(1.5 * self.com_timeout, self.max_timeout)
+                msg = 'reading timeout, increased to %5.2f s' % self.com_timeout
                 self.logger.info(msg)
                 return None
             time.sleep(self.sleep_small)
@@ -267,7 +276,7 @@ class TDKLambda():
             n += 1
         self.suspend_to = time.time()
         dt = time.time() - t0
-        self.timeout = max(2.0*(dt+self.sleep), self.min_timeout)
+        self.com_timeout = max(2.0 * (dt + self.sleep), self.min_timeout)
         self.logger.debug('-> %s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         return data
 
@@ -302,7 +311,7 @@ class TDKLambda():
             return True
         return False
 
-    def suspend(self, duration=SUSPEND):
+    def suspend(self, duration=2.0):
         msg = 'Suspended for %5.2f sec' % duration
         self.logger.warning(msg)
         self.suspend_to = time.time() + duration
@@ -311,9 +320,26 @@ class TDKLambda():
         if time.time() < self.suspend_to:
             return True
         else:
-            self.init_com_port()
-            self.set_addr()
-        return False
+            # if problem with com port
+            if self.com is None:
+                self.logger.debug('Reinitiating the COM port')
+                self.init_com_port()
+                if self.com is None:
+                    self.suspend()
+                    return False
+                self.set_addr()
+                # if problem with device
+                if self.addr <= 0:
+                    self.suspend()
+                    return False
+                return True
+            # if problem with device
+            if self.addr <= 0:
+                self.set_addr()
+                if self.addr <= 0:
+                    self.suspend()
+                    return False
+            return True
 
     def offline(self):
         if self.com is None:
@@ -439,8 +465,8 @@ if __name__ == "__main__":
         t0 = time.time()
         v1 = pdl.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
-        print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pdl.timeout, pdl.port, pdl.addr)
+        print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pdl.com_timeout, pdl.port, pdl.addr)
         t0 = time.time()
         v2 = pd2.read_float("PC?")
         dt2 = int((time.time()-t0)*1000.0)    #ms
-        print('2: ', '%4d ms '%dt2,'PC?=', v2, 'to=', '%5.3f'%pdl.timeout, pd2.port, pd2.addr)
+        print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pdl.com_timeout, pd2.port, pd2.addr)
