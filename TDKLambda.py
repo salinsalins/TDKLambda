@@ -72,6 +72,9 @@ class TDKLambda():
         for d in TDKLambda.devices:
             if d.port == self.port and d.addr == self.addr:
                 self.logger.error('Address is in use')
+                self.com = None
+                self.suspend(3.1e7)
+                TDKLambda.devices.append(self)
                 return
 
         # assign com port
@@ -83,35 +86,32 @@ class TDKLambda():
         if self.com is None:
             self.suspend()
             self.logger.error('Error creation COM port')
-            return
 
         if self.addr <= 0:
             self.logger.error('Wrong device address')
             self.suspend(3.1e7)
-            return
 
         # set device address and check response
         response = self.set_addr()
-        if response:
-            self.com._current_addr = self.addr
-        else:
+        if not response:
             self.com._current_addr = -1
             self.addr = -abs(self.addr)
-            self.suspend()
             self.logger.error('Error address set')
-            return
-        # initialize device type and serial number
-        self.id = self._send_command(b'IDN?').decode()
-        # determine max current and voltage from model name
-        n1 = self.id.find('GEN')
-        n2 = self.id.find('-')
-        if n1 >= 0 and n2 >= 0:
-            try:
-                self.max_voltage = float(self.id[n1+3:n2])
-                self.max_current = float(self.id[n2+1:])
-            except:
-                pass
-        self.serial_number = self._send_command(b'SN?').decode()
+            self.suspend()
+        else:
+            self.com._current_addr = self.addr
+            # initialize device type and serial number
+            self.id = self._send_command(b'IDN?').decode()
+            # determine max current and voltage from model name
+            n1 = self.id.find('GEN')
+            n2 = self.id.find('-')
+            if n1 >= 0 and n2 >= 0:
+                try:
+                    self.max_voltage = float(self.id[n1+3:n2])
+                    self.max_current = float(self.id[n2+1:])
+                except:
+                    pass
+            self.serial_number = self._send_command(b'SN?').decode()
         # add device to list
         TDKLambda.devices.append(self)
         msg = 'TDKLambda %s has been created' % self.id
@@ -148,6 +148,8 @@ class TDKLambda():
         # try to create port
         try:
             self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
+            self.com.write_timeout = 0
+            self.com.writeTimeout = 0
             self.logger.debug('COM port created')
             self.com.last_addr = -1
         except:
@@ -330,7 +332,7 @@ class TDKLambda():
                 if self.com is None:
                     self.suspend()
                     return True
-                self.set_addr()
+                self._set_addr()
                 # if problem with device
                 if self.addr <= 0:
                     self.suspend()
@@ -338,7 +340,7 @@ class TDKLambda():
                 return False
             # if problem with device
             if self.addr <= 0:
-                self.set_addr()
+                self._set_addr()
                 if self.addr <= 0:
                     self.suspend()
                     return True
@@ -468,15 +470,15 @@ class TDKLambda():
 
 
 if __name__ == "__main__":
-    pdl = TDKLambda("COM7", 6)
-    pd2 = TDKLambda("COM7", 7)
+    pd1 = TDKLambda("COM4", 6)
+    pd2 = TDKLambda("COM4", 7)
     for i in range(100):
         t0 = time.time()
-        v1 = pdl.read_float("PC?")
+        v1 = pd1.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
-        print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pdl.com_timeout, pdl.port, pdl.addr)
+        print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pd1.com_timeout, pd1.port, pd1.addr)
         t0 = time.time()
         v2 = pd2.read_float("PC?")
         dt2 = int((time.time()-t0)*1000.0)    #ms
-        print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pdl.com_timeout, pd2.port, pd2.addr)
+        print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pd2.com_timeout, pd2.port, pd2.addr)
         time.sleep(0.1)
