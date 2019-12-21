@@ -302,22 +302,17 @@ class TDKLambda():
             return True
         return False
 
-    def suspend(self, msg=None, duration=SUSPEND):
-        if msg is None:
-            msg = 'Suspended for %5.2f sec' % duration
+    def suspend(self, duration=SUSPEND):
+        msg = 'Suspended for %5.2f sec' % duration
         self.logger.warning(msg)
         self.suspend_to = time.time() + duration
-        self.error_count = 0
-        #self.com.send_break()
-        #self.com.reset_input_buffer()
-        #self.com.reset_output_buffer()
-        time.sleep(self.sleep)
-        self.com.read(10000)
 
     def suspended(self):
         if time.time() < self.suspend_to:
-            ##self.logger.debug('Device is suspended')
             return True
+        else:
+            self.init_com_port()
+            self.set_addr()
         return False
 
     def offline(self):
@@ -385,21 +380,15 @@ class TDKLambda():
     def set_addr(self):
         count = 0
         result = self._set_addr()
-        while count < MAX_ERROR_COUNT:
+        while count < 2:
             if result:
                 return True
-            else:
-                ##self.logger.warning('Set address error. %s %d' % (self.last_response, self.com._current_addr) )
-                count +=1
-                time.sleep(2*self.sleep)
-                self.com.read(10000)
-                result = self._set_addr()
+            count +=1
+            result = self._set_addr()
         if result:
             return True
-        self.logger.error('Cannot set address with retries')
+        self.logger.error('Cannot repeatedly set address')
         self.suspend()
-        #self.logger.error('Cannot set address. Device is switched off.')
-        #self.com = None
         return False
 
     def read_float(self, cmd):
