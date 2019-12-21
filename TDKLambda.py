@@ -215,7 +215,6 @@ class TDKLambda():
             if result is None:
                 self.logger.warning('Writing error, repeat %s' % cmd)
                 self._write(cmd)
-                time.sleep(self.sleep)
                 result = self.read_to_cr()
                 self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
                 if result is None:
@@ -232,6 +231,10 @@ class TDKLambda():
             return b''
 
     def send_command(self, cmd):
+        if self.suspended():
+            self.last_command = cmd
+            self.last_response = b''
+            return b''
         if self.auto_addr and self.com._current_addr != self.addr:
             result = self.set_addr()
             if result:
@@ -326,20 +329,20 @@ class TDKLambda():
                 self.init_com_port()
                 if self.com is None:
                     self.suspend()
-                    return False
+                    return True
                 self.set_addr()
                 # if problem with device
                 if self.addr <= 0:
                     self.suspend()
-                    return False
-                return True
+                    return True
+                return False
             # if problem with device
             if self.addr <= 0:
                 self.set_addr()
                 if self.addr <= 0:
                     self.suspend()
-                    return False
-            return True
+                    return True
+            return False
 
     def offline(self):
         if self.com is None:
@@ -404,6 +407,10 @@ class TDKLambda():
             return False
 
     def set_addr(self):
+        if self.suspended():
+            if hasattr(self.com, '_current_addr'):
+                self.com._current_addr = -1
+            return False
         count = 0
         result = self._set_addr()
         while count < 2:
@@ -415,6 +422,8 @@ class TDKLambda():
             return True
         self.logger.error('Cannot repeatedly set address')
         self.suspend()
+        if hasattr(self.com, '_current_addr'):
+            self.com._current_addr = -1
         return False
 
     def read_float(self, cmd):
@@ -459,9 +468,9 @@ class TDKLambda():
 
 
 if __name__ == "__main__":
-    pdl = TDKLambda("COM4", 6)
-    pd2 = TDKLambda("COM4", 7)
-    for i in range(10):
+    pdl = TDKLambda("COM7", 6)
+    pd2 = TDKLambda("COM7", 7)
+    for i in range(100):
         t0 = time.time()
         v1 = pdl.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
@@ -470,3 +479,4 @@ if __name__ == "__main__":
         v2 = pd2.read_float("PC?")
         dt2 = int((time.time()-t0)*1000.0)    #ms
         print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pdl.com_timeout, pd2.port, pd2.addr)
+        time.sleep(0.1)
