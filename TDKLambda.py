@@ -73,16 +73,19 @@ class TDKLambda():
             if d.port == self.port and d.addr == self.addr:
                 self.logger.error('Address is in use')
                 self.com = None
+                # suspend for a year
                 self.suspend(3.1e7)
                 TDKLambda.devices.append(self)
                 return
 
         # assign com port
         for d in TDKLambda.devices:
-            # com port alredy created
+            # if com port alredy created
             if d.port == self.port:
-                self.com = d.com
-        self.init_com_port()
+                if d.com is not None:
+                    self.com = d.com
+        if self.com is None:
+            self.init_com_port()
         if self.com is None:
             self.suspend()
             self.logger.error('Error creation COM port')
@@ -93,13 +96,7 @@ class TDKLambda():
 
         # set device address and check response
         response = self.set_addr()
-        if not response:
-            self.com._current_addr = -1
-            self.addr = -abs(self.addr)
-            self.logger.error('Error address set')
-            self.suspend()
-        else:
-            self.com._current_addr = self.addr
+        if response:
             # initialize device type and serial number
             self.id = self._send_command(b'IDN?').decode()
             # determine max current and voltage from model name
@@ -143,6 +140,8 @@ class TDKLambda():
                     if d.port == self.port:
                         if d.com is not None:
                             d.com.close()
+                            self.logger.debug('COM port closed')
+                            break
         except:
             self.logger.debug('COM port can not be closed')
         # try to create port
@@ -410,8 +409,6 @@ class TDKLambda():
 
     def set_addr(self):
         if self.suspended():
-            if hasattr(self.com, '_current_addr'):
-                self.com._current_addr = -1
             return False
         count = 0
         result = self._set_addr()
