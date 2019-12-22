@@ -247,8 +247,7 @@ class TDKLambda():
         return result
 
     def check_response(self, expect=b'OK', response=None):
-        if self.offline():
-            self.logger.debug('Device is offline')
+        if self.suspended():
             return False
         if response is None:
             response = self.last_response
@@ -257,7 +256,6 @@ class TDKLambda():
             self.logger.info(msg)
             self.inc_error_count()
             return False
-        self.error_count = 0
         return True
 
     def _read(self):
