@@ -76,12 +76,14 @@ class TDKLambda():
                 self.com = None
                 # suspend for a year
                 self.suspend(3.1e7)
+                msg = 'Uninitialized TDKLambda device added to list'
+                self.logger.info(msg)
                 TDKLambda.devices.append(self)
                 return
 
         # assign com port
         for d in TDKLambda.devices:
-            # if com port alredy created
+            # if com port already created
             if d.port == self.port:
                 if d.com is not None:
                     self.com = d.com
@@ -89,7 +91,6 @@ class TDKLambda():
             self.init_com_port()
         if self.com is None:
             self.suspend()
-            self.logger.error('Error creation COM port')
 
         if self.addr <= 0:
             self.logger.error('Wrong device address')
@@ -110,10 +111,13 @@ class TDKLambda():
                 except:
                     pass
             self.serial_number = self._send_command(b'SN?').decode()
+            msg = 'TDKLambda %s has been created' % self.id
+            self.logger.info(msg)
+        else:
+            msg = 'Uninitialized TDKLambda device added to list'
+            self.logger.info(msg)
         # add device to list
         TDKLambda.devices.append(self)
-        msg = 'TDKLambda %s has been created' % self.id
-        self.logger.info(msg)
 
     def __del__(self):
         #print(self.port, self.addr, '__del__')
@@ -422,7 +426,7 @@ class TDKLambda():
         try:
             v = float(reply)
         except:
-            self.logger.error('%s is not a float' % reply)
+            self.logger.warning('%s is not a float' % reply)
             v = float('Nan')
         return v
 
