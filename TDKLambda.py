@@ -259,8 +259,7 @@ class TDKLambda():
         return True
 
     def _read(self):
-        if self.offline():
-            self.logger.debug('Device is offline')
+        if self.suspended():
             return None
         t0 = time.time()
         data = self.com.read(10000)
@@ -284,8 +283,7 @@ class TDKLambda():
 
     def read(self):
         t0 = time.time()
-        if self.offline():
-            self.logger.debug('Device is offline')
+        if self.suspended():
             return None
         data = self._read()
         while data is None:
