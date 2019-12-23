@@ -35,6 +35,7 @@ class TDKLambda():
         self.error_count = 0
         self.time = time.time()
         self.suspend_to = time.time()
+        self.suspend_flag = True
         self.retries = 0
         # timeouts
         self.min_timeout = MIN_TIMEOUT
@@ -267,15 +268,14 @@ class TDKLambda():
         n = 0
         while len(data) <= 0:
             if dt > self.com_timeout:
-                self.com_timeout = min(1.5 * self.com_timeout, self.max_timeout)
-                msg = 'reading timeout, increased to %5.2f s' % self.com_timeout
+                self.com_timeout = min(2.0 * self.com_timeout, self.max_timeout)
+                msg = 'Reading timeout, increased to %5.2f s' % self.com_timeout
                 self.logger.info(msg)
                 return None
             time.sleep(self.sleep_small)
             data = self.com.read(10000)
             dt = time.time() - t0
             n += 1
-        self.suspend_to = time.time()
         dt = time.time() - t0
         self.com_timeout = max(2.0 * (dt + self.sleep), self.min_timeout)
         self.logger.debug('-> %s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
@@ -311,35 +311,43 @@ class TDKLambda():
             return True
         return False
 
-    def suspend(self, duration=2.0):
+    def suspend(self, duration=5.0):
         msg = 'Suspended for %5.2f sec' % duration
         self.logger.warning(msg)
         self.suspend_to = time.time() + duration
+        self.suspend_flag = True
 
     def suspended(self):
         if time.time() < self.suspend_to:
             return True
         else:
-            # if problem with com port
-            if self.com is None:
-                self.logger.debug('Reinitiating the COM port')
-                self.init_com_port()
+            # if it was suspended and suspension expires
+            if self.suspend_flag:
+                # if problem with com port
                 if self.com is None:
-                    self.suspend()
-                    return True
-                self._set_addr()
+                    self.logger.debug('Initiating the COM port')
+                    self.init_com_port()
+                    if self.com is None:
+                        self.suspend()
+                        return True
+                    self._set_addr()
+                    # if problem with device
+                    if self.addr <= 0:
+                        self.suspend()
+                        return True
+                    self.suspend_flag = False
+                    return False
                 # if problem with device
                 if self.addr <= 0:
-                    self.suspend()
-                    return True
+                    self._set_addr()
+                    if self.addr <= 0:
+                        self.suspend()
+                        return True
+                self.suspend_flag = False
                 return False
-            # if problem with device
-            if self.addr <= 0:
-                self._set_addr()
-                if self.addr <= 0:
-                    self.suspend()
-                    return True
-            return False
+            # if suspension and expires and all OK
+            else:
+                return False
 
     def offline(self):
         if self.com is None:
