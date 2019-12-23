@@ -6,24 +6,25 @@ import os
 import logging
 import serial
 
-MAX_TIMEOUT = 1.5   # sec
-MIN_TIMEOUT = 0.1   # sec
+MAX_TIMEOUT = 1.5  # sec
+MIN_TIMEOUT = 0.1  # sec
 RETRIES = 3
 SUSPEND = 2.0
 SLEEP = 0.03
 SLEEP_SMALL = 0.015
 MAX_ERROR_COUNT = 4
 
-class TDKLambda():
+
+class TDKLambda:
     devices = []
     ports = []
 
-    def __init__(self, port: str, addr=6, checksum=False, auto_addr = True, baudrate=9600, timeout=0, logger=None):
-        #print('__init__', port, addr)
+    def __init__(self, port: str, addr=6, checksum=False, auto_addr=True, baudrate=9600, timeout=0, logger=None):
+        # print('__init__', port, addr)
         # input parameters
         self.port = port.upper().strip()
         self.addr = addr
-        #self.check = checksum
+        # self.check = checksum
         self.check = False
         self.auto_addr = auto_addr
         self.baud = baudrate
@@ -48,10 +49,10 @@ class TDKLambda():
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
             self.logger.setLevel(logging.INFO)
-            #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+            # log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
-            f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
-                    '%s:%d ' % (self.port, self.addr) +\
+            f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' + \
+                    '%s:%d ' % (self.port, self.addr) + \
                     '%(levelname)-7s %(message)s'
             log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
             console_handler = logging.StreamHandler()
@@ -76,8 +77,8 @@ class TDKLambda():
                 self.com = None
                 msg = '%s open error' % self.port
                 self.logger.error(msg)
-                #print(self.logger.findCaller())
-                #self.logger.debug(msg, stack_info=True)
+                # print(self.logger.findCaller())
+                # self.logger.debug(msg, stack_info=True)
                 return
         # set device address and check 'OK' response
         response = self.set_addr()
@@ -96,8 +97,8 @@ class TDKLambda():
         n2 = self.id.find('-')
         if n1 >= 0 and n2 >= 0:
             try:
-                self.max_voltage = float(self.id[n1+3:n2])
-                self.max_current = float(self.id[n2+1:])
+                self.max_voltage = float(self.id[n1 + 3:n2])
+                self.max_current = float(self.id[n2 + 1:])
             except:
                 pass
         self.serial_number = self._send_command(b'SN?').decode()
@@ -107,7 +108,7 @@ class TDKLambda():
         self.logger.info(msg)
 
     def __del__(self):
-        #print(self.port, self.addr, '__del__')
+        # print(self.port, self.addr, '__del__')
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
         self.close_com_port()
@@ -177,7 +178,7 @@ class TDKLambda():
             self.com.write(cmd)
             time.sleep(self.sleep)
             result = self.read_to_cr()
-            self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time()-t0)*1000.0))
+            self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
             ##self.logger.debug('%4d ms' % int((time.time()-t0)*1000.0))
             if result is None:
                 self.logger.warning('Writing error, repeat %s' % cmd)
@@ -235,7 +236,7 @@ class TDKLambda():
         n = 0
         while len(data) <= 0:
             if dt > self.timeout:
-                self.timeout = min(1.5*self.timeout, self.max_timeout)
+                self.timeout = min(1.5 * self.timeout, self.max_timeout)
                 msg = 'reading timeout, increased to %5.2f s' % self.timeout
                 self.logger.info(msg)
                 return None
@@ -245,13 +246,13 @@ class TDKLambda():
             n += 1
         self.suspend_to = time.time()
         dt = time.time() - t0
-        self.timeout = max(2.0*(dt+self.sleep), self.min_timeout)
+        self.timeout = max(2.0 * (dt + self.sleep), self.min_timeout)
         self.logger.debug('-> %s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         return data
 
     def read(self):
         t0 = time.time()
-        if self.offline():
+        if self.suspended():
             self.logger.debug('Device is offline')
             return None
         data = self._read()
@@ -286,9 +287,9 @@ class TDKLambda():
         self.logger.warning(msg)
         self.suspend_to = time.time() + duration
         self.error_count = 0
-        #self.com.send_break()
-        #self.com.reset_input_buffer()
-        #self.com.reset_output_buffer()
+        # self.com.send_break()
+        # self.com.reset_input_buffer()
+        # self.com.reset_output_buffer()
         time.sleep(self.sleep)
         self.com.read(10000)
 
@@ -304,6 +305,26 @@ class TDKLambda():
             return True
         return self.suspended()
 
+    def verify_checksum(self, response=None):
+        if response is None:
+            response = self.last_response
+        if self.check:
+            m = response.find(b'$')
+            if m < 0:
+                self.logger.error('No checksum')
+                return None
+            else:
+                if len(response) < m+3:
+                    self.logger.error('Incorrect checksum')
+                    return None
+                cs = self.checksum(response[:m])
+                if response[m+1:m+3] != cs:
+                    self.logger.error('Incorrect checksum')
+                    return None
+                return response[:m]
+        else:
+            return response
+
     def read_to_cr(self):
         result = b''
         data = self.read()
@@ -314,11 +335,13 @@ class TDKLambda():
             if n >= 0:
                 n1 = result[n+1:].find(b'\r')
                 if n1 >= 0:
-                    self.logger.warning('Second CR in response %s, %s used' % (result, result[n+1:]))
+                    self.logger.warning('Second CR in response %s, %s used' % (result, result[n + 1:]))
                     result = result[n+1:]
                     n = result.find(b'\r')
-                m = n
+                if len(result) > (n+1):
+                    self.logger.warning('Extra symbols beyond CR in %s' % result)
                 self.last_response = result[:n]
+                m = n
                 if self.check:
                     m = result.find(b'$')
                     if m < 0:
@@ -327,7 +350,7 @@ class TDKLambda():
                         return None
                     else:
                         cs = self.checksum(result[:m])
-                        if result[m+1:n] != cs:
+                        if result[m + 1:n] != cs:
                             self.logger.error('Incorrect checksum')
                             self.inc_error_count()
                             return None
@@ -365,16 +388,16 @@ class TDKLambda():
                 return True
             else:
                 ##self.logger.warning('Set address error. %s %d' % (self.last_response, self.com._current_addr) )
-                count +=1
-                time.sleep(2*self.sleep)
+                count += 1
+                time.sleep(2 * self.sleep)
                 self.com.read(10000)
                 result = self._set_addr()
         if result:
             return True
         self.logger.error('Cannot set address with retries')
         self.suspend()
-        #self.logger.error('Cannot set address. Device is switched off.')
-        #self.com = None
+        # self.logger.error('Cannot set address. Device is switched off.')
+        # self.com = None
         return False
 
     def read_float(self, cmd):
@@ -387,16 +410,16 @@ class TDKLambda():
         return v
 
     def read_value(self, cmd, vtype=str):
-        #t0 = time.time()
+        # t0 = time.time()
         reply = b''
         try:
             reply = self.send_command(cmd)
             v = vtype(reply)
         except:
-            self.check_response(response=b'Wrong format:'+reply)
+            self.check_response(response=b'Wrong format:' + reply)
             v = None
-        #dt = time.time() - t0
-        #print('read_value', dt)
+        # dt = time.time() - t0
+        # print('read_value', dt)
         return v
 
     def read_bool(self, cmd):
@@ -424,9 +447,9 @@ if __name__ == "__main__":
     for i in range(10):
         t0 = time.time()
         v1 = pdl.read_float("PC?")
-        dt1 = int((time.time()-t0)*1000.0)    #ms
-        print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pdl.timeout, pdl.port, pdl.addr)
+        dt1 = int((time.time() - t0) * 1000.0)  # ms
+        print('1: ', '%4d ms ' % dt1, 'PC?=', v1, 'to=', '%5.3f' % pdl.timeout, pdl.port, pdl.addr)
         t0 = time.time()
         v2 = pd2.read_float("PC?")
-        dt2 = int((time.time()-t0)*1000.0)    #ms
-        print('2: ', '%4d ms '%dt2,'PC?=', v2, 'to=', '%5.3f'%pdl.timeout, pd2.port, pd2.addr)
+        dt2 = int((time.time() - t0) * 1000.0)  # ms
+        print('2: ', '%4d ms ' % dt2, 'PC?=', v2, 'to=', '%5.3f' % pdl.timeout, pd2.port, pd2.addr)
