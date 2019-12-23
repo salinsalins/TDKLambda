@@ -130,6 +130,16 @@ class TDKLambda():
             return True
         return False
 
+    def switch_off_com_port(self):
+        try:
+            self.com.close()
+        except:
+            pass
+        self.com = None
+        for d in TDKLambda.devices:
+            if d.port == self.port:
+                d.com = self.com
+
     def init_com_port(self):
         # try to close port
         try:
@@ -201,7 +211,7 @@ class TDKLambda():
                 cmd = str.encode(cmd)
             if cmd[-1] != b'\r'[0]:
                 cmd += b'\r'
-            # commands with checksumm
+            # if operations with checksum
             if self.check:
                 cs = self.checksum(cmd)
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
@@ -229,6 +239,7 @@ class TDKLambda():
             self.logger.error('Unexpected exception')
             self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
             self.suspend()
+            self.switch_off_com_port()
             self.last_response = b''
             return b''
 
@@ -240,12 +251,11 @@ class TDKLambda():
         if self.auto_addr and self.com._current_addr != self.addr:
             result = self.set_addr()
             if result:
-                result = self._send_command(cmd)
+                return self._send_command(cmd)
             else:
-                result = b''
+                return b''
         else:
-            result = self._send_command(cmd)
-        return result
+            return self._send_command(cmd)
 
     def check_response(self, expect=b'OK', response=None):
         if self.suspended():
@@ -253,9 +263,8 @@ class TDKLambda():
         if response is None:
             response = self.last_response
         if not response.startswith(expect):
-            msg = 'Unexpected response %s (%s)' % (response, expect)
+            msg = 'Unexpected response %s (not %s)' % (response, expect)
             self.logger.info(msg)
-            self.inc_error_count()
             return False
         return True
 
@@ -271,45 +280,35 @@ class TDKLambda():
                 self.com_timeout = min(2.0 * self.com_timeout, self.max_timeout)
                 msg = 'Reading timeout, increased to %5.2f s' % self.com_timeout
                 self.logger.info(msg)
+                self.logger.debug('-> %s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
                 return None
             time.sleep(self.sleep_small)
             data = self.com.read(10000)
             dt = time.time() - t0
             n += 1
         dt = time.time() - t0
-        self.com_timeout = max(2.0 * (dt + self.sleep), self.min_timeout)
+        self.com_timeout = max(2.0 * dt, self.min_timeout)
         self.logger.debug('-> %s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         return data
 
     def read(self):
-        t0 = time.time()
         if self.suspended():
             return None
-        data = self._read()
-        while data is None:
-            self.retries += 1
-            if self.retries >= RETRIES:
-                self.logger.warning('Reading retries limit')
-                self.suspend()
-                return None
-            # print('t1=', time.time() - t0, end='')
-            self.logger.debug('Retry reading %d' % self.retries)
-            time.sleep(self.sleep)
+        try:
             data = self._read()
-        self.retries = 0
-        self.suspend_to = time.time()
-        self.logger.debug('-> %s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
-        return data
-
-    def inc_error_count(self, msg=None):
-        self.error_count += 1
-        if self.error_count > MAX_ERROR_COUNT:
-            if msg is None:
-                msg = 'Error count exceeded'
-            self.logger.warning(msg)
+            if data is None:
+                self.logger.debug('Retry reading')
+                time.sleep(self.sleep_after_write)
+                data = self._read()
+            if data is None:
+                self.logger.warning('Retry reading ERROR')
+            return data
+        except:
+            self.logger.error('Exception during reading. Switching COM port OFF.')
+            self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
             self.suspend()
-            return True
-        return False
+            self.switch_off_com_port()
+            return None
 
     def suspend(self, duration=5.0):
         msg = 'Suspended for %5.2f sec' % duration
@@ -345,22 +344,14 @@ class TDKLambda():
                         return True
                 self.suspend_flag = False
                 return False
-            # if suspension and expires and all OK
+            # if suspension expires and all OK
             else:
                 return False
-
-    def offline(self):
-        if self.com is None:
-            ##self.logger.debug('Device is offline')
-            return True
-        self.offline_time = time.time()
-        return self.suspended()
 
     def read_to_cr(self):
         result = b''
         data = self.read()
         while data is not None:
-            self.suspend_to = time.time()
             result += data
             n = result.find(b'\r')
             if n >= 0:
@@ -375,13 +366,11 @@ class TDKLambda():
                     m = result.find(b'$')
                     if m < 0:
                         self.logger.error('No checksum')
-                        self.inc_error_count()
                         return None
                     else:
                         cs = self.checksum(result[:m])
                         if result[m+1:n] != cs:
                             self.logger.error('Incorrect checksum')
-                            self.inc_error_count()
                             return None
                         self.error_count = 0
                         return result[:m]
@@ -389,7 +378,6 @@ class TDKLambda():
                 return result[:m]
             data = self.read()
         self.logger.warning('Response without CR')
-        self.inc_error_count()
         self.last_response = result
         return None
 
