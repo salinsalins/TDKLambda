@@ -58,7 +58,7 @@ class TDKLambda():
         if self.logger is None:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.INFO)
+            self.logger.setLevel(logging.DEBUG)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
@@ -279,6 +279,7 @@ class TDKLambda():
         data = self.com.read(10000)
         dt = time.time() - t0
         n = 0
+        self.logger.debug('-> %s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         while len(data) <= 0:
             if dt > self.com_timeout:
                 self.com_timeout = min(2.0 * self.com_timeout, self.max_timeout)
