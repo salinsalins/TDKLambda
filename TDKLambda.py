@@ -220,9 +220,6 @@ class TDKLambda():
                 cs = self.checksum(cmd)
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
             self.last_command = cmd
-            if self.suspended():
-                self.last_response = b''
-                return b''
             t0 = time.time()
             # write command
             self._write(cmd)
@@ -279,13 +276,13 @@ class TDKLambda():
         data = self.com.read(10000)
         dt = time.time() - t0
         n = 0
-        self.logger.debug('-> %s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
+        #self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         while len(data) <= 0:
             if dt > self.com_timeout:
                 self.com_timeout = min(2.0 * self.com_timeout, self.max_timeout)
                 msg = 'Reading timeout, increased to %5.2f s' % self.com_timeout
                 self.logger.info(msg)
-                self.logger.debug('-> %s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
+                self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
                 return None
             time.sleep(self.sleep_small)
             data = self.com.read(10000)
@@ -293,12 +290,14 @@ class TDKLambda():
             n += 1
         dt = time.time() - t0
         self.com_timeout = max(2.0 * dt, self.min_timeout)
-        self.logger.debug('-> %s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
+        self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         return data
 
     def read(self):
         if self.suspended():
             return None
+        t0 = time.time()
+        data = None
         try:
             data = self._read()
             if data is None:
@@ -307,12 +306,14 @@ class TDKLambda():
                 data = self._read()
             if data is None:
                 self.logger.warning('Retry reading ERROR')
+            self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
             return data
         except:
             self.logger.error('Exception during reading. Switching COM port OFF.')
             self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
             self.suspend()
             self.switch_off_com_port()
+            self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
             return None
 
     def suspend(self, duration=5.0):
