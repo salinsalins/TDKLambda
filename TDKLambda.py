@@ -221,7 +221,7 @@ class TDKLambda():
                 cmd += b'\r'
             # if operations with checksum
             if self.check:
-                cs = self.checksum(cmd)
+                cs = self.checksum(cmd[:-1])
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
             self.last_command = cmd
             t0 = time.time()
@@ -274,8 +274,6 @@ class TDKLambda():
         return True
 
     def _read(self):
-        if self.suspended():
-            return None
         t0 = time.time()
         data = self.com.read(10000)
         dt = time.time() - t0
@@ -313,7 +311,7 @@ class TDKLambda():
             self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
             return data
         except:
-            self.logger.error('Exception during reading. Switching COM port OFF.')
+            self.logger.error('Exception during read. Switching COM port OFF.')
             self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
             self.suspend()
             self.switch_off_com_port()
@@ -328,34 +326,38 @@ class TDKLambda():
 
     def suspended(self):
         if time.time() < self.suspend_to:
+            # suspension does not expire
             return True
         else:
-            # if it was suspended and suspension expires
             if self.suspend_flag:
-                # if problem with com port
+                # it was suspended and suspension expires
                 if self.com is None:
+                    # problem with com port
                     self.logger.debug('Initiating the COM port')
                     self.init_com_port()
                     if self.com is None:
                         self.suspend()
                         return True
-                    self._set_addr()
-                    # if problem with device
-                    if self.addr <= 0:
+                    # try to set device address
+                    result = self._set_addr()
+                    if result:
+                        self.suspend_flag = False
+                        return False
+                    else:
                         self.suspend()
                         return True
-                    self.suspend_flag = False
-                    return False
-                # if problem with device
-                if self.addr <= 0:
-                    self._set_addr()
-                    if self.addr <= 0:
+                else:
+                    # problem with device
+                    # try to set device address
+                    result = self._set_addr()
+                    if result:
+                        self.suspend_flag = False
+                        return False
+                    else:
                         self.suspend()
                         return True
-                self.suspend_flag = False
-                return False
-            # if suspension expires and all OK
             else:
+                # it was not suspended
                 return False
 
     def read_to_cr(self):
@@ -398,13 +400,13 @@ class TDKLambda():
             a0 = -1
         self._send_command(b'ADR %d' % abs(self.addr))
         if self.check_response():
-            self.addr = abs(self.addr)
+            #self.addr = abs(self.addr)
             self.com._current_addr = self.addr
             self.logger.debug('Set address %d -> %d' % (a0, self.addr))
             return True
         else:
             self.logger.error('Error set address %d -> %d' % (a0, self.addr))
-            self.addr = -abs(self.addr)
+            #self.addr = -abs(self.addr)
             if self.com is not None:
                 self.com._current_addr = -1
             return False
