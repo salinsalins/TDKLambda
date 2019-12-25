@@ -130,13 +130,16 @@ class TDKLambda():
     def clear_input_buffer(self):
         t0 = time.time()
         time.sleep(self.sleep_small)
+        self.logger.debug('1 %4.0f ms', (time.time() - t0) * 1000.0)
         smbl = self.com.read(10000)
+        self.logger.debug('2 %4.0f ms', (time.time() - t0) * 1000.0)
         while len(smbl) > 0:
             if time.time() - t0 > self.max_timeout:
                 self.logger.error('Timeout clear input buffer')
                 return False
             time.sleep(self.sleep_small)
             smbl = self.com.read(10000)
+            self.logger.debug('3 %4.0f ms', (time.time() - t0) * 1000.0)
         self.logger.debug('%4.0f ms', (time.time() - t0) * 1000.0)
         return True
 

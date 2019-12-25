@@ -28,7 +28,7 @@ class TDKLambda():
         self.baud = baudrate
         self.logger = logger
         self.auto_addr = True
-        self.com_timeout = 0
+        self.com_timeout = 0.0
         # create variables
         self.last_command = b''
         self.last_response = b''
@@ -40,7 +40,7 @@ class TDKLambda():
         # timeouts
         self.min_timeout = MIN_TIMEOUT
         self.max_timeout = MAX_TIMEOUT
-        self.com_timeout = MIN_TIMEOUT
+        self.timeout = MIN_TIMEOUT
         self.timeout_cear_input = 0.5
         # sleep timings
         self.sleep_small = SLEEP_SMALL
@@ -185,7 +185,9 @@ class TDKLambda():
     def clear_input_buffer(self):
         t0 = time.time()
         time.sleep(self.sleep_cear_input)
+        self.logger.debug('1 %4.0f ms', (time.time() - t0) * 1000.0)
         smbl = self.com.read(10000)
+        self.logger.debug('2 %4.0f ms', (time.time() - t0) * 1000.0)
         n = 0
         while len(smbl) > 0:
             if time.time() - t0 > self.timeout_cear_input:
@@ -193,6 +195,8 @@ class TDKLambda():
             time.sleep(self.sleep_cear_input)
             smbl = self.com.read(10000)
             n += 1
+            self.logger.debug('3 %4.0f ms', (time.time() - t0) * 1000.0)
+        self.logger.debug('%4.0f ms', (time.time() - t0) * 1000.0)
         return n
 
     def _write(self, cmd):
@@ -278,9 +282,9 @@ class TDKLambda():
         n = 0
         #self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         while len(data) <= 0:
-            if dt > self.com_timeout:
-                self.com_timeout = min(2.0 * self.com_timeout, self.max_timeout)
-                msg = 'Reading timeout, increased to %5.2f s' % self.com_timeout
+            if dt > self.timeout:
+                self.timeout = min(2.0 * self.timeout, self.max_timeout)
+                msg = 'Reading timeout, increased to %5.2f s' % self.timeout
                 self.logger.info(msg)
                 self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
                 return None
@@ -289,7 +293,7 @@ class TDKLambda():
             dt = time.time() - t0
             n += 1
         dt = time.time() - t0
-        self.com_timeout = max(2.0 * dt, self.min_timeout)
+        self.timeout = max(2.0 * dt, self.min_timeout)
         self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         return data
 
@@ -467,13 +471,13 @@ class TDKLambda():
 if __name__ == "__main__":
     pd1 = TDKLambda("COM4", 6)
     pd2 = TDKLambda("COM4", 7)
-    for i in range(100):
+    for i in range(5):
         t0 = time.time()
         v1 = pd1.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
-        print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pd1.com_timeout, pd1.port, pd1.addr)
+        print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pd1.timeout, pd1.port, pd1.addr)
         t0 = time.time()
         v2 = pd2.read_float("PC?")
         dt2 = int((time.time()-t0)*1000.0)    #ms
-        print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pd2.com_timeout, pd2.port, pd2.addr)
+        print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pd2.timeout, pd2.port, pd2.addr)
         time.sleep(0.1)
