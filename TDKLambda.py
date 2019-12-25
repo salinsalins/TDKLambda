@@ -438,6 +438,22 @@ class TDKLambda():
             v = float('Nan')
         return v
 
+    def read_all(self):
+        reply = self.send_command(b'DVC?')
+        sv = reply.split(b',')
+        vals = []
+        for s in sv:
+            try:
+                v = float(s)
+            except:
+                self.logger.warning('%s is not a float' % reply)
+                v = float('Nan')
+            vals.append(v)
+        if len(vals) == 6:
+            return vals
+        else:
+            return [float('Nan')] * 6
+
     def read_value(self, cmd, vtype=str):
         #t0 = time.time()
         reply = b''
@@ -467,7 +483,7 @@ class TDKLambda():
 
     def reset(self):
         self.__del__()
-        self.__init__(self.port, self.addr, self.check, self.auto_addr, self.baud, 0, self.logger)
+        self.__init__(self.port, self.addr, self.check, self.baud, self.logger)
 
 
 if __name__ == "__main__":
