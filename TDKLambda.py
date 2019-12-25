@@ -135,6 +135,7 @@ class TDKLambda():
         return False
 
     def switch_off_com_port(self):
+        self.suspend()
         try:
             self.com.close()
         except:
@@ -143,6 +144,7 @@ class TDKLambda():
         for d in TDKLambda.devices:
             if d.port == self.port:
                 d.com = self.com
+        self.logger.info('COM port switched OFF')
 
     def init_com_port(self):
         # try to close port
@@ -183,29 +185,36 @@ class TDKLambda():
         return result
 
     def clear_input_buffer(self):
+        n = 0
         t0 = time.time()
         time.sleep(self.sleep_cear_input)
+        if self.com.in_waiting <= 0:
+            self.logger.debug('%d %4.0f ms', n, (time.time() - t0) * 1000.0)
+            return n
         smbl = self.com.read(10000)
-        n = 0
         while len(smbl) > 0:
             if time.time() - t0 > self.timeout_cear_input:
                 raise IOError('Clear input buffer timeout')
             time.sleep(self.sleep_cear_input)
             smbl = self.com.read(10000)
             n += 1
+        self.logger.debug('%d %4.0f ms', n, (time.time() - t0) * 1000.0)
         return n
 
     def _write(self, cmd):
+        t0 = time.time()
         try:
             # clear input buffer
             self.clear_input_buffer()
             # write command
             self.com.write(cmd)
             time.sleep(self.sleep_after_write)
+            self.logger.debug('%s %4.0f ms' % (cmd, (time.time()-t0)*1000.0))
             return True
         except:
             self.logger.error('Exception during write')
             self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
+            self.switch_off_com_port()
             return False
 
     def _send_command(self, cmd):
@@ -239,7 +248,6 @@ class TDKLambda():
         except:
             self.logger.error('Unexpected exception')
             self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
-            self.suspend()
             self.switch_off_com_port()
             self.last_response = b''
             return b''
@@ -317,10 +325,10 @@ class TDKLambda():
             return None
 
     def suspend(self, duration=5.0):
-        msg = 'Suspended for %5.2f sec' % duration
-        self.logger.warning(msg)
         self.suspend_to = time.time() + duration
         self.suspend_flag = True
+        msg = 'Suspended for %5.2f sec' % duration
+        self.logger.info(msg)
 
     def suspended(self):
         if time.time() < self.suspend_to:
@@ -341,6 +349,7 @@ class TDKLambda():
                         self.suspend()
                         return True
                     self.suspend_flag = False
+                    self.logger.debug('COM port initialized')
                     return False
                 # if problem with device
                 if self.addr <= 0:
@@ -349,6 +358,7 @@ class TDKLambda():
                         self.suspend()
                         return True
                 self.suspend_flag = False
+                self.logger.debug('COM port initialized')
                 return False
             # if suspension expires and all OK
             else:
