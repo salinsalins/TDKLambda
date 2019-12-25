@@ -47,9 +47,7 @@ class TDKLambda():
         else:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.INFO)
-            #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-            #                                  datefmt='%H:%M:%S')
+            self.logger.setLevel(logging.DEBUG)
             f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
                     '%s:%d ' % (self.port, self.addr) +\
                     '%(levelname)-7s %(message)s'
@@ -139,6 +137,7 @@ class TDKLambda():
                 return False
             time.sleep(self.sleep_small)
             smbl = self.com.read(10000)
+        self.logger.debug('%4.0f ms', (time.time() - t0) * 1000.0)
         return True
 
     def _write_command(self, cmd):
@@ -246,7 +245,7 @@ class TDKLambda():
         self.suspend_to = time.time()
         dt = time.time() - t0
         self.timeout = max(2.0*(dt+self.sleep), self.min_timeout)
-        self.logger.debug('-> %s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
+        self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         return data
 
     def read(self):
@@ -267,7 +266,7 @@ class TDKLambda():
             data = self._read()
         self.retries = 0
         self.suspend_to = time.time()
-        self.logger.debug('-> %s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
+        self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
         return data
 
     def inc_error_count(self, msg=None):
@@ -419,8 +418,8 @@ class TDKLambda():
 
 
 if __name__ == "__main__":
-    pdl = TDKLambda("COM6", 6)
-    pd2 = TDKLambda("COM6", 7)
+    pdl = TDKLambda("COM4", 6)
+    pd2 = TDKLambda("COM4", 7)
     for i in range(10):
         t0 = time.time()
         v1 = pdl.read_float("PC?")

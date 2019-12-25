@@ -162,8 +162,8 @@ class TDKLambda():
         # try to create port
         try:
             self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
-            self.com.write_timeout = 0
-            self.com.writeTimeout = 0
+            #self.com.write_timeout = 0
+            #self.com.writeTimeout = 0
             self.logger.debug('COM port created')
             self.com.last_addr = -1
         except:
