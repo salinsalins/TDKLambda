@@ -24,7 +24,7 @@ class TDKLambda():
         # input parameters
         self.port = port.upper().strip()
         self.addr = addr
-        self.check = False # = checksum
+        self.check = checksum # = False
         self.baud = baudrate
         self.logger = logger
         self.auto_addr = True
@@ -185,9 +185,9 @@ class TDKLambda():
     def clear_input_buffer(self):
         t0 = time.time()
         time.sleep(self.sleep_cear_input)
-        self.logger.debug('1 %4.0f ms', (time.time() - t0) * 1000.0)
+        #self.logger.debug('1 %4.0f ms', (time.time() - t0) * 1000.0)
         smbl = self.com.read(10000)
-        self.logger.debug('2 %4.0f ms', (time.time() - t0) * 1000.0)
+        #self.logger.debug('2 %4.0f ms', (time.time() - t0) * 1000.0)
         n = 0
         while len(smbl) > 0:
             if time.time() - t0 > self.timeout_cear_input:
@@ -195,8 +195,8 @@ class TDKLambda():
             time.sleep(self.sleep_cear_input)
             smbl = self.com.read(10000)
             n += 1
-            self.logger.debug('3 %4.0f ms', (time.time() - t0) * 1000.0)
-        self.logger.debug('%4.0f ms', (time.time() - t0) * 1000.0)
+            #self.logger.debug('3 %4.0f ms', (time.time() - t0) * 1000.0)
+        #self.logger.debug('%4.0f ms', (time.time() - t0) * 1000.0)
         return n
 
     def _write(self, cmd):
@@ -469,7 +469,7 @@ class TDKLambda():
 
 
 if __name__ == "__main__":
-    pd1 = TDKLambda("COM4", 6)
+    pd1 = TDKLambda("COM4", 6, checksum=True)
     pd2 = TDKLambda("COM4", 7)
     for i in range(5):
         t0 = time.time()
