@@ -24,11 +24,11 @@ class TDKLambda():
         # input parameters
         self.port = port.upper().strip()
         self.addr = addr
-        self.check = False # = checksum
+        self.check = checksum # = False
         self.baud = baudrate
         self.logger = logger
         self.auto_addr = True
-        self.com_timeout = 0
+        self.com_timeout = 0.0
         # create variables
         self.last_command = b''
         self.last_response = b''
@@ -40,7 +40,7 @@ class TDKLambda():
         # timeouts
         self.min_timeout = MIN_TIMEOUT
         self.max_timeout = MAX_TIMEOUT
-        self.com_timeout = MIN_TIMEOUT
+        self.timeout = MIN_TIMEOUT
         self.timeout_cear_input = 0.5
         # sleep timings
         self.sleep_small = SLEEP_SMALL
@@ -135,7 +135,6 @@ class TDKLambda():
         return False
 
     def switch_off_com_port(self):
-        self.suspend()
         try:
             self.com.close()
         except:
@@ -144,7 +143,6 @@ class TDKLambda():
         for d in TDKLambda.devices:
             if d.port == self.port:
                 d.com = self.com
-        self.logger.info('COM port switched OFF')
 
     def init_com_port(self):
         # try to close port
@@ -164,8 +162,8 @@ class TDKLambda():
         # try to create port
         try:
             self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
-            self.com.write_timeout = 0
-            self.com.writeTimeout = 0
+            #self.com.write_timeout = 0
+            #self.com.writeTimeout = 0
             self.logger.debug('COM port created')
             self.com.last_addr = -1
         except:
@@ -185,36 +183,33 @@ class TDKLambda():
         return result
 
     def clear_input_buffer(self):
-        n = 0
         t0 = time.time()
         time.sleep(self.sleep_cear_input)
-        if self.com.in_waiting <= 0:
-            self.logger.debug('%d %4.0f ms', n, (time.time() - t0) * 1000.0)
-            return n
+        #self.logger.debug('1 %4.0f ms', (time.time() - t0) * 1000.0)
         smbl = self.com.read(10000)
+        #self.logger.debug('2 %4.0f ms', (time.time() - t0) * 1000.0)
+        n = 0
         while len(smbl) > 0:
             if time.time() - t0 > self.timeout_cear_input:
                 raise IOError('Clear input buffer timeout')
             time.sleep(self.sleep_cear_input)
             smbl = self.com.read(10000)
             n += 1
-        self.logger.debug('%d %4.0f ms', n, (time.time() - t0) * 1000.0)
+            #self.logger.debug('3 %4.0f ms', (time.time() - t0) * 1000.0)
+        #self.logger.debug('%4.0f ms', (time.time() - t0) * 1000.0)
         return n
 
     def _write(self, cmd):
-        t0 = time.time()
         try:
             # clear input buffer
             self.clear_input_buffer()
             # write command
             self.com.write(cmd)
             time.sleep(self.sleep_after_write)
-            self.logger.debug('%s %4.0f ms' % (cmd, (time.time()-t0)*1000.0))
             return True
         except:
             self.logger.error('Exception during write')
             self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
-            self.switch_off_com_port()
             return False
 
     def _send_command(self, cmd):
@@ -248,6 +243,7 @@ class TDKLambda():
         except:
             self.logger.error('Unexpected exception')
             self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
+            self.suspend()
             self.switch_off_com_port()
             self.last_response = b''
             return b''
@@ -286,9 +282,9 @@ class TDKLambda():
         n = 0
         #self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         while len(data) <= 0:
-            if dt > self.com_timeout:
-                self.com_timeout = min(2.0 * self.com_timeout, self.max_timeout)
-                msg = 'Reading timeout, increased to %5.2f s' % self.com_timeout
+            if dt > self.timeout:
+                self.timeout = min(2.0 * self.timeout, self.max_timeout)
+                msg = 'Reading timeout, increased to %5.2f s' % self.timeout
                 self.logger.info(msg)
                 self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
                 return None
@@ -297,7 +293,7 @@ class TDKLambda():
             dt = time.time() - t0
             n += 1
         dt = time.time() - t0
-        self.com_timeout = max(2.0 * dt, self.min_timeout)
+        self.timeout = max(2.0 * dt, self.min_timeout)
         self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         return data
 
@@ -325,10 +321,10 @@ class TDKLambda():
             return None
 
     def suspend(self, duration=5.0):
+        msg = 'Suspended for %5.2f sec' % duration
+        self.logger.warning(msg)
         self.suspend_to = time.time() + duration
         self.suspend_flag = True
-        msg = 'Suspended for %5.2f sec' % duration
-        self.logger.info(msg)
 
     def suspended(self):
         if time.time() < self.suspend_to:
@@ -349,7 +345,6 @@ class TDKLambda():
                         self.suspend()
                         return True
                     self.suspend_flag = False
-                    self.logger.debug('COM port initialized')
                     return False
                 # if problem with device
                 if self.addr <= 0:
@@ -358,7 +353,6 @@ class TDKLambda():
                         self.suspend()
                         return True
                 self.suspend_flag = False
-                self.logger.debug('COM port initialized')
                 return False
             # if suspension expires and all OK
             else:
@@ -475,15 +469,15 @@ class TDKLambda():
 
 
 if __name__ == "__main__":
-    pd1 = TDKLambda("COM4", 6)
+    pd1 = TDKLambda("COM4", 6, checksum=True)
     pd2 = TDKLambda("COM4", 7)
-    for i in range(100):
+    for i in range(5):
         t0 = time.time()
         v1 = pd1.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
-        print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pd1.com_timeout, pd1.port, pd1.addr)
+        print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pd1.timeout, pd1.port, pd1.addr)
         t0 = time.time()
         v2 = pd2.read_float("PC?")
         dt2 = int((time.time()-t0)*1000.0)    #ms
-        print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pd2.com_timeout, pd2.port, pd2.addr)
+        print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pd2.timeout, pd2.port, pd2.addr)
         time.sleep(0.1)
