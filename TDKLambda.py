@@ -58,7 +58,7 @@ class TDKLambda():
         if self.logger is None:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.DEBUG)
+            self.logger.setLevel(logging.INFO)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
@@ -495,7 +495,15 @@ if __name__ == "__main__":
         dt1 = int((time.time()-t0)*1000.0)    #ms
         print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pd1.timeout, pd1.port, pd1.addr)
         t0 = time.time()
+        v3 = pd1.read_all()
+        dt1 = int((time.time()-t0)*1000.0)    #ms
+        print('1: ', '%4d ms ' % dt1,'DVC?=', v3, 'to=', '%5.3f' % pd1.timeout, pd1.port, pd1.addr)
+        t0 = time.time()
         v2 = pd2.read_float("PC?")
         dt2 = int((time.time()-t0)*1000.0)    #ms
         print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pd2.timeout, pd2.port, pd2.addr)
+        t0 = time.time()
+        v4 = pd2.read_all()
+        dt1 = int((time.time()-t0)*1000.0)    #ms
+        print('1: ', '%4d ms ' % dt1,'DVC?=', v4, 'to=', '%5.3f' % pd2.timeout, pd2.port, pd2.addr)
         time.sleep(0.1)
