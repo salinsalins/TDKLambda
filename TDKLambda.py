@@ -5,6 +5,7 @@ import time
 import os
 import logging
 import serial
+from threading import Thread, Lock
 
 MAX_TIMEOUT = 1.5   # sec
 MIN_TIMEOUT = 0.1   # sec
@@ -12,7 +13,14 @@ RETRIES = 3
 SUSPEND = 2.0
 SLEEP = 0.03
 SLEEP_SMALL = 0.015
-MAX_ERROR_COUNT = 4
+
+
+class ComPort(serial.Serial):
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, args, kwargs)
+        self.last_address = -1
+        self.lock = Lock()
+
 
 class TDKLambda():
     devices = []
