@@ -35,7 +35,7 @@ class TDKLambda():
         self.error_count = 0
         self.time = time.time()
         self.suspend_to = time.time()
-        self.suspend_flag = True
+        self.suspend_flag = False
         self.retries = 0
         # timeouts
         self.min_timeout = MIN_TIMEOUT
@@ -162,8 +162,8 @@ class TDKLambda():
         # try to create port
         try:
             self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
-            #self.com.write_timeout = 0
-            #self.com.writeTimeout = 0
+            self.com.write_timeout = 0
+            self.com.writeTimeout = 0
             self.logger.debug('COM port created')
             self.com.last_addr = -1
         except:
