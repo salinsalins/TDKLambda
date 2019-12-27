@@ -16,10 +16,11 @@ SLEEP_SMALL = 0.015
 
 
 class ComPort(serial.Serial):
-    def __init__(self, *args, **kwargs):
-        super().__init__(self, args, kwargs)
+    def __init__(self, port, *args, **kwargs):
+        super().__init__(self, port, args, kwargs)
         self.last_address = -1
         self.lock = Lock()
+        self.onfline = False
 
 
 class TDKLambda():
@@ -66,7 +67,7 @@ class TDKLambda():
         if self.logger is None:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.INFO)
+            self.logger.setLevel(logging.DEBUG)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
@@ -170,6 +171,7 @@ class TDKLambda():
         # try to create port
         try:
             self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
+            #self.com = ComPort(self.port, baudrate=self.baud, timeout=self.com_timeout)
             self.com.write_timeout = 0
             self.com.writeTimeout = 0
             self.logger.debug('COM port created')
@@ -177,6 +179,7 @@ class TDKLambda():
         except:
             self.com = None
             self.logger.error('Port creation error')
+            self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
         # updete com for other devices witn the same port
         for d in TDKLambda.devices:
             if d.port == self.port:
@@ -442,7 +445,7 @@ class TDKLambda():
         try:
             v = float(reply)
         except:
-            self.logger.warning('%s is not a float' % reply)
+            self.logger.debug('%s is not a float' % reply)
             v = float('Nan')
         return v
 
@@ -454,7 +457,7 @@ class TDKLambda():
             try:
                 v = float(s)
             except:
-                self.logger.warning('%s is not a float' % reply)
+                self.logger.debug('%s is not a float' % reply)
                 v = float('Nan')
             vals.append(v)
         if len(vals) == 6:
