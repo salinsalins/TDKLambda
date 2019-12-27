@@ -48,8 +48,9 @@ UI_FILE = APPLICATION_NAME_SHORT + '.ui'
 # Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                                       datefmt='%H:%M:%S')
+f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' + \
+        '%(levelname)-7s %(message)s'
+log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(log_formatter)
 logger.addHandler(console_handler)
@@ -108,7 +109,7 @@ def set_state(obj: PyQt5.QtWidgets.QWidget, name=None, config=None):
 
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
-        global logger, log_formatter
+        global logger
 
         # Initialization of the superclass
         super(MainWindow, self).__init__(parent)
@@ -119,7 +120,7 @@ class MainWindow(QMainWindow):
         self.resize(QSize(480, 640))
         self.move(QPoint(50, 50))
         self.setWindowTitle(APPLICATION_NAME)  # Set a title
-        #self.setWindowIcon(QtGui.QIcon('icon.png'))
+        self.setWindowIcon(QtGui.QIcon('icon.png'))
         # Additional logging config
         self.logger = logger
         # Class members definition
@@ -144,6 +145,18 @@ class MainWindow(QMainWindow):
 
         self.restore_settings()
 
+        # self.tableWidget_3.setStyleSheet("""
+        #         QTableView {
+        #             gridline-color: black;
+        #             alternate-background-color: #d0d0d0;
+        #         }
+        #         QHeaderView::section {
+        #             background-color: palette(dark);
+        #             border: 1px solid black;
+        #         }
+        #     """)
+
+
     def show_about(self):
         QMessageBox.information(self, 'About', APPLICATION_NAME + ' Version ' + APPLICATION_VERSION +
                                 '\nUser interface program to control TDK Lambda Genesis power supplies.', QMessageBox.Ok)
@@ -165,7 +178,10 @@ class MainWindow(QMainWindow):
                   logging.WARNING, logging.ERROR, logging.CRITICAL]
         if m >= 0:
             self.logger.setLevel(levels[m])
- 
+
+    def ehandler(self, m):
+        print(m)
+
     def onQuit(self) :
         # Save global settings
         self.save_settings()

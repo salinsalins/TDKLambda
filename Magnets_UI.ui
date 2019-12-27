@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>515</width>
-    <height>583</height>
+    <width>698</width>
+    <height>671</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -35,6 +35,10 @@
   </property>
   <property name="windowTitle">
    <string>Emittance Plot Processing</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>icon.png</normaloff>icon.png</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="sizePolicy">
@@ -115,8 +119,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>495</width>
-             <height>457</height>
+             <width>678</width>
+             <height>535</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout">
@@ -1817,7 +1821,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>515</width>
+     <width>698</width>
      <height>34</height>
     </rect>
    </property>
