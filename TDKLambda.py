@@ -462,8 +462,13 @@ class TDKLambda():
             vals.append(v)
         if len(vals) == 6:
             return vals
+        elif len(vals) > 6:
+            vals = [float('Nan')] * 6
+            return vals
         else:
-            return [float('Nan')] * 6
+            vals += [float('Nan')] * (6 - len(vals))
+            return vals
+
 
     def read_value(self, cmd, vtype=str):
         #t0 = time.time()
