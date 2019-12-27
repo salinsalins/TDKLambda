@@ -391,9 +391,9 @@ class TDKLambda_Server(Device):
             msg = '%s:%d %s -> %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
             self.debug_stream(msg)
             if self.tdk.com is None:
-                msg = 'TDKLambda device creation error for %s' % self
+                msg = 'COM port is None'
                 print(msg)
-                self.error_stream(msg)
+                self.info_stream(msg)
                 self.set_state(DevState.FAULT)
                 return
             return rsp
