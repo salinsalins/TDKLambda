@@ -389,7 +389,13 @@ class TDKLambda_Server(Device):
         with _lock:
             rsp = self.tdk.send_command(cmd).decode()
             msg = '%s:%d %s -> %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
-            self.info_stream(msg)
+            self.debug_stream(msg)
+            if self.tdk.com is None:
+                msg = 'TDKLambda device creation error for %s' % self
+                print(msg)
+                self.error_stream(msg)
+                self.set_state(DevState.FAULT)
+                return
             return rsp
 
     @command
