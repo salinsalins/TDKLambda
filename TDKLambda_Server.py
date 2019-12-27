@@ -140,7 +140,7 @@ class TDKLambda_Server(Device):
         with _lock:
             ##print('read_voltage')
             if self.tdk.com is None:
-                self.error_stream("Read from offline device")
+                self.info_stream("Read from offline device")
                 ##print("Read from offline device")
                 val = float('nan')
             else:
