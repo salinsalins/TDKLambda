@@ -63,50 +63,6 @@ def print_exception_info(level=logging.DEBUG):
     logger.log(level, "Exception ", exc_info=True)
 
 
-def get_state(obj: PyQt5.QtWidgets.QWidget, name=None, config=None):
-    global CONFIG
-    if config is None:
-        config = CONFIG
-    if name is None:
-        name = obj.objectName()
-
-    if isinstance(obj, QLabel):
-        config[name] = str(obj.text())
-    if isinstance(obj, QComboBox):
-        config[name] = {'items': [str(obj.itemText(k)) for k in range(obj.count())],
-                        'index': obj.currentIndex()}
-    if isinstance(obj, QCheckBox):
-        config[name] = obj.isChecked()
-    if isinstance(obj, QPlainTextEdit):
-        config[name] = obj.toPlainText()
-
-
-def set_state(obj: PyQt5.QtWidgets.QWidget, name=None, config=None):
-    global CONFIG
-    if config is None:
-        config = CONFIG
-    if name is None:
-        name = obj.objectName()
-
-    if name not in config:
-        return
-
-    if isinstance(obj, QLabel):
-        obj.setText(config[name])
-    if isinstance(obj, QComboBox):
-        obj.setUpdatesEnabled(False)
-        obj.blockSignals(True)
-        obj.clear()
-        obj.addItems(config[name]['items'])
-        obj.blockSignals(False)
-        obj.setUpdatesEnabled(True)
-        obj.setCurrentIndex(config[name]['index'])
-    if isinstance(obj, QCheckBox):
-        obj.setChecked(config[name])
-    if isinstance(obj, QPlainTextEdit):
-        obj.setPlainText(config[name])
-
-
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         global logger
@@ -145,7 +101,24 @@ class MainWindow(QMainWindow):
 
         print(APPLICATION_NAME + ' version ' + APPLICATION_VERSION + ' started')
 
-        self.restore_settings()
+        # find all controls in config tab
+        self.config_widgets = []
+        self.get_widgets(self.tabWidgetPage3)
+
+        self.restore_settings(self.config_widgets)
+
+        # attribute list
+        self.atts = [('', '')]
+
+    def get_widgets(self, obj, s=''):
+        lout = obj.layout()
+        for k in range(lout.count()):
+            wgt = lout.itemAt(k).widget()
+            #print(s, wgt)
+            if wgt not in self.config_widgets:
+                self.config_widgets.append(wgt)
+            if isinstance(wgt, QtWidgets.QFrame):
+                self.get_widgets(wgt, s=s + '   ')
 
     def show_about(self):
         QMessageBox.information(self, 'About', APPLICATION_NAME + ' Version ' + APPLICATION_VERSION +
@@ -186,10 +159,10 @@ class MainWindow(QMainWindow):
 
     def onQuit(self) :
         # Save global settings
-        self.save_settings()
+        self.save_settings(self.config_widgets)
         timer.stop()
         
-    def save_settings(self, file_name=CONFIG_FILE) :
+    def save_settings(self, widgets=(), file_name=CONFIG_FILE) :
         global CONFIG
         try:
             # Save window size and position
@@ -197,6 +170,8 @@ class MainWindow(QMainWindow):
             s = self.size()
             CONFIG['main_window'] = {'size':(s.width(), s.height()), 'position':(p.x(), p.y())}
             #get_state(self.comboBox_1, 'comboBox_1')
+            for w in widgets:
+                get_widget_state(w, CONFIG)
             with open(file_name, 'w') as configfile:
                 configfile.write(json.dumps(CONFIG, indent=4))
             self.logger.info('Configuration saved to %s' % file_name)
@@ -206,7 +181,7 @@ class MainWindow(QMainWindow):
             print_exception_info()
             return False
         
-    def restore_settings(self, file_name=CONFIG_FILE) :
+    def restore_settings(self, widgets=(), file_name=CONFIG_FILE) :
         global CONFIG
         try :
             with open(file_name, 'r') as configfile:
@@ -229,6 +204,8 @@ class MainWindow(QMainWindow):
             #set_state(self.plainTextEdit_1, 'plainTextEdit_1')
             #set_state(self.comboBox_1, 'comboBox_1')
             self.logger.log(logging.INFO, 'Configuration restored from %s' % file_name)
+            for w in widgets:
+                set_widget_state(w, CONFIG)
             return True
         except :
             self.logger.log(logging.WARNING, 'Configuration restore error from %s' % file_name)
@@ -240,10 +217,52 @@ class MainWindow(QMainWindow):
         self.elapsed += 1
         t = time.strftime('%H:%M:%S')
         self.clock.setText('Elapsed: %ds    %s' % (self.elapsed, t))
-        while time.time() - t0 < 0.5:
-            print('timer1-1')
+        #while time.time() - t0 < 0.5:
+        #    print('timer1-1')
         #time.sleep(1.0)
 
+
+def get_widget_state(obj, config, name=None):
+    try:
+        if name is None:
+            name = obj.objectName()
+        if isinstance(obj, QLabel):
+            config[name] = str(obj.text())
+        if isinstance(obj, QComboBox):
+            config[name] = {'items': [str(obj.itemText(k)) for k in range(obj.count())],
+                            'index': obj.currentIndex()}
+        if isinstance(obj, QCheckBox):
+            config[name] = obj.isChecked()
+        if isinstance(obj, QPlainTextEdit):
+            config[name] = obj.toPlainText()
+    except:
+        return
+
+def set_widget_state(obj, config, name=None):
+    try:
+        if name is None:
+            name = obj.objectName()
+        if name not in config:
+            return
+        if isinstance(obj, QLabel):
+            obj.setText(config[name])
+        if isinstance(obj, QComboBox):
+            obj.setUpdatesEnabled(False)
+            obj.blockSignals(True)
+            obj.clear()
+            obj.addItems(config[name]['items'])
+            obj.blockSignals(False)
+            obj.setUpdatesEnabled(True)
+            obj.setCurrentIndex(config[name]['index'])
+            # Force index change event in the case of index=0
+            if config[name]['index'] == 0:
+                obj.currentIndexChanged.emit(0)
+        if isinstance(obj, QCheckBox):
+            obj.setChecked(config[name])
+        if isinstance(obj, QPlainTextEdit):
+            obj.setPlainText(config[name])
+    except:
+        return
 
 if __name__ == '__main__':
     # Create the GUI application

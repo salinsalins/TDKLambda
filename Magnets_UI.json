@@ -2,11 +2,14 @@
     "main_window": {
         "size": [
             704,
-            587
+            679
         ],
         "position": [
-            -843,
-            1294
+            -999,
+            1205
         ]
-    }
+    },
+    "checkBox_4": true,
+    "checkBox_3": false,
+    "checkBox": false
 }

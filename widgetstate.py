@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QCheckBox
 from PyQt5.QtWidgets import QPlainTextEdit
 
 
-def get_state(obj, config, name=None):
+def get_widget_state(obj, config, name=None):
     #if config is None:
     #    config = conf.CONFIG
     if name is None:
@@ -20,8 +20,7 @@ def get_state(obj, config, name=None):
     if isinstance(obj, QPlainTextEdit):
         config[name] = obj.toPlainText()
 
-
-def set_state(obj, config, name=None):
+def set_widget_state(obj, config, name=None):
     if name is None:
         name = obj.objectName
 

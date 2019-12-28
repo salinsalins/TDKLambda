@@ -1786,6 +1786,13 @@ background:blue;
             <number>9</number>
            </property>
            <item row="4" column="0">
+            <widget class="QCheckBox" name="checkBox_4">
+             <property name="text">
+              <string>Additional check</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0">
             <spacer name="verticalSpacer">
              <property name="orientation">
               <enum>Qt::Vertical</enum>
@@ -1798,24 +1805,10 @@ background:blue;
              </property>
             </spacer>
            </item>
-           <item row="1" column="0">
-            <widget class="QCheckBox" name="checkBox">
-             <property name="text">
-              <string>Show unused channels</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
+           <item row="3" column="0">
             <widget class="QCheckBox" name="checkBox_3">
              <property name="text">
               <string>RF ready check</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="0">
-            <widget class="QCheckBox" name="checkBox_4">
-             <property name="text">
-              <string>Additional check</string>
              </property>
             </widget>
            </item>
@@ -1827,7 +1820,15 @@ background:blue;
              <property name="frameShadow">
               <enum>QFrame::Raised</enum>
              </property>
-             <layout class="QHBoxLayout" name="horizontalLayout"/>
+             <layout class="QHBoxLayout" name="horizontalLayout">
+              <item>
+               <widget class="QCheckBox" name="checkBox">
+                <property name="text">
+                 <string>Show unused channels</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
           </layout>
