@@ -88,6 +88,9 @@ class MainWindow(QMainWindow):
         # Connect signals with slots
         ##self.plainTextEdit_1.textChanged.connect(self.refresh_on)
         self.checkBox_25.clicked.connect(self.phandler)
+        self.doubleSpinBox_21.valueChanged.connect(self.cb_changed)
+        #self.doubleSpinBox_21.editingFinished.connect(self.phandler)
+        self.doubleSpinBox_21.setKeyboardTracking(False)
         # Menu actions connection
         self.actionQuit.triggered.connect(qApp.quit)
         self.actionPlot.triggered.connect(self.show_main_pane)
@@ -111,6 +114,7 @@ class MainWindow(QMainWindow):
         # attribute list
         self.atts = (('sys/tg_test/1/boolean_scalar', self.checkBox_26),
                      ('sys/tg_test/1/double_scalar', self.label_63),
+                     ('sys/tg_test/1/double_scalar_w', self.label_65),
                      )
         self.atps = []
         for at in self.atts:
@@ -120,6 +124,8 @@ class MainWindow(QMainWindow):
             except:
                 pass
         self.n = 0
+
+        self.wap = tango.AttributeProxy('sys/tg_test/1/double_scalar_w')
 
     def get_widgets(self, obj, s=''):
         lout = obj.layout()
@@ -153,9 +159,14 @@ class MainWindow(QMainWindow):
         if m >= 0:
             self.logger.setLevel(levels[m])
 
-    def phandler(self, m, *args, **kwargs):
-        print(m, args, kwargs)
-        cb_switch_color(self.checkBox_26, m)
+    def phandler(self, *args, **kwargs):
+        print(args, kwargs)
+
+    def cb_changed(self, value):
+        try:
+            self.wap.write(value)
+        except:
+            print('except')
 
     def onQuit(self) :
         # Save global settings
@@ -229,7 +240,7 @@ class MainWindow(QMainWindow):
             count += 1
             if count == len(self.atps):
                 break
-        print(int((time.time()-t0)*1000.0), 'ms')
+        #print(int((time.time()-t0)*1000.0), 'ms')
         #time.sleep(1.0)
 
 
