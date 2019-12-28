@@ -10,6 +10,7 @@ APPLICATION_VERSION = '1_1'
 
 """TDK Lambda Genesis series power supply tango device server"""
 import logging
+import time
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
@@ -136,16 +137,21 @@ class TDKLambda_Server(Device):
                 return "Uninitialized"
             return self.tdk.id
 
-    def read_voltage(self, attr: tango.Attribute):
+    def read_all(self):
         with _lock:
-            ##print('read_voltage')
-            if self.tdk.com is None:
-                self.info_stream("Read from offline device")
-                ##print("Read from offline device")
-                val = float('nan')
-            else:
-                val = self.tdk.read_float('MV?')
-            ##print(self.tdk.port, self.tdk.addr, 'read_voltage val: ', val)
+            try:
+                values = self.tdk.read_all()
+                self.values = values
+                self.time = time.time()
+            except:
+                pass
+
+    def read_voltage(self, attr: tango.Attribute):
+        ##print('read_voltage')
+        with _lock:
+            if time.time() - self.time > 0.12:
+                self.read_all()
+            val = self.values[0]
             attr.set_value(val)
             if val is float('nan'):
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
