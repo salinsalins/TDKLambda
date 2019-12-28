@@ -34,6 +34,7 @@ from PyQt5.QtGui import QFont
 import PyQt5.QtGui as QtGui
 import PyQt5
 
+import tango
 #from taurus.external.qt import Qt
 #from taurus.qt.qtgui.application import TaurusApplication
 #from taurus.qt.qtgui.display import TaurusLabel
@@ -108,14 +109,18 @@ class MainWindow(QMainWindow):
         self.restore_settings(self.config_widgets)
 
         # attribute list
-        self.atts = [('', '')]
+        self.atts = [('/sys/tg_test/1/boolean_scalar', self.checkBox_26)]
+        ap = tango.AttributeProxy('sys/tg_test/1/double_scalar')
+        self.test_device = tango.DeviceProxy("sys/tg_test/1")
+        self.data = self.test_device.read_attribute("boolean_scalar")
+        print(self.data)
 
     def get_widgets(self, obj, s=''):
         lout = obj.layout()
         for k in range(lout.count()):
             wgt = lout.itemAt(k).widget()
             #print(s, wgt)
-            if wgt not in self.config_widgets:
+            if wgt is not None and wgt not in self.config_widgets:
                 self.config_widgets.append(wgt)
             if isinstance(wgt, QtWidgets.QFrame):
                 self.get_widgets(wgt, s=s + '   ')
@@ -144,18 +149,7 @@ class MainWindow(QMainWindow):
 
     def phandler(self, m, *args, **kwargs):
         print(m, args, kwargs)
-        self.cb_switch_color(self.checkBox_26, m)
-
-    @staticmethod
-    def cb_switch_color(cb: QCheckBox, m, colors=('green', 'red')):
-        if isinstance(m, bool):
-            if m:
-                cb.setStyleSheet('QCheckBox::indicator { background: ' + colors[0] + ';}')
-            else:
-                cb.setStyleSheet('QCheckBox::indicator { background: ' + colors[1] + ';}')
-                #cb.setStyleSheet('QCheckBox::indicator { background: red;}')
-        if isinstance(m, str):
-            cb.setStyleSheet('QCheckBox::indicator { background: ' + m + ';}')
+        cb_switch_color(self.checkBox_26, m)
 
     def onQuit(self) :
         # Save global settings
@@ -217,10 +211,50 @@ class MainWindow(QMainWindow):
         self.elapsed += 1
         t = time.strftime('%H:%M:%S')
         self.clock.setText('Elapsed: %ds    %s' % (self.elapsed, t))
+
+        #self.data = self.test_device.read_attribute("boolean_scalar")
+        #cb_switch_color(self.checkBox_26, self.data.value)
+        cb_update(self.checkBox_26, self.test_device, "boolean_scalar")
+        lbl_update(self.label_63, self.test_device, "double_scalar")
+
         #while time.time() - t0 < 0.5:
-        #    print('timer1-1')
+        print(int((time.time()-t0)*1000.0), 'ms')
         #time.sleep(1.0)
 
+
+def cb_switch_color(cb: QCheckBox, m, colors=('green', 'red')):
+    if isinstance(m, bool):
+        if m:
+            cb.setStyleSheet('QCheckBox::indicator { background: ' + colors[0] + ';}')
+        else:
+            cb.setStyleSheet('QCheckBox::indicator { background: ' + colors[1] + ';}')
+            # cb.setStyleSheet('QCheckBox::indicator { background: red;}')
+    if isinstance(m, str):
+        cb.setStyleSheet('QCheckBox::indicator { background: ' + m + ';}')
+
+def cb_update(cb: QCheckBox, dev_proxy: tango.DeviceProxy, attr_name: str):
+    attr = dev_proxy[attr_name]
+    value = attr.value
+    if attr.type == tango._tango.CmdArgType.DevBoolean and attr.data_format == tango._tango.AttrDataFormat.SCALAR:
+        if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+            cb_switch_color(cb, value)
+        else:
+            cb_switch_color(cb, 'gray')
+    else:
+        print('Not scalar boolean attribute for QCheckBox')
+
+def lbl_update(lbl: QLabel, dev_proxy: tango.DeviceProxy, attr_name: str):
+    attr = dev_proxy[attr_name]
+    ap = tango.AttributeProxy(dev_proxy.name()+'/'+attr_name)
+    ac = ap.get_config()
+    value = ac.format % attr.value
+    if attr.data_format == tango._tango.AttrDataFormat.SCALAR:
+        if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+            lbl.setText(value)
+        else:
+            lbl.setText('****')
+    else:
+        print('Not scalar boolean attribute for QLabel')
 
 def get_widget_state(obj, config, name=None):
     try:
