@@ -323,6 +323,11 @@
                                <pointsize>16</pointsize>
                               </font>
                              </property>
+                             <property name="styleSheet">
+                              <string notr="true">QCheckBox::indicator {
+background:blue;
+}</string>
+                             </property>
                              <property name="text">
                               <string notr="true"/>
                              </property>
@@ -343,6 +348,9 @@
                               <font>
                                <pointsize>16</pointsize>
                               </font>
+                             </property>
+                             <property name="styleSheet">
+                              <string notr="true"/>
                              </property>
                             </widget>
                            </item>
@@ -471,6 +479,21 @@
                               <font>
                                <pointsize>16</pointsize>
                               </font>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::UpDownArrows</enum>
+                             </property>
+                             <property name="prefix">
+                              <string/>
+                             </property>
+                             <property name="decimals">
+                              <number>1</number>
+                             </property>
+                             <property name="maximum">
+                              <double>100.000000000000000</double>
+                             </property>
+                             <property name="singleStep">
+                              <double>0.100000000000000</double>
                              </property>
                             </widget>
                            </item>

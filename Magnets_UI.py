@@ -134,6 +134,7 @@ class MainWindow(QMainWindow):
         self.actionPlot.triggered.connect(self.show_main_pane)
         self.actionParameters.triggered.connect(self.show_param_pane)
         self.actionAbout.triggered.connect(self.show_about)
+        self.checkBox_25.clicked.connect(self.phandler)
         # Additional decorations
         #self.radioButton.setStyleSheet('QRadioButton {background-color: red}')
         #self.doubleSpinBox_4.setSingleStep(0.1)
@@ -179,8 +180,20 @@ class MainWindow(QMainWindow):
         if m >= 0:
             self.logger.setLevel(levels[m])
 
-    def ehandler(self, m):
-        print(m)
+    def phandler(self, m, *args, **kwargs):
+        print(m, args, kwargs)
+        self.cb_switch_color(self.checkBox_26, m)
+
+    @staticmethod
+    def cb_switch_color(cb: QCheckBox, m, colors=('green', 'red')):
+        if isinstance(m, bool):
+            if m:
+                cb.setStyleSheet('QCheckBox::indicator { background: ' + colors[0] + ';}')
+            else:
+                cb.setStyleSheet('QCheckBox::indicator { background: ' + colors[1] + ';}')
+                #cb.setStyleSheet('QCheckBox::indicator { background: red;}')
+        if isinstance(m, str):
+            cb.setStyleSheet('QCheckBox::indicator { background: ' + m + ';}')
 
     def onQuit(self) :
         # Save global settings
