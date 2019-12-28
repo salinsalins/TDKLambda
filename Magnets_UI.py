@@ -110,34 +110,35 @@ def set_state(obj: PyQt5.QtWidgets.QWidget, name=None, config=None):
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         global logger
-
         # Initialization of the superclass
         super(MainWindow, self).__init__(parent)
-        # Load the UI
-        uic.loadUi(UI_FILE, self)
-        # Default window parameters
-        #self.setMinimumSize(QSize(480, 640))  # Set sizes
-        self.resize(QSize(480, 640))
-        self.move(QPoint(50, 50))
-        self.setWindowTitle(APPLICATION_NAME)  # Set a title
-        self.setWindowIcon(QtGui.QIcon('icon.png'))
-        # Additional logging config
+
+        # logging config
         self.logger = logger
-        # Class members definition
+        # members definition
         self.refresh_flag = False
         self.last_selection = -1
+        self.elapsed = 0
+
+        # Load the UI
+        uic.loadUi(UI_FILE, self)
+        # Default main window parameters
+        #self.setMinimumSize(QSize(480, 640))       # min size
+        self.resize(QSize(480, 640))                # size
+        self.move(QPoint(50, 50))                   # position
+        self.setWindowTitle(APPLICATION_NAME)       # title
+        self.setWindowIcon(QtGui.QIcon('icon.png')) # icon
         # Connect signals with slots
-        ##self.pushButton_1.clicked.connect(self.selectLogFile)
         ##self.plainTextEdit_1.textChanged.connect(self.refresh_on)
+        self.checkBox_25.clicked.connect(self.phandler)
         # Menu actions connection
         self.actionQuit.triggered.connect(qApp.quit)
         self.actionPlot.triggered.connect(self.show_main_pane)
         self.actionParameters.triggered.connect(self.show_param_pane)
         self.actionAbout.triggered.connect(self.show_about)
-        self.checkBox_25.clicked.connect(self.phandler)
         # Additional decorations
-        #self.radioButton.setStyleSheet('QRadioButton {background-color: red}')
-        #self.doubleSpinBox_4.setSingleStep(0.1)
+        ##self.radioButton.setStyleSheet('QRadioButton {background-color: red}')
+        ##self.doubleSpinBox_4.setSingleStep(0.1)
         # Clock at status bar
         self.clock = QLabel(" ")
         self.statusBar().addPermanentWidget(self.clock)
@@ -145,18 +146,6 @@ class MainWindow(QMainWindow):
         print(APPLICATION_NAME + ' version ' + APPLICATION_VERSION + ' started')
 
         self.restore_settings()
-
-        # self.tableWidget_3.setStyleSheet("""
-        #         QTableView {
-        #             gridline-color: black;
-        #             alternate-background-color: #d0d0d0;
-        #         }
-        #         QHeaderView::section {
-        #             background-color: palette(dark);
-        #             border: 1px solid black;
-        #         }
-        #     """)
-
 
     def show_about(self):
         QMessageBox.information(self, 'About', APPLICATION_NAME + ' Version ' + APPLICATION_VERSION +
@@ -247,8 +236,13 @@ class MainWindow(QMainWindow):
             return False
 
     def timer_handler(self):
+        t0 = time.time()
+        self.elapsed += 1
         t = time.strftime('%H:%M:%S')
-        self.clock.setText(t)
+        self.clock.setText('Elapsed: %ds    %s' % (self.elapsed, t))
+        while time.time() - t0 < 0.5:
+            print('timer1-1')
+        #time.sleep(1.0)
 
 
 if __name__ == '__main__':
