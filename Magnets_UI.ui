@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>698</width>
-    <height>671</height>
+    <height>689</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -119,8 +119,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>678</width>
-             <height>535</height>
+             <width>695</width>
+             <height>527</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout">
@@ -483,17 +483,20 @@ background:blue;
                              <property name="buttonSymbols">
                               <enum>QAbstractSpinBox::UpDownArrows</enum>
                              </property>
+                             <property name="keyboardTracking">
+                              <bool>false</bool>
+                             </property>
                              <property name="prefix">
                               <string/>
                              </property>
                              <property name="decimals">
-                              <number>1</number>
+                              <number>2</number>
                              </property>
                              <property name="maximum">
                               <double>100.000000000000000</double>
                              </property>
                              <property name="singleStep">
-                              <double>0.100000000000000</double>
+                              <double>1.000000000000000</double>
                              </property>
                             </widget>
                            </item>
@@ -622,6 +625,9 @@ background:blue;
                               <font>
                                <pointsize>16</pointsize>
                               </font>
+                             </property>
+                             <property name="keyboardTracking">
+                              <bool>false</bool>
                              </property>
                             </widget>
                            </item>
@@ -1014,6 +1020,12 @@ background:blue;
                                   <pointsize>16</pointsize>
                                  </font>
                                 </property>
+                                <property name="keyboardTracking">
+                                 <bool>false</bool>
+                                </property>
+                                <property name="singleStep">
+                                 <double>1.000000000000000</double>
+                                </property>
                                </widget>
                               </item>
                              </layout>
@@ -1141,6 +1153,12 @@ background:blue;
                                  <font>
                                   <pointsize>16</pointsize>
                                  </font>
+                                </property>
+                                <property name="keyboardTracking">
+                                 <bool>false</bool>
+                                </property>
+                                <property name="singleStep">
+                                 <double>1.000000000000000</double>
                                 </property>
                                </widget>
                               </item>
@@ -1533,6 +1551,12 @@ background:blue;
                                      <pointsize>16</pointsize>
                                     </font>
                                    </property>
+                                   <property name="keyboardTracking">
+                                    <bool>false</bool>
+                                   </property>
+                                   <property name="singleStep">
+                                    <double>1.000000000000000</double>
+                                   </property>
                                   </widget>
                                  </item>
                                 </layout>
@@ -1660,6 +1684,12 @@ background:blue;
                                     <font>
                                      <pointsize>16</pointsize>
                                     </font>
+                                   </property>
+                                   <property name="keyboardTracking">
+                                    <bool>false</bool>
+                                   </property>
+                                   <property name="singleStep">
+                                    <double>1.000000000000000</double>
                                    </property>
                                   </widget>
                                  </item>
@@ -1792,7 +1822,7 @@ background:blue;
              </property>
             </widget>
            </item>
-           <item row="5" column="0">
+           <item row="6" column="0">
             <spacer name="verticalSpacer">
              <property name="orientation">
               <enum>Qt::Vertical</enum>
@@ -1830,6 +1860,9 @@ background:blue;
               </item>
              </layout>
             </widget>
+           </item>
+           <item row="5" column="0">
+            <widget class="QLineEdit" name="lineEdit"/>
            </item>
           </layout>
          </widget>

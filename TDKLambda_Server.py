@@ -147,72 +147,52 @@ class TDKLambda_Server(Device):
                 pass
 
     def read_voltage(self, attr: tango.Attribute):
-        ##print('read_voltage')
-        with _lock:
-            if time.time() - self.time > 0.12:
-                self.read_all()
-            val = self.values[0]
-            attr.set_value(val)
-            if val is float('nan'):
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                self.error_stream("Output voltage read error ")
-                ##print("Output voltage read error ")
-            else:
-                attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            ##print('read_voltage:', val, self.tdk.port, self.tdk.addr)
-            return val
+        if time.time() - self.time > 0.12:
+            self.read_all()
+        val = self.values[0]
+        attr.set_value(val)
+        if val is float('nan'):
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            self.error_stream("Output voltage read error ")
+        else:
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+        return val
 
     def read_current(self, attr: tango.Attribute):
-        with _lock:
-            if self.tdk.com is None:
-                self.warn_stream("Read from offline device")
-                val = float('nan')
-            else:
-                val = self.tdk.read_float('MC?')
-            attr.set_value(val)
-            if val is float('nan'):
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                self.error_stream("Output current read error ")
-            else:
-                attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            #msg = 'read_current: ' + str(val)
-            ##print(msg)
-            return val
+        if time.time() - self.time > 0.12:
+            self.read_all()
+        val = self.values[2]
+        attr.set_value(val)
+        if val is float('nan'):
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            self.error_stream("Output current read error ")
+        else:
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+        return val
 
     def read_programmed_voltage(self, attr: tango.Attribute):
-        with _lock:
-            if self.tdk.com is None:
-                self.warn_stream("Read from offline device")
-                val = float('nan')
-            else:
-                val = self.tdk.read_float('PV?')
-            ##print(self.tdk.port, self.tdk.addr, 'read_programmed_voltage val: ', val)
-            attr.set_value(val)
-            if val is float('nan'):
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                self.error_stream("Programmed voltage read error")
-            else:
-                attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            #msg = 'read_programmed_voltage: ' + str(val)
-            ##print(msg)
-            return val
+        if time.time() - self.time > 0.12:
+            self.read_all()
+        val = self.values[1]
+        attr.set_value(val)
+        if val is float('nan'):
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            self.error_stream("Programmed voltage read error")
+        else:
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+        return val
 
     def read_programmed_current(self, attr: tango.Attribute):
-        with _lock:
-            if self.tdk.com is None:
-                self.warn_stream("Read from offline device")
-                val = float('nan')
-            else:
-                val = self.tdk.read_float('PC?')
-            attr.set_value(val)
-            if val is float('nan'):
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                self.error_stream("Programmed current read error")
-            else:
-                attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            #msg = 'read_programmed_current: ' + str(val)
-            ##print(msg)
-            return val
+        if time.time() - self.time > 0.12:
+            self.read_all()
+        val = self.values[3]
+        attr.set_value(val)
+        if val is float('nan'):
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            self.error_stream("Programmed current read error")
+        else:
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+        return val
 
     def write_programmed_voltage(self, value):
         with _lock:
@@ -253,7 +233,6 @@ class TDKLambda_Server(Device):
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
             else:
                 response = self.tdk.send_command(b'OUT?')
-                ##print(response)
                 if response.upper().startswith(b'ON'):
                     attr.set_quality(tango.AttrQuality.ATTR_VALID)
                     value = True
@@ -264,8 +243,6 @@ class TDKLambda_Server(Device):
                     self.error_stream("Read output error")
                     attr.set_quality(tango.AttrQuality.ATTR_INVALID)
                     value = False
-            #msg = 'read_output_state: ' + str(value)
-            ##print(msg)
             attr.set_value(value)
             return value
 

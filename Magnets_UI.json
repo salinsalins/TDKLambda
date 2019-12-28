@@ -1,7 +1,7 @@
 {
     "main_window": {
         "size": [
-            704,
+            708,
             679
         ],
         "position": [
@@ -11,5 +11,6 @@
     },
     "checkBox_4": true,
     "checkBox_3": false,
-    "checkBox": false
+    "checkBox": false,
+    "lineEdit": "kljhkjhkl"
 }

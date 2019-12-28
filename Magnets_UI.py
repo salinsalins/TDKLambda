@@ -23,7 +23,9 @@ from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtWidgets import QComboBox
 from PyQt5.QtWidgets import QCheckBox
+from PyQt5.QtWidgets import QSpinBox
 from PyQt5.QtWidgets import QPlainTextEdit
+from PyQt5.QtWidgets import QLineEdit
 from PyQt5 import uic
 from PyQt5.QtCore import QSize
 from PyQt5.QtCore import QPoint
@@ -87,10 +89,9 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QtGui.QIcon('icon.png')) # icon
         # Connect signals with slots
         ##self.plainTextEdit_1.textChanged.connect(self.refresh_on)
-        self.checkBox_25.clicked.connect(self.phandler)
-        self.doubleSpinBox_21.valueChanged.connect(self.cb_changed)
+        #self.checkBox_25.clicked.connect(self.phandler)
         #self.doubleSpinBox_21.editingFinished.connect(self.phandler)
-        self.doubleSpinBox_21.setKeyboardTracking(False)
+        #self.doubleSpinBox_21.setKeyboardTracking(False)
         # Menu actions connection
         self.actionQuit.triggered.connect(qApp.quit)
         self.actionPlot.triggered.connect(self.show_main_pane)
@@ -116,6 +117,10 @@ class MainWindow(QMainWindow):
                      ('sys/tg_test/1/double_scalar', self.label_63),
                      ('sys/tg_test/1/double_scalar_w', self.label_65),
                      )
+        self.watts = (('sys/tg_test/1/double_scalar_w', self.doubleSpinBox_21),
+                     ('sys/tg_test/1/boolean_scalar', self.checkBox_25),
+                     ('sys/tg_test/1/long_scalar_w', self.doubleSpinBox_20),
+                     )
         self.atps = []
         for at in self.atts:
             try:
@@ -123,6 +128,25 @@ class MainWindow(QMainWindow):
                 self.atps.append((ap, at[1]))
             except:
                 pass
+        self.watps = []
+        for at in self.watts:
+            try:
+                ap = tango.AttributeProxy(at[0])
+                self.watps.append((ap, at[1]))
+                v = ap.read()
+                if hasattr(at[1], 'setValue'):
+                    at[1].setValue(v.value)
+                if hasattr(at[1], 'setChecked'):
+                    at[1].setChecked(v.value)
+            except:
+                print_exception_info()
+                pass
+        for w in self.watps:
+            if isinstance(w[1], QCheckBox):
+                w[1].stateChanged.connect(self.sb_changed)
+            if isinstance(w[1], QSpinBox):
+                w[1].clicked.connect(self.sb_changed)
+
         self.n = 0
 
         self.wap = tango.AttributeProxy('sys/tg_test/1/double_scalar_w')
@@ -162,11 +186,18 @@ class MainWindow(QMainWindow):
     def phandler(self, *args, **kwargs):
         print(args, kwargs)
 
-    def cb_changed(self, value):
-        try:
-            self.wap.write(value)
-        except:
-            print('except')
+    def sb_changed(self, value):
+        #print(value)
+        wgt = self.focusWidget()
+        if isinstance(wgt, QCheckBox):
+            value = bool(value)
+        for w in self.watps:
+            if wgt == w[1]:
+                try:
+                    w[0].write(value)
+                except:
+                    print_exception_info()
+                    #print('except')
 
     def onQuit(self) :
         # Save global settings
@@ -296,7 +327,7 @@ def get_widget_state(obj, config, name=None):
     try:
         if name is None:
             name = obj.objectName()
-        if isinstance(obj, QLabel):
+        if isinstance(obj, QLineEdit):
             config[name] = str(obj.text())
         if isinstance(obj, QComboBox):
             config[name] = {'items': [str(obj.itemText(k)) for k in range(obj.count())],
@@ -314,7 +345,7 @@ def set_widget_state(obj, config, name=None):
             name = obj.objectName()
         if name not in config:
             return
-        if isinstance(obj, QLabel):
+        if isinstance(obj, QLineEdit):
             obj.setText(config[name])
         if isinstance(obj, QComboBox):
             obj.setUpdatesEnabled(False)
