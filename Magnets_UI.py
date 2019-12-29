@@ -141,11 +141,13 @@ class MainWindow(QMainWindow):
             except:
                 print_exception_info()
                 pass
+        # connect widgets with events
         for w in self.watps:
             if isinstance(w[1], QCheckBox):
                 w[1].stateChanged.connect(self.sb_changed)
-            if isinstance(w[1], QSpinBox):
-                w[1].clicked.connect(self.sb_changed)
+            else:
+            #if isinstance(w[1], QSpinBox):
+                w[1].valueChanged.connect(self.sb_changed)
 
         self.n = 0
 
