@@ -13,6 +13,7 @@ import zipfile
 import time
 
 from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QMainWindow
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import qApp
@@ -145,8 +146,7 @@ class MainWindow(QMainWindow):
         for w in self.watps:
             if isinstance(w[1], QCheckBox):
                 w[1].stateChanged.connect(self.sb_changed)
-            else:
-            #if isinstance(w[1], QSpinBox):
+            elif hasattr(w[1], 'valueChanged'):
                 w[1].valueChanged.connect(self.sb_changed)
 
         self.n = 0
@@ -286,6 +286,26 @@ def cb_switch_color(cb: QCheckBox, m, colors=('green', 'red')):
             # cb.setStyleSheet('QCheckBox::indicator { background: red;}')
     if isinstance(m, str):
         cb.setStyleSheet('QCheckBox::indicator { background: ' + m + ';}')
+
+def wdg_update(cb: QWidget, attr_proxy: tango.AttributeProxy):
+    try:
+        attr = attr_proxy.read()
+        value = attr.value
+        if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
+            logger.error('Non SCALAR attribute')
+            return
+        if isinstance(cb, QCheckBox):
+            if attr.type == tango._tango.CmdArgType.DevBoolean:
+                if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+                    cb_switch_color(cb, value)
+                else:
+                    cb_switch_color(cb, 'gray')
+            else:
+                logger.error('Non boolean attribute for QCheckBox')
+                cb_switch_color(cb, 'gray')
+    except:
+        cb_switch_color(cb, 'gray')
+        #cb.setStyleSheet('border: red')
 
 def cb_update(cb: QCheckBox, attr_proxy: tango.AttributeProxy):
     try:
