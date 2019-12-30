@@ -109,7 +109,7 @@ class MainWindow(QMainWindow):
 
         # find all controls in config tab
         self.config_widgets = []
-        self.get_widgets(self.tabWidgetPage3)
+        self.config_widgets = get_widgets(self.tabWidgetPage3)
 
         self.restore_settings(self.config_widgets)
 
@@ -275,6 +275,22 @@ class MainWindow(QMainWindow):
                 break
         #print(int((time.time()-t0)*1000.0), 'ms')
         #time.sleep(1.0)
+
+
+def get_widgets(obj: QtWidgets.QWidget):
+    wgts = []
+    lout = obj.layout()
+    for k in range(lout.count()):
+        wgt = lout.itemAt(k).widget()
+        #if wgt is not None and not isinstance(wgt, QtWidgets.QFrame) and wgt not in wgts:
+        if wgt is not None and wgt not in wgts:
+            wgts.append(wgt)
+        if isinstance(wgt, QtWidgets.QFrame):
+            wgts1 = get_widgets(wgt)
+            for wgt1 in wgts1:
+                if wgt1 not in wgts:
+                    wgts.append(wgt1)
+    return wgts
 
 
 def cb_switch_color(cb: QCheckBox, m, colors=('green', 'red')):
