@@ -190,6 +190,7 @@ class TDKLambda_Server(Device):
         with _lock:
             if time.time() - self.time > 0.12:
                 self.read_all()
+            ##print(time.time() - self.time, self.values)
             val = self.values[3]
             attr.set_value(val)
             if val is float('nan'):
@@ -256,7 +257,6 @@ class TDKLambda_Server(Device):
             if self.tdk.com is None:
                 self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
                 result = False
-                self.debug_stream('Device offline')
             else:
                 if value:
                     response = self.tdk.send_command(b'OUT ON')

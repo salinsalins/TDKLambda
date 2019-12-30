@@ -16,6 +16,7 @@ SLEEP_SMALL = 0.015
 
 
 class ComPort():
+    sn = 123456
     def __init__(self, port, *args, **kwargs):
         #super().__init__(self, port, args, kwargs)
         self.last_address = -1
@@ -27,6 +28,9 @@ class ComPort():
         self.mv = 0.0
         self.mc = 0.0
         self.out = False
+        self.sn = str(ComPort.sn).encode()
+        ComPort.sn += 1
+        self.id = b'LAMBDA GEN10-100'
 
     def close(self):
         pass
@@ -37,17 +41,27 @@ class ComPort():
             self.pv = float(cmd[3:])
         if self.last_write.startswith(b'PC '):
             self.pc = float(cmd[3:])
-        if self.last_write.startswith(b'OUT '):
-            self.out = bool(cmd[4:])
+        if self.last_write.startswith(b'OUT ON'):
+            self.out = True
+        if self.last_write.startswith(b'OUT OF'):
+            self.out = False
 
     def read(self, *args):
+        if self.last_write == b'':
+            return b''
         if self.last_write.startswith(b'ADR '):
             self.last_address = int(self.last_write[4])
             self.last_write = b''
             return b'OK\r'
         if self.last_write.startswith(b'DVC?'):
+            self.mv += 0.5
+            if self.mv > 10.0:
+                self.mv = -10.0
+            self.mc += 1.0
+            if self.mc > 100.0:
+                self.mc = -100.0
             self.last_write = b''
-            return b'%f, %f, %f, %f, 0.0, 0.0\r' % (self.pv, self.mv, self.pc, self.mc)
+            return b'%f, %f, %f, %f, 0.0, 0.0\r' % (self.mv, self.pv, self.mc, self.pc)
         if self.last_write.startswith(b'PV?'):
             self.mv += 0.5
             if self.mv > 10.0:
@@ -67,25 +81,23 @@ class ComPort():
                 self.mc = -100.0
             return str(self.pc).encode() + b'\r'
         if self.last_write.startswith(b'MV?'):
-            self.mc += 1.0
-            if self.mc > 100.0:
-                self.mc = -100.0
+            self.mv += 1.0
+            if self.mv > 100.0:
+                self.mv = -100.0
             self.last_write = b''
             return str(self.mc).encode() + b'\r'
         if self.last_write.startswith(b'IDN?'):
             self.last_write = b''
-            return b'LAMBDA GEN10-100\r'
+            return self.id + b'\r'
         if self.last_write.startswith(b'SN?'):
             self.last_write = b''
-            return b'123456\r'
+            return self.sn + b'\r'
         if self.last_write.startswith(b'OUT?'):
             self.last_write = b''
             if self.out:
                 return b'ON\r'
             else:
                 return b'OFF\r'
-        if self.last_write == b'':
-            return b''
         self.last_write = b''
         return b'OK\r'
 
