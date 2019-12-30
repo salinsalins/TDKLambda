@@ -70,10 +70,11 @@ class TDKLambda_Server(Device):
 
     def get_device_property(self, prop: str, default=None):
         name = self.get_name()
-        # device proxy
-        dp = tango.DeviceProxy(name)
+        if not hasattr(self, 'dp'):
+            # device proxy
+            self.dp = tango.DeviceProxy(name)
         # read property
-        pr = dp.get_property(prop)[prop]
+        pr = self.dp.get_property(prop)[prop]
         result = None
         if len(pr) > 0:
             result = pr[0]
