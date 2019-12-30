@@ -26,6 +26,7 @@ class ComPort():
         self.pc = 0.0
         self.mv = 0.0
         self.mc = 0.0
+        self.out = False
 
     def close(self):
         pass
@@ -36,6 +37,8 @@ class ComPort():
             self.pv = float(cmd[3:])
         if self.last_write.startswith(b'PC '):
             self.pc = float(cmd[3:])
+        if self.last_write.startswith(b'OUT '):
+            self.out = bool(cmd[4:])
 
     def read(self, *args):
         if self.last_write.startswith(b'ADR '):
@@ -46,6 +49,9 @@ class ComPort():
             self.last_write = b''
             return b'%f, %f, %f, %f, 0.0, 0.0\r' % (self.pv, self.mv, self.pc, self.mc)
         if self.last_write.startswith(b'PV?'):
+            self.mv += 0.5
+            if self.mv > 10.0:
+                self.mv = -10.0
             self.last_write = b''
             return str(self.pv).encode() + b'\r'
         if self.last_write.startswith(b'MV?'):
@@ -56,6 +62,9 @@ class ComPort():
             return str(self.mv).encode() + b'\r'
         if self.last_write.startswith(b'PC?'):
             self.last_write = b''
+            self.mc += 1.0
+            if self.mc > 100.0:
+                self.mc = -100.0
             return str(self.pc).encode() + b'\r'
         if self.last_write.startswith(b'MV?'):
             self.mc += 1.0
@@ -69,8 +78,16 @@ class ComPort():
         if self.last_write.startswith(b'SN?'):
             self.last_write = b''
             return b'123456\r'
+        if self.last_write.startswith(b'OUT?'):
+            self.last_write = b''
+            if self.out:
+                return b'ON\r'
+            else:
+                return b'OFF\r'
+        if self.last_write == b'':
+            return b''
         self.last_write = b''
-        return b''
+        return b'OK\r'
 
 
 class TDKLambda():
@@ -117,7 +134,7 @@ class TDKLambda():
         if self.logger is None:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.DEBUG)
+            self.logger.setLevel(logging.INFO)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
@@ -559,6 +576,18 @@ if __name__ == "__main__":
         v1 = pd1.read_float("PC?")
         dt1 = int((time.time()-t0)*1000.0)    #ms
         print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pd1.timeout, pd1.port, pd1.addr)
+        t0 = time.time()
+        v1 = pd1.read_float("MV?")
+        dt1 = int((time.time()-t0)*1000.0)    #ms
+        print('1: ', '%4d ms ' % dt1,'MV?=', v1, 'to=', '%5.3f' % pd1.timeout, pd1.port, pd1.addr)
+        t0 = time.time()
+        v1 = pd1.send_command("PV 1.0")
+        dt1 = int((time.time()-t0)*1000.0)    #ms
+        print('1: ', '%4d ms ' % dt1,'PV 1.0', v1, 'to=', '%5.3f' % pd1.timeout, pd1.port, pd1.addr)
+        t0 = time.time()
+        v1 = pd1.read_float("PV?")
+        dt1 = int((time.time()-t0)*1000.0)    #ms
+        print('1: ', '%4d ms ' % dt1,'PV?=', v1, 'to=', '%5.3f' % pd1.timeout, pd1.port, pd1.addr)
         t0 = time.time()
         v3 = pd1.read_all()
         dt1 = int((time.time()-t0)*1000.0)    #ms

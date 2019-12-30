@@ -16,7 +16,7 @@ import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
 from tango.server import Device, attribute, command
 
-from TDKLambda import TDKLambda
+from FakeTDKLambda import TDKLambda
 
 from threading import Thread, Lock
 
@@ -85,6 +85,7 @@ class TDKLambda_Server(Device):
                 result = default
             else:
                 result = type(default)(result)
+            return result
         except:
             return result
 
@@ -137,63 +138,66 @@ class TDKLambda_Server(Device):
             return self.tdk.id
 
     def read_all(self):
-        with _lock:
-            try:
-                values = self.tdk.read_all()
-                self.values = values
-                self.time = time.time()
-            except:
-                msg = '%s:%d TDKLambda read error' % (self.tdk.port, self.tdk.addr)
-                print(msg)
-                self.error_stream(msg)
+        try:
+            values = self.tdk.read_all()
+            self.values = values
+            self.time = time.time()
+        except:
+            msg = '%s:%d TDKLambda read error' % (self.tdk.port, self.tdk.addr)
+            print(msg)
+            self.error_stream(msg)
 
     def read_voltage(self, attr: tango.Attribute):
-        if time.time() - self.time > 0.12:
-            self.read_all()
-        val = self.values[0]
-        attr.set_value(val)
-        if val is float('nan'):
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            self.error_stream("Output voltage read error ")
-        else:
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
-        return val
+        with _lock:
+            if time.time() - self.time > 0.12:
+                self.read_all()
+            val = self.values[0]
+            attr.set_value(val)
+            if val is float('nan'):
+                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+                self.error_stream("Output voltage read error ")
+            else:
+                attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            return val
 
     def read_current(self, attr: tango.Attribute):
-        if time.time() - self.time > 0.12:
-            self.read_all()
-        val = self.values[2]
-        attr.set_value(val)
-        if val is float('nan'):
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            self.error_stream("Output current read error ")
-        else:
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
-        return val
+        with _lock:
+            if time.time() - self.time > 0.12:
+                self.read_all()
+            val = self.values[2]
+            attr.set_value(val)
+            if val is float('nan'):
+                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+                self.error_stream("Output current read error ")
+            else:
+                attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            return val
 
     def read_programmed_voltage(self, attr: tango.Attribute):
-        if time.time() - self.time > 0.12:
-            self.read_all()
-        val = self.values[1]
-        attr.set_value(val)
-        if val is float('nan'):
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            self.error_stream("Programmed voltage read error")
-        else:
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
-        return val
+        with _lock:
+            if time.time() - self.time > 0.12:
+                self.read_all()
+            val = self.values[1]
+            attr.set_value(val)
+            if val is float('nan'):
+                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+                self.error_stream("Programmed voltage read error")
+            else:
+                attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            return val
 
     def read_programmed_current(self, attr: tango.Attribute):
-        if time.time() - self.time > 0.12:
-            self.read_all()
-        val = self.values[3]
-        attr.set_value(val)
-        if val is float('nan'):
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            self.error_stream("Programmed current read error")
-        else:
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
-        return val
+        with _lock:
+            if time.time() - self.time > 0.12:
+                self.read_all()
+            val = self.values[3]
+            attr.set_value(val)
+            if val is float('nan'):
+                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+                self.error_stream("Programmed current read error")
+            else:
+                attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            return val
 
     def write_programmed_voltage(self, value):
         with _lock:
