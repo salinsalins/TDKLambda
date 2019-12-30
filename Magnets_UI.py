@@ -283,7 +283,8 @@ def get_widgets(obj: QtWidgets.QWidget):
     for k in range(lout.count()):
         wgt = lout.itemAt(k).widget()
         #if wgt is not None and not isinstance(wgt, QtWidgets.QFrame) and wgt not in wgts:
-        if wgt is not None and wgt not in wgts:
+        #if wgt is not None and wgt not in wgts:
+        if wgt is not None and isinstance(wgt, QtWidgets.QWidget) and wgt not in wgts:
             wgts.append(wgt)
         if isinstance(wgt, QtWidgets.QFrame):
             wgts1 = get_widgets(wgt)
