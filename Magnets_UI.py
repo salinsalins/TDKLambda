@@ -63,8 +63,14 @@ logger.addHandler(console_handler)
 CONFIG = {}
 
 
-def print_exception_info(level=logging.DEBUG):
-    logger.log(level, "Exception ", exc_info=True)
+class TangoHelper():
+    def __init__(self, attr_proxy: tango.AttributeProxy = None):
+        self.attr_proxy = attr_proxy
+        self.attr = None
+
+    def read(self):
+        self.attr = self.attr_proxy.read()
+        return self.attr
 
 
 class MainWindow(QMainWindow):
@@ -92,8 +98,7 @@ class MainWindow(QMainWindow):
         ##self.plainTextEdit_1.textChanged.connect(self.refresh_on)
         #self.checkBox_25.clicked.connect(self.phandler)
         #self.doubleSpinBox_21.editingFinished.connect(self.phandler)
-        #self.doubleSpinBox_21.setKeyboardTracking(False)
-        # Menu actions connection
+        # Connect menu actions
         self.actionQuit.triggered.connect(qApp.quit)
         self.actionPlot.triggered.connect(self.show_main_pane)
         self.actionParameters.triggered.connect(self.show_param_pane)
@@ -101,6 +106,7 @@ class MainWindow(QMainWindow):
         # Additional decorations
         ##self.radioButton.setStyleSheet('QRadioButton {background-color: red}')
         ##self.doubleSpinBox_4.setSingleStep(0.1)
+        ##self.doubleSpinBox_21.setKeyboardTracking(False)
         # Clock at status bar
         self.clock = QLabel(" ")
         self.statusBar().addPermanentWidget(self.clock)
@@ -113,35 +119,40 @@ class MainWindow(QMainWindow):
 
         self.restore_settings(self.config_widgets)
 
-        # attribute list
+        # read attribute list
         self.atts = (('sys/tg_test/1/boolean_scalar', self.checkBox_26),
                      ('sys/tg_test/1/double_scalar', self.label_63),
                      ('sys/tg_test/1/double_scalar_w', self.label_65),
                      )
+        # write attribute list
         self.watts = (('sys/tg_test/1/double_scalar_w', self.doubleSpinBox_21),
                      ('sys/tg_test/1/boolean_scalar', self.checkBox_25),
                      ('sys/tg_test/1/long_scalar_w', self.doubleSpinBox_20),
                      )
+        # convert to list of [attr_poxy, widget] pairs
         self.atps = []
         for at in self.atts:
             try:
                 ap = tango.AttributeProxy(at[0])
-                self.atps.append((ap, at[1]))
+                self.atps.append([ap, at[1]])
+                at[1].tango = TangoHelper(ap)
             except:
-                pass
+                logger.info('Attribute proxy creation error for %s' % at[0])
+                print_exception_info()
         self.watps = []
         for at in self.watts:
             try:
                 ap = tango.AttributeProxy(at[0])
-                self.watps.append((ap, at[1]))
+                self.watps.append([ap, at[1]])
+                at[1].tango = TangoHelper(ap)
                 v = ap.read()
                 if hasattr(at[1], 'setValue'):
                     at[1].setValue(v.value)
                 if hasattr(at[1], 'setChecked'):
                     at[1].setChecked(v.value)
             except:
+                logger.info('Attribute proxy creation error for %s' % at[0])
                 print_exception_info()
-                pass
         # connect widgets with events
         for w in self.watps:
             if isinstance(w[1], QCheckBox):
@@ -293,7 +304,6 @@ def get_widgets(obj: QtWidgets.QWidget):
                     wgts.append(wgt1)
     return wgts
 
-
 def cb_switch_color(cb: QCheckBox, m, colors=('green', 'red')):
     if isinstance(m, bool):
         if m:
@@ -403,6 +413,10 @@ def set_widget_state(obj, config, name=None):
             obj.setPlainText(config[name])
     except:
         return
+
+def print_exception_info(level=logging.DEBUG):
+    logger.log(level, "Exception ", exc_info=True)
+
 
 if __name__ == '__main__':
     # Create the GUI application
