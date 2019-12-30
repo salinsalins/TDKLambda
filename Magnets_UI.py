@@ -258,9 +258,9 @@ class MainWindow(QMainWindow):
                 self.move(QPoint(CONFIG['main_window']['position'][0], CONFIG['main_window']['position'][1]))
             #set_state(self.plainTextEdit_1, 'plainTextEdit_1')
             #set_state(self.comboBox_1, 'comboBox_1')
-            self.logger.log(logging.INFO, 'Configuration restored from %s' % file_name)
             for w in widgets:
                 set_widget_state(w, CONFIG)
+            self.logger.log(logging.INFO, 'Configuration restored from %s' % file_name)
             return True
         except :
             self.logger.log(logging.WARNING, 'Configuration restore error from %s' % file_name)
