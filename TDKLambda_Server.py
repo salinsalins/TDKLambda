@@ -90,16 +90,14 @@ class TDKLambda_Server(Device):
 
     def init_device(self):
         with _lock:
+            self.values = [float('NaN')] * 6
+            self.time = time.time() - 100.0
             self.set_state(DevState.INIT)
             Device.init_device(self)
             self.last_level = logging.INFO
-            try:
-                # get port and address from property
-                port = self.get_device_property('port')
-                addr = int(self.get_device_property('addr'))
-            except:
-                port = 'COM1'
-                addr = 6
+            # get port and address from property
+            port = self.get_device_property('port', 'COM1')
+            addr = self.get_device_property('addr', 6)
             # create TDKLambda device
             self.tdk = TDKLambda(port, addr)
             # check if device OK
@@ -118,7 +116,7 @@ class TDKLambda_Server(Device):
                 print(msg)
                 self.info_stream(msg)
             else:
-                # unknown device type
+                # unknown device id
                 msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
                 print(msg)
                 self.info_stream(msg)
@@ -145,7 +143,9 @@ class TDKLambda_Server(Device):
                 self.values = values
                 self.time = time.time()
             except:
-                pass
+                msg = '%s:%d TDKLambda read error' % (self.tdk.port, self.tdk.addr)
+                print(msg)
+                self.error_stream(msg)
 
     def read_voltage(self, attr: tango.Attribute):
         if time.time() - self.time > 0.12:
