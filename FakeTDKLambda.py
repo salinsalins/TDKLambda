@@ -22,7 +22,7 @@ class ComPort():
         #super().__init__(self, port, args, kwargs)
         self.last_address = -1
         self.lock = Lock()
-        self.onfline = False
+        self.online = False
         self.last_write = b''
         self.pv = 0.0
         self.pc = 0.0
@@ -34,7 +34,8 @@ class ComPort():
         self.id = b'LAMBDA GEN10-100'
 
     def close(self):
-        pass
+        self.online = False
+        return True
 
     def write(self, cmd):
         self.last_write = cmd
