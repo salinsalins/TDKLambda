@@ -130,6 +130,7 @@ class TDKLambda_Server(Device):
                 TDKLambda_Server.devices.remove(self)
                 self.tdk.__del__()
                 msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
+                print(msg)
                 self.info_stream(msg)
 
     def read_devicetype(self):

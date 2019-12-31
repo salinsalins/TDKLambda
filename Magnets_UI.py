@@ -120,14 +120,14 @@ class MainWindow(QMainWindow):
         self.restore_settings(self.config_widgets)
 
         # read attribute list
-        self.atts = (('binp/test/test1/output_state', self.checkBox_26),
-                     ('binp/test/test1/voltage', self.label_63),
-                     ('binp/test/test1/current', self.label_65),
+        self.atts = (('binp/nbi/magnet1/output_state', self.checkBox_26),
+                     ('binp/nbi/magnet1/voltage', self.label_63),
+                     ('binp/nbi/magnet1/current', self.label_65),
                      )
         # write attribute list
-        self.watts = (('binp/test/test1/programmed_current', self.doubleSpinBox_21),
-                     ('binp/test/test1/output_state', self.checkBox_25),
-                     ('binp/test/test1/programmed_voltage', self.doubleSpinBox_20),
+        self.watts = (('binp/nbi/magnet1/programmed_current', self.doubleSpinBox_21),
+                     ('binp/nbi/magnet1/output_state', self.checkBox_25),
+                     ('binp/nbi/magnet1/programmed_voltage', self.doubleSpinBox_20),
                      )
         # convert to list of [attr_poxy, widget] pairs
         self.atps = []
