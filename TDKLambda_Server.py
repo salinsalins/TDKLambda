@@ -143,8 +143,8 @@ class TDKLambda_Server(Device):
         #print(msg)
         #self.debug_stream(msg)
         try:
-            msg = '%s:%d read_all %s' % (self.tdk.port, self.tdk.addr, self.time)
-            print(msg)
+            #msg = '%s:%d read_all %s' % (self.tdk.port, self.tdk.addr, self.time)
+            #print(msg)
             values = self.tdk.read_all()
             self.values = values
             self.time = time.time()
