@@ -138,10 +138,18 @@ class TDKLambda_Server(Device):
             return self.tdk.id
 
     def read_all(self):
+        t0 = time.time()
+        #msg = '%s:%d read_all' % (self.tdk.port, self.tdk.addr)
+        #print(msg)
+        #self.debug_stream(msg)
         try:
+            msg = '%s:%d read_all %s' % (self.tdk.port, self.tdk.addr, self.time)
+            print(msg)
             values = self.tdk.read_all()
             self.values = values
             self.time = time.time()
+            msg = '%s:%d read_all %s ms %s' % (self.tdk.port, self.tdk.addr, int((self.time-t0)*1000.0), values)
+            print(msg)
         except:
             msg = '%s:%d TDKLambda read error' % (self.tdk.port, self.tdk.addr)
             print(msg)
