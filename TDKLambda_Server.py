@@ -9,6 +9,7 @@ APPLICATION_VERSION = '1_1'
 #UI_FILE = APPLICATION_NAME_SHORT + '.ui'
 
 """TDK Lambda Genesis series power supply tango device server"""
+
 import logging
 import time
 
