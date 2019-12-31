@@ -173,6 +173,7 @@ class TDKLambda():
             console_handler = logging.StreamHandler()
             console_handler.setFormatter(log_formatter)
             self.logger.addHandler(console_handler)
+            ##print('***', self.logger)
 
         # check if port and addr are in use
         for d in TDKLambda.devices:
@@ -530,6 +531,7 @@ class TDKLambda():
             if result:
                 return True
             count +=1
+            self.logger.info('Set address repeated')
             result = self._set_addr()
         if result:
             return True
