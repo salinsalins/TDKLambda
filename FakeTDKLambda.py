@@ -147,6 +147,7 @@ class TDKLambda():
         # configure logger
         if self.logger is None:
             self.logger = logging.getLogger(str(self))
+            print(self.logger)
             self.logger.propagate = False
             self.logger.setLevel(logging.DEBUG)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',

@@ -273,6 +273,8 @@ class MainWindow(QMainWindow):
         t = time.strftime('%H:%M:%S')
         self.clock.setText('%s' % t)
         #self.clock.setText('Elapsed: %ds    %s' % (self.elapsed, t))
+        if len(self.atps) <= 0:
+            return
         count = 0
         while time.time() - t0 < 0.2:
             if isinstance(self.atps[self.n][1], QLabel):
