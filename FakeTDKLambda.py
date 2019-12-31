@@ -161,8 +161,7 @@ class TDKLambda():
 
         # configure logger
         if self.logger is None:
-            self.logger = logging.getLogger(str(self))
-            print(self.logger)
+            self.logger = logging.getLogger(self.__class__.__name__)
             self.logger.propagate = False
             self.logger.setLevel(logging.DEBUG)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
@@ -304,7 +303,7 @@ class TDKLambda():
             smbl = self.com.read(10000)
             n += 1
             #self.logger.debug('3 %4.0f ms', (time.time() - t0) * 1000.0)
-        #self.logger.debug('%4.0f ms', (time.time() - t0) * 1000.0)
+        self.logger.debug('%d %4.0f ms', n, (time.time() - t0) * 1000.0)
         return n
 
     def _write(self, cmd):
