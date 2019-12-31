@@ -120,14 +120,14 @@ class MainWindow(QMainWindow):
         self.restore_settings(self.config_widgets)
 
         # read attribute list
-        self.atts = (('sys/tg_test/1/boolean_scalar', self.checkBox_26),
-                     ('sys/tg_test/1/double_scalar', self.label_63),
-                     ('sys/tg_test/1/double_scalar_w', self.label_65),
+        self.atts = (('binp/test/test1/output_state', self.checkBox_26),
+                     ('binp/test/test1/voltage', self.label_63),
+                     ('binp/test/test1/current', self.label_65),
                      )
         # write attribute list
-        self.watts = (('sys/tg_test/1/double_scalar_w', self.doubleSpinBox_21),
-                     ('sys/tg_test/1/boolean_scalar', self.checkBox_25),
-                     ('sys/tg_test/1/long_scalar_w', self.doubleSpinBox_20),
+        self.watts = (('binp/test/test1/programmed_current', self.doubleSpinBox_21),
+                     ('binp/test/test1/output_state', self.checkBox_25),
+                     ('binp/test/test1/programmed_voltage', self.doubleSpinBox_20),
                      )
         # convert to list of [attr_poxy, widget] pairs
         self.atps = []
@@ -162,7 +162,7 @@ class MainWindow(QMainWindow):
 
         self.n = 0
 
-        self.wap = tango.AttributeProxy('sys/tg_test/1/double_scalar_w')
+        #self.wap = tango.AttributeProxy('sys/tg_test/1/double_scalar_w')
 
     def get_widgets(self, obj, s=''):
         lout = obj.layout()
@@ -271,9 +271,12 @@ class MainWindow(QMainWindow):
         t0 = time.time()
         self.elapsed += 1
         t = time.strftime('%H:%M:%S')
-        self.clock.setText('Elapsed: %ds    %s' % (self.elapsed, t))
+        self.clock.setText('%s' % t)
+        #self.clock.setText('Elapsed: %ds    %s' % (self.elapsed, t))
+        if len(self.atps) <= 0:
+            return
         count = 0
-        while time.time() - t0 < 0.25:
+        while time.time() - t0 < 0.2:
             if isinstance(self.atps[self.n][1], QLabel):
                 lbl_update(self.atps[self.n][1], self.atps[self.n][0])
             if isinstance(self.atps[self.n][1], QCheckBox):
@@ -429,7 +432,7 @@ if __name__ == '__main__':
     # Defile and start timer task
     timer = QTimer()
     timer.timeout.connect(dmw.timer_handler)
-    timer.start(200)
+    timer.start(300)
     # Start the Qt main loop execution, exiting from this script
     # with the same return code of Qt application
     sys.exit(app.exec_())

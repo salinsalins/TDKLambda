@@ -17,84 +17,101 @@ SLEEP_SMALL = 0.015
 
 class ComPort():
     sn = 123456
+
     def __init__(self, port, *args, **kwargs):
         #super().__init__(self, port, args, kwargs)
         self.last_address = -1
         self.lock = Lock()
-        self.onfline = False
+        self.online = False
         self.last_write = b''
-        self.pv = 0.0
-        self.pc = 0.0
-        self.mv = 0.0
-        self.mc = 0.0
-        self.out = False
-        self.sn = str(ComPort.sn).encode()
+        self.pv = {self.last_address: 0.0}
+        self.pc = {self.last_address: 0.0}
+        self.mv = {self.last_address: 0.0}
+        self.mc = {self.last_address: 0.0}
+        self.out = {self.last_address: False}
+        self.sn = {self.last_address: str(ComPort.sn).encode()}
         ComPort.sn += 1
-        self.id = b'LAMBDA GEN10-100'
+        self.id = {self.last_address: b'LAMBDA GEN10-100'}
 
     def close(self):
-        pass
+        self.last_write = b''
+        self.online = False
+        return True
 
     def write(self, cmd):
-        self.last_write = cmd
-        if self.last_write.startswith(b'PV '):
-            self.pv = float(cmd[3:])
-        if self.last_write.startswith(b'PC '):
-            self.pc = float(cmd[3:])
-        if self.last_write.startswith(b'OUT ON'):
-            self.out = True
-        if self.last_write.startswith(b'OUT OF'):
-            self.out = False
+        try:
+            self.last_write = cmd
+            if self.last_write.startswith(b'ADR '):
+                self.last_address = int(self.last_write[4:])
+                if self.last_address not in self.pv:
+                    self.pv[self.last_address] = 0.0
+                    self.pc[self.last_address] = 0.0
+                    self.mv[self.last_address] = 0.0
+                    self.mc[self.last_address] = 0.0
+                    self.out[self.last_address] = False
+                    self.sn[self.last_address] = str(ComPort.sn).encode()
+                    ComPort.sn += 1
+                    self.id[self.last_address] = self.id[-1]
+            if self.last_write.startswith(b'PV '):
+                self.pv[self.last_address] = float(cmd[3:])
+            if self.last_write.startswith(b'PC '):
+                self.pc[self.last_address] = float(cmd[3:])
+            if self.last_write.startswith(b'OUT ON'):
+                self.out[self.last_address] = True
+            if self.last_write.startswith(b'OUT OF'):
+                self.out[self.last_address] = False
+        except:
+            pass
 
     def read(self, *args):
         if self.last_write == b'':
             return b''
         if self.last_write.startswith(b'ADR '):
-            self.last_address = int(self.last_write[4])
+            self.last_address = int(self.last_write[3:])
             self.last_write = b''
             return b'OK\r'
         if self.last_write.startswith(b'DVC?'):
-            self.mv += 0.5
-            if self.mv > 10.0:
-                self.mv = -10.0
-            self.mc += 1.0
-            if self.mc > 100.0:
-                self.mc = -100.0
+            self.mv[self.last_address] += 0.5
+            if self.mv[self.last_address] > 10.0:
+                self.mv[self.last_address] = -10.0
+            self.mc[self.last_address] += 1.0
+            if self.mc[self.last_address] > 100.0:
+                self.mc[self.last_address] = -100.0
             self.last_write = b''
-            return b'%f, %f, %f, %f, 0.0, 0.0\r' % (self.mv, self.pv, self.mc, self.pc)
+            return b'%f, %f, %f, %f, 0.0, 0.0\r' % (self.mv[self.last_address], self.pv[self.last_address], self.mc[self.last_address], self.pc[self.last_address])
         if self.last_write.startswith(b'PV?'):
-            self.mv += 0.5
-            if self.mv > 10.0:
-                self.mv = -10.0
+            self.mv[self.last_address] += 0.5
+            if self.mv[self.last_address] > 10.0:
+                self.mv[self.last_address] = -10.0
             self.last_write = b''
-            return str(self.pv).encode() + b'\r'
+            return str(self.pv[self.last_address]).encode() + b'\r'
         if self.last_write.startswith(b'MV?'):
-            self.mv += 0.5
-            if self.mv > 10.0:
-                self.mv = -10.0
+            self.mv[self.last_address] += 0.5
+            if self.mv[self.last_address] > 10.0:
+                self.mv[self.last_address] = -10.0
             self.last_write = b''
-            return str(self.mv).encode() + b'\r'
+            return str(self.mv[self.last_address]).encode() + b'\r'
         if self.last_write.startswith(b'PC?'):
             self.last_write = b''
-            self.mc += 1.0
-            if self.mc > 100.0:
-                self.mc = -100.0
-            return str(self.pc).encode() + b'\r'
+            self.mc[self.last_address] += 1.0
+            if self.mc[self.last_address] > 100.0:
+                self.mc[self.last_address] = -100.0
+            return str(self.pc[self.last_address]).encode() + b'\r'
         if self.last_write.startswith(b'MV?'):
-            self.mv += 1.0
-            if self.mv > 100.0:
-                self.mv = -100.0
+            self.mv[self.last_address] += 1.0
+            if self.mv[self.last_address] > 100.0:
+                self.mv[self.last_address] = -100.0
             self.last_write = b''
-            return str(self.mc).encode() + b'\r'
+            return str(self.mv[self.last_address]).encode() + b'\r'
         if self.last_write.startswith(b'IDN?'):
             self.last_write = b''
-            return self.id + b'\r'
+            return self.id[self.last_address] + b'\r'
         if self.last_write.startswith(b'SN?'):
             self.last_write = b''
-            return self.sn + b'\r'
+            return self.sn[self.last_address] + b'\r'
         if self.last_write.startswith(b'OUT?'):
             self.last_write = b''
-            if self.out:
+            if self.out[self.last_address]:
                 return b'ON\r'
             else:
                 return b'OFF\r'
@@ -144,9 +161,9 @@ class TDKLambda():
 
         # configure logger
         if self.logger is None:
-            self.logger = logging.getLogger(str(self))
+            self.logger = logging.getLogger(self.__class__.__name__)
             self.logger.propagate = False
-            self.logger.setLevel(logging.INFO)
+            self.logger.setLevel(logging.DEBUG)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
@@ -156,6 +173,7 @@ class TDKLambda():
             console_handler = logging.StreamHandler()
             console_handler.setFormatter(log_formatter)
             self.logger.addHandler(console_handler)
+            ##print('***', self.logger)
 
         # check if port and addr are in use
         for d in TDKLambda.devices:
@@ -286,20 +304,23 @@ class TDKLambda():
             smbl = self.com.read(10000)
             n += 1
             #self.logger.debug('3 %4.0f ms', (time.time() - t0) * 1000.0)
-        #self.logger.debug('%4.0f ms', (time.time() - t0) * 1000.0)
+        self.logger.debug('%d %4.0f ms', n, (time.time() - t0) * 1000.0)
         return n
 
     def _write(self, cmd):
+        t0 = time.time()
         try:
             # clear input buffer
             self.clear_input_buffer()
             # write command
             self.com.write(cmd)
             time.sleep(self.sleep_after_write)
+            self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
             return True
         except:
-            self.logger.error('Exception during write')
-            self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
+            self.logger.error('Exception during _write')
+            self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
+            self.logger.debug("Exception Info:", exc_info=True)
             return False
 
     def _send_command(self, cmd):
@@ -382,7 +403,7 @@ class TDKLambda():
             n += 1
         dt = time.time() - t0
         self.timeout = max(2.0 * dt, self.min_timeout)
-        self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
+        #self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
         return data
 
     def read(self):
@@ -510,6 +531,7 @@ class TDKLambda():
             if result:
                 return True
             count +=1
+            self.logger.info('Set address repeated')
             result = self._set_addr()
         if result:
             return True
