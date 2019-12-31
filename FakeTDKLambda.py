@@ -17,6 +17,7 @@ SLEEP_SMALL = 0.015
 
 class ComPort():
     sn = 123456
+
     def __init__(self, port, *args, **kwargs):
         #super().__init__(self, port, args, kwargs)
         self.last_address = -1
