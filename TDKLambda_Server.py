@@ -150,7 +150,8 @@ class TDKLambda_Server(Device):
             values = self.tdk.read_all()
             self.values = values
             self.time = time.time()
-            msg = '%s:%d read_all %s ms %s' % (self.tdk.port, self.tdk.addr, int((self.time-t0)*1000.0), values)
+            msg = '%f %s:%d read_all %s ms %s' % \
+                  (self.time, self.tdk.port, self.tdk.addr, int((self.time-t0)*1000.0), values)
             print(msg)
         except:
             msg = '%s:%d TDKLambda read error' % (self.tdk.port, self.tdk.addr)

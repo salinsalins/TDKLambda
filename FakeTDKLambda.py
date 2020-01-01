@@ -166,7 +166,7 @@ class TDKLambda():
             self.logger.setLevel(logging.DEBUG)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
-            f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' +\
+            f_str = '%(asctime)s,%(msecs)d %(funcName)s(%(lineno)s) ' +\
                     '%s:%d ' % (self.port, self.addr) +\
                     '%(levelname)-7s %(message)s'
             log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')

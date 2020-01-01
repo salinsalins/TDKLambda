@@ -52,7 +52,7 @@ UI_FILE = APPLICATION_NAME_SHORT + '.ui'
 # Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-f_str = '%(asctime)s %(funcName)s(%(lineno)s) ' + \
+f_str = '%(asctime)s,%(msecs)d %(funcName)s(%(lineno)s) ' + \
         '%(levelname)-7s %(message)s'
 log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
 console_handler = logging.StreamHandler()
@@ -64,13 +64,59 @@ CONFIG = {}
 
 
 class TangoHelper():
-    def __init__(self, attr_proxy: tango.AttributeProxy = None):
-        self.attr_proxy = attr_proxy
+    def __init__(self, attribute, widget: QWidget):
+        if isinstance(attribute, tango.AttributeProxy):
+            self.attr_proxy = attribute
+        elif isinstance(attribute, str):
+            try:
+                self.attr_proxy = tango.AttributeProxy(attribute)
+            except:
+                self.attr_proxy = None
+        else:
+            logger.warning('tango.AttributeProxy or name<str> required')
+            self.attr_proxy = None
         self.attr = None
+        self.widget = widget
 
     def read(self):
         self.attr = self.attr_proxy.read()
         return self.attr
+
+    def update(self):
+        try:
+            attr = self.attr_proxy.read()
+            if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
+                logger.error('Non SCALAR attribute')
+                return
+            if isinstance(self.widget, QCheckBox):
+                if attr.type == tango._tango.CmdArgType.DevBoolean:
+                    if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+                        cb_set_color(self.widget, attr.value)
+                    else:
+                        cb_set_color(self.widget, 'gray')
+                else:
+                    logger.error('Non boolean attribute for QCheckBox')
+                    cb_set_color(self.widget, 'gray')
+                return
+            if isinstance(self.widget, QCheckBox):
+                ac = self.attr_proxy.get_config()
+                value = ac.format % attr.value
+                if attr.data_format == tango._tango.AttrDataFormat.SCALAR:
+                    if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+                        self.widget.setText(value)
+                        # lbl.setStyleSheet('background: green; color: blue')
+                    else:
+                        self.widget.setText(value)
+                        self.widget.setStyleSheet('color: red')
+                        # lbl.setStyleSheet('background: red')
+                else:
+                    print('Not scalar attribute for QLabel')
+                    self.widget.setText('****')
+                    self.widget.setStyleSheet('color: red')
+        except:
+            logger.error('Attribute read error')
+            cb_set_color(self.widget, 'gray')
+            #cb.setStyleSheet('border: red')
 
 
 class MainWindow(QMainWindow):
@@ -120,7 +166,7 @@ class MainWindow(QMainWindow):
         self.restore_settings(self.config_widgets)
 
         # read attribute list
-        self.atts = (('binp/nbi/magnet1/output_state', self.checkBox_26),
+        self.atts = (('binp/nbi/magnet1/output_state', self.pushButton_26),
                      ('binp/nbi/magnet1/voltage', self.label_63),
                      ('binp/nbi/magnet1/current', self.label_65),
                      )
@@ -135,7 +181,7 @@ class MainWindow(QMainWindow):
             try:
                 ap = tango.AttributeProxy(at[0])
                 self.atps.append([ap, at[1]])
-                at[1].tango = TangoHelper(ap)
+                #at[1].tango = TangoHelper(ap)
             except:
                 logger.info('Attribute proxy creation error for %s' % at[0])
                 print_exception_info()
@@ -144,7 +190,7 @@ class MainWindow(QMainWindow):
             try:
                 ap = tango.AttributeProxy(at[0])
                 self.watps.append([ap, at[1]])
-                at[1].tango = TangoHelper(ap)
+                #at[1].tango = TangoHelper(ap)
                 v = ap.read()
                 if hasattr(at[1], 'setValue'):
                     at[1].setValue(v.value)
@@ -281,6 +327,8 @@ class MainWindow(QMainWindow):
                 lbl_update(self.atps[self.n][1], self.atps[self.n][0])
             if isinstance(self.atps[self.n][1], QCheckBox):
                 cb_update(self.atps[self.n][1], self.atps[self.n][0])
+            if isinstance(self.atps[self.n][1], QtWidgets.QPushButton):
+                pb_update(self.atps[self.n][1], self.atps[self.n][0])
             self.n += 1
             if self.n >= len(self.atps):
                 self.n = 0
@@ -307,7 +355,7 @@ def get_widgets(obj: QtWidgets.QWidget):
                     wgts.append(wgt1)
     return wgts
 
-def cb_switch_color(cb: QCheckBox, m, colors=('green', 'red')):
+def cb_set_color(cb: QCheckBox, m, colors=('green', 'red')):
     if isinstance(m, bool):
         if m:
             cb.setStyleSheet('QCheckBox::indicator { background: ' + colors[0] + ';}')
@@ -327,14 +375,14 @@ def wdg_update(cb: QWidget, attr_proxy: tango.AttributeProxy):
         if isinstance(cb, QCheckBox):
             if attr.type == tango._tango.CmdArgType.DevBoolean:
                 if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-                    cb_switch_color(cb, value)
+                    cb_set_color(cb, value)
                 else:
-                    cb_switch_color(cb, 'gray')
+                    cb_set_color(cb, 'gray')
             else:
                 logger.error('Non boolean attribute for QCheckBox')
-                cb_switch_color(cb, 'gray')
+                cb_set_color(cb, 'gray')
     except:
-        cb_switch_color(cb, 'gray')
+        cb_set_color(cb, 'gray')
         #cb.setStyleSheet('border: red')
 
 def cb_update(cb: QCheckBox, attr_proxy: tango.AttributeProxy):
@@ -343,15 +391,31 @@ def cb_update(cb: QCheckBox, attr_proxy: tango.AttributeProxy):
         value = attr.value
         if attr.type == tango._tango.CmdArgType.DevBoolean and attr.data_format == tango._tango.AttrDataFormat.SCALAR:
             if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-                cb_switch_color(cb, value)
+                cb_set_color(cb, value)
             else:
-                cb_switch_color(cb, 'gray')
+                cb_set_color(cb, 'gray')
         else:
             print('Not scalar boolean attribute for QCheckBox')
-            cb_switch_color(cb, 'gray')
+            cb_set_color(cb, 'gray')
     except:
-        cb_switch_color(cb, 'gray')
+        cb_set_color(cb, 'gray')
         #cb.setStyleSheet('border: red')
+
+def pb_update(pb: QtWidgets.QPushButton, attr_proxy: tango.AttributeProxy):
+    try:
+        attr = attr_proxy.read()
+        if attr.type == tango._tango.CmdArgType.DevBoolean and attr.data_format == tango._tango.AttrDataFormat.SCALAR:
+            if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+                pb.setChecked(attr.value)
+            else:
+                logger.debug('Attribute INVALID')
+                pb.setDisabled()
+        else:
+            logger.warning('Not scalar boolean attribute')
+            pb.setDisabled()
+    except:
+        logger.warning('Exception updating widget')
+        pb.setDisabled()
 
 def lbl_update(lbl: QLabel, attr_proxy: tango.AttributeProxy):
     try:

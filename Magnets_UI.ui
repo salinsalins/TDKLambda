@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>698</width>
+    <width>715</width>
     <height>689</height>
    </rect>
   </property>
@@ -120,14 +120,14 @@
              <x>0</x>
              <y>0</y>
              <width>695</width>
-             <height>527</height>
+             <height>553</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout">
             <item>
              <widget class="QFrame" name="frame_16">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -153,6 +153,9 @@
                </property>
                <item>
                 <widget class="QLabel" name="label_55">
+                 <property name="enabled">
+                  <bool>true</bool>
+                 </property>
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                    <horstretch>0</horstretch>
@@ -203,7 +206,7 @@
                   <item>
                    <widget class="QFrame" name="frame_18">
                     <property name="sizePolicy">
-                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                       <horstretch>0</horstretch>
                       <verstretch>0</verstretch>
                      </sizepolicy>
@@ -308,9 +311,9 @@
                             <number>0</number>
                            </property>
                            <item>
-                            <widget class="QCheckBox" name="checkBox_26">
+                            <widget class="QPushButton" name="pushButton_26">
                              <property name="enabled">
-                              <bool>false</bool>
+                              <bool>true</bool>
                              </property>
                              <property name="sizePolicy">
                               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -324,20 +327,46 @@
                               </font>
                              </property>
                              <property name="styleSheet">
-                              <string notr="true">QCheckBox::indicator {
+                              <string notr="true">::indicator {
 background:blue;
 }</string>
                              </property>
                              <property name="text">
                               <string notr="true"/>
                              </property>
+                             <property name="icon">
+                              <iconset>
+                               <normaloff>leds/images48/ledred.png</normaloff>
+                               <normalon>leds/images48/ledgreen.png</normalon>leds/images48/ledred.png</iconset>
+                             </property>
+                             <property name="iconSize">
+                              <size>
+                               <width>36</width>
+                               <height>36</height>
+                              </size>
+                             </property>
                              <property name="checkable">
+                              <bool>true</bool>
+                             </property>
+                             <property name="checked">
                               <bool>false</bool>
+                             </property>
+                             <property name="autoDefault">
+                              <bool>false</bool>
+                             </property>
+                             <property name="default">
+                              <bool>false</bool>
+                             </property>
+                             <property name="flat">
+                              <bool>true</bool>
                              </property>
                             </widget>
                            </item>
                            <item>
                             <widget class="QCheckBox" name="checkBox_25">
+                             <property name="enabled">
+                              <bool>true</bool>
+                             </property>
                              <property name="sizePolicy">
                               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                                <horstretch>0</horstretch>
@@ -373,7 +402,7 @@ background:blue;
                      <item>
                       <widget class="QFrame" name="frame_23">
                        <property name="sizePolicy">
-                        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                          <horstretch>0</horstretch>
                          <verstretch>0</verstretch>
                         </sizepolicy>
@@ -406,7 +435,7 @@ background:blue;
                            </sizepolicy>
                           </property>
                           <property name="text">
-                           <string>Voltage</string>
+                           <string>Voltage, V</string>
                           </property>
                           <property name="alignment">
                            <set>Qt::AlignCenter</set>
@@ -416,7 +445,7 @@ background:blue;
                         <item>
                          <widget class="QFrame" name="frame_24">
                           <property name="sizePolicy">
-                           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                             <horstretch>0</horstretch>
                             <verstretch>0</verstretch>
                            </sizepolicy>
@@ -442,11 +471,20 @@ background:blue;
                            </property>
                            <item>
                             <widget class="QLabel" name="label_63">
+                             <property name="enabled">
+                              <bool>true</bool>
+                             </property>
                              <property name="sizePolicy">
-                              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                <horstretch>0</horstretch>
                                <verstretch>0</verstretch>
                               </sizepolicy>
+                             </property>
+                             <property name="minimumSize">
+                              <size>
+                               <width>100</width>
+                               <height>0</height>
+                              </size>
                              </property>
                              <property name="font">
                               <font>
@@ -457,7 +495,7 @@ background:blue;
                               <enum>QFrame::NoFrame</enum>
                              </property>
                              <property name="text">
-                              <string>TextLabel</string>
+                              <string>-200.00</string>
                              </property>
                              <property name="textFormat">
                               <enum>Qt::PlainText</enum>
@@ -469,8 +507,11 @@ background:blue;
                            </item>
                            <item>
                             <widget class="QDoubleSpinBox" name="doubleSpinBox_20">
+                             <property name="enabled">
+                              <bool>true</bool>
+                             </property>
                              <property name="sizePolicy">
-                              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                                <horstretch>0</horstretch>
                                <verstretch>0</verstretch>
                               </sizepolicy>
@@ -519,7 +560,7 @@ background:blue;
                      <item>
                       <widget class="QFrame" name="frame_25">
                        <property name="sizePolicy">
-                        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                          <horstretch>0</horstretch>
                          <verstretch>0</verstretch>
                         </sizepolicy>
@@ -552,7 +593,7 @@ background:blue;
                            </sizepolicy>
                           </property>
                           <property name="text">
-                           <string>Currrent</string>
+                           <string>Currrent, A</string>
                           </property>
                           <property name="alignment">
                            <set>Qt::AlignCenter</set>
@@ -562,7 +603,7 @@ background:blue;
                         <item>
                          <widget class="QFrame" name="frame_26">
                           <property name="sizePolicy">
-                           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                             <horstretch>0</horstretch>
                             <verstretch>0</verstretch>
                            </sizepolicy>
@@ -589,10 +630,16 @@ background:blue;
                            <item>
                             <widget class="QLabel" name="label_65">
                              <property name="sizePolicy">
-                              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                <horstretch>0</horstretch>
                                <verstretch>0</verstretch>
                               </sizepolicy>
+                             </property>
+                             <property name="minimumSize">
+                              <size>
+                               <width>100</width>
+                               <height>0</height>
+                              </size>
                              </property>
                              <property name="font">
                               <font>
@@ -656,7 +703,7 @@ background:blue;
                <item>
                 <widget class="Line" name="line_7">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
@@ -675,7 +722,7 @@ background:blue;
                <item>
                 <widget class="QFrame" name="frame_70">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
@@ -856,9 +903,9 @@ background:blue;
                                <number>0</number>
                               </property>
                               <item>
-                               <widget class="QCheckBox" name="checkBox_46">
+                               <widget class="QPushButton" name="pushButton_27">
                                 <property name="enabled">
-                                 <bool>false</bool>
+                                 <bool>true</bool>
                                 </property>
                                 <property name="sizePolicy">
                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -871,11 +918,39 @@ background:blue;
                                   <pointsize>16</pointsize>
                                  </font>
                                 </property>
+                                <property name="styleSheet">
+                                 <string notr="true">::indicator {
+background:blue;
+}</string>
+                                </property>
                                 <property name="text">
                                  <string notr="true"/>
                                 </property>
+                                <property name="icon">
+                                 <iconset>
+                                  <normaloff>leds/images48/ledred.png</normaloff>
+                                  <normalon>leds/images48/ledgreen.png</normalon>leds/images48/ledred.png</iconset>
+                                </property>
+                                <property name="iconSize">
+                                 <size>
+                                  <width>36</width>
+                                  <height>36</height>
+                                 </size>
+                                </property>
                                 <property name="checkable">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="checked">
                                  <bool>false</bool>
+                                </property>
+                                <property name="autoDefault">
+                                 <bool>false</bool>
+                                </property>
+                                <property name="default">
+                                 <bool>false</bool>
+                                </property>
+                                <property name="flat">
+                                 <bool>true</bool>
                                 </property>
                                </widget>
                               </item>
@@ -983,10 +1058,16 @@ background:blue;
                               <item>
                                <widget class="QLabel" name="label_110">
                                 <property name="sizePolicy">
-                                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                   <horstretch>0</horstretch>
                                   <verstretch>0</verstretch>
                                  </sizepolicy>
+                                </property>
+                                <property name="minimumSize">
+                                 <size>
+                                  <width>100</width>
+                                  <height>0</height>
+                                 </size>
                                 </property>
                                 <property name="font">
                                  <font>
@@ -997,7 +1078,7 @@ background:blue;
                                  <enum>QFrame::NoFrame</enum>
                                 </property>
                                 <property name="text">
-                                 <string>TextLabel</string>
+                                 <string>-200.00</string>
                                 </property>
                                 <property name="textFormat">
                                  <enum>Qt::PlainText</enum>
@@ -1117,10 +1198,16 @@ background:blue;
                               <item>
                                <widget class="QLabel" name="label_112">
                                 <property name="sizePolicy">
-                                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                   <horstretch>0</horstretch>
                                   <verstretch>0</verstretch>
                                  </sizepolicy>
+                                </property>
+                                <property name="minimumSize">
+                                 <size>
+                                  <width>100</width>
+                                  <height>0</height>
+                                 </size>
                                 </property>
                                 <property name="font">
                                  <font>
@@ -1387,9 +1474,9 @@ background:blue;
                                   <number>0</number>
                                  </property>
                                  <item>
-                                  <widget class="QCheckBox" name="checkBox_44">
+                                  <widget class="QPushButton" name="pushButton_28">
                                    <property name="enabled">
-                                    <bool>false</bool>
+                                    <bool>true</bool>
                                    </property>
                                    <property name="sizePolicy">
                                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -1402,11 +1489,39 @@ background:blue;
                                      <pointsize>16</pointsize>
                                     </font>
                                    </property>
+                                   <property name="styleSheet">
+                                    <string notr="true">::indicator {
+background:blue;
+}</string>
+                                   </property>
                                    <property name="text">
                                     <string notr="true"/>
                                    </property>
+                                   <property name="icon">
+                                    <iconset>
+                                     <normaloff>leds/images48/ledred.png</normaloff>
+                                     <normalon>leds/images48/ledgreen.png</normalon>leds/images48/ledred.png</iconset>
+                                   </property>
+                                   <property name="iconSize">
+                                    <size>
+                                     <width>36</width>
+                                     <height>36</height>
+                                    </size>
+                                   </property>
                                    <property name="checkable">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="checked">
                                     <bool>false</bool>
+                                   </property>
+                                   <property name="autoDefault">
+                                    <bool>false</bool>
+                                   </property>
+                                   <property name="default">
+                                    <bool>false</bool>
+                                   </property>
+                                   <property name="flat">
+                                    <bool>true</bool>
                                    </property>
                                   </widget>
                                  </item>
@@ -1514,10 +1629,16 @@ background:blue;
                                  <item>
                                   <widget class="QLabel" name="label_104">
                                    <property name="sizePolicy">
-                                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                    <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                      <horstretch>0</horstretch>
                                      <verstretch>0</verstretch>
                                     </sizepolicy>
+                                   </property>
+                                   <property name="minimumSize">
+                                    <size>
+                                     <width>100</width>
+                                     <height>0</height>
+                                    </size>
                                    </property>
                                    <property name="font">
                                     <font>
@@ -1648,10 +1769,16 @@ background:blue;
                                  <item>
                                   <widget class="QLabel" name="label_106">
                                    <property name="sizePolicy">
-                                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                    <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                      <horstretch>0</horstretch>
                                      <verstretch>0</verstretch>
                                     </sizepolicy>
+                                   </property>
+                                   <property name="minimumSize">
+                                    <size>
+                                     <width>100</width>
+                                     <height>0</height>
+                                    </size>
                                    </property>
                                    <property name="font">
                                     <font>
@@ -1750,7 +1877,7 @@ background:blue;
               </property>
               <property name="sizeHint" stdset="0">
                <size>
-                <width>20</width>
+                <width>19</width>
                 <height>40</height>
                </size>
               </property>
@@ -1878,7 +2005,7 @@ background:blue;
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>698</width>
+     <width>715</width>
      <height>34</height>
     </rect>
    </property>
