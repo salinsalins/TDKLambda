@@ -161,18 +161,19 @@ class TDKLambda():
 
         # configure logger
         if self.logger is None:
-            self.logger = logging.getLogger(self.__class__.__name__)
+            self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
             self.logger.setLevel(logging.DEBUG)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
-            f_str = '%(asctime)s,%(msecs)d %(funcName)s(%(lineno)s) ' +\
+            f_str = '%(asctime)s,%(msecs)d %(process)d %(thread)d %(funcName)s(%(lineno)s) ' +\
                     '%s:%d ' % (self.port, self.addr) +\
                     '%(levelname)-7s %(message)s'
             log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
             console_handler = logging.StreamHandler()
             console_handler.setFormatter(log_formatter)
-            self.logger.addHandler(console_handler)
+            if not self.logger.hasHandlers():
+                self.logger.addHandler(console_handler)
             ##print('***', self.logger)
 
         # check if port and addr are in use
@@ -633,5 +634,5 @@ if __name__ == "__main__":
         t0 = time.time()
         v4 = pd2.read_all()
         dt1 = int((time.time()-t0)*1000.0)    #ms
-        print('1: ', '%4d ms ' % dt1,'DVC?=', v4, 'to=', '%5.3f' % pd2.timeout, pd2.port, pd2.addr)
+        print('2: ', '%4d ms ' % dt1,'DVC?=', v4, 'to=', '%5.3f' % pd2.timeout, pd2.port, pd2.addr)
         time.sleep(0.1)
