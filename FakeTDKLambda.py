@@ -163,7 +163,7 @@ class TDKLambda():
         if self.logger is None:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.DEBUG)
+            self.logger.setLevel(logging.INFO)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s,%(msecs)d %(process)d %(thread)d %(funcName)s(%(lineno)s) ' +\
@@ -262,8 +262,8 @@ class TDKLambda():
                     if d.port == self.port:
                         if d.com is not None:
                             d.com.close()
+                            d.com = None
                             self.logger.debug('COM port closed')
-                            break
         except:
             self.logger.debug('COM port can not be closed')
         # try to create port

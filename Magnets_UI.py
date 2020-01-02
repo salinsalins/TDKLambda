@@ -63,7 +63,7 @@ logger.addHandler(console_handler)
 CONFIG = {}
 
 
-class TangoHelper():
+class TangoWidget():
     def __init__(self, attribute, widget: QWidget):
         if isinstance(attribute, tango.AttributeProxy):
             self.attr_proxy = attribute
@@ -75,8 +75,8 @@ class TangoHelper():
         else:
             logger.warning('tango.AttributeProxy or name<str> required')
             self.attr_proxy = None
-        self.attr = None
         self.widget = widget
+        self.attr = None
 
     def read(self):
         self.attr = self.attr_proxy.read()
@@ -169,7 +169,10 @@ class MainWindow(QMainWindow):
         self.atts = (('binp/nbi/magnet1/output_state', self.pushButton_26),
                      ('binp/nbi/magnet1/voltage', self.label_63),
                      ('binp/nbi/magnet1/current', self.label_65),
-                     )
+                     ('binp/nbi/magnet/output_state', self.pushButton_27),
+                     ('binp/nbi/magnet/voltage', self.label_110),
+                     ('binp/nbi/magnet/current', self.label_112),
+        )
         # write attribute list
         self.watts = (('binp/nbi/magnet1/programmed_current', self.doubleSpinBox_21),
                      ('binp/nbi/magnet1/output_state', self.checkBox_25),
@@ -382,8 +385,8 @@ def wdg_update(cb: QWidget, attr_proxy: tango.AttributeProxy):
                 logger.error('Non boolean attribute for QCheckBox')
                 cb_set_color(cb, 'gray')
     except:
+        logger.debug('Exception updating widget', sys.exc_info()[0])
         cb_set_color(cb, 'gray')
-        #cb.setStyleSheet('border: red')
 
 def cb_update(cb: QCheckBox, attr_proxy: tango.AttributeProxy):
     try:
@@ -398,43 +401,45 @@ def cb_update(cb: QCheckBox, attr_proxy: tango.AttributeProxy):
             print('Not scalar boolean attribute for QCheckBox')
             cb_set_color(cb, 'gray')
     except:
+        logger.debug('Exception updating widget', sys.exc_info()[0])
         cb_set_color(cb, 'gray')
-        #cb.setStyleSheet('border: red')
 
 def pb_update(pb: QtWidgets.QPushButton, attr_proxy: tango.AttributeProxy):
     try:
         attr = attr_proxy.read()
         if attr.type == tango._tango.CmdArgType.DevBoolean and attr.data_format == tango._tango.AttrDataFormat.SCALAR:
             if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+                pb.setDisabled(False)
                 pb.setChecked(attr.value)
             else:
                 logger.debug('Attribute INVALID')
-                pb.setDisabled()
+                pb.setDisabled(True)
         else:
-            logger.warning('Not scalar boolean attribute')
-            pb.setDisabled()
+            logger.debug('Not scalar boolean attribute')
+            pb.setDisabled(True)
     except:
-        logger.warning('Exception updating widget')
-        pb.setDisabled()
+        logger.debug('Exception updating widget', sys.exc_info()[0])
+        #print_exception_info()
+        pb.setDisabled(True)
 
 def lbl_update(lbl: QLabel, attr_proxy: tango.AttributeProxy):
     try:
         attr = attr_proxy.read()
-        ac = attr_proxy.get_config()
-        value = ac.format % attr.value
-        if attr.data_format == tango._tango.AttrDataFormat.SCALAR:
-            if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-                lbl.setText(value)
-                #lbl.setStyleSheet('background: green; color: blue')
-            else:
-                lbl.setText(value)
-                lbl.setStyleSheet('color: red')
-                #lbl.setStyleSheet('background: red')
-        else:
-            print('Not scalar attribute for QLabel')
+        if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
+            logger.debug('Non scalar attribute')
             lbl.setText('****')
             lbl.setStyleSheet('color: red')
+            return
+        ac = attr_proxy.get_config()
+        value = ac.format % attr.value
+        if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+            lbl.setStyleSheet('color: black')
+            lbl.setText(value)
+        else:
+            lbl.setStyleSheet('color: red')
+            lbl.setText(value)
     except:
+        logger.debug('Exception during update', sys.exc_info()[0])
         lbl.setText('****')
         lbl.setStyleSheet('color: red')
 
@@ -448,10 +453,10 @@ def get_widget_state(obj, config, name=None):
         if isinstance(obj, QComboBox):
             config[name] = {'items': [str(obj.itemText(k)) for k in range(obj.count())],
                             'index': obj.currentIndex()}
-        if isinstance(obj, QCheckBox):
+        if isinstance(obj, QtWidgets.QAbstractButton):
             config[name] = obj.isChecked()
-        if isinstance(obj, QPlainTextEdit):
-            config[name] = obj.toPlainText()
+        if isinstance(obj, QPlainTextEdit) or isinstance(obj, QtWidgets.QTextEdit):
+            config[name] = str(obj.toPlainText())
     except:
         return
 
@@ -474,9 +479,9 @@ def set_widget_state(obj, config, name=None):
             # Force index change event in the case of index=0
             if config[name]['index'] == 0:
                 obj.currentIndexChanged.emit(0)
-        if isinstance(obj, QCheckBox):
+        if isinstance(obj, QtWidgets.QAbstractButton):
             obj.setChecked(config[name])
-        if isinstance(obj, QPlainTextEdit):
+        if isinstance(obj, QPlainTextEdit) or isinstance(obj, QtWidgets.QTextEdit):
             obj.setPlainText(config[name])
     except:
         return
