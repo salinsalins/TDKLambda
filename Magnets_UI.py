@@ -297,10 +297,12 @@ class MainWindow(QMainWindow):
                 self.logger.setLevel(v)
                 levels = [logging.NOTSET, logging.DEBUG, logging.INFO,
                           logging.WARNING, logging.ERROR, logging.CRITICAL, logging.CRITICAL+10]
+                n = 1
                 for m in range(len(levels)):
                     if v < levels[m]:
+                        n = m
                         break
-                self.comboBox_1.setCurrentIndex(m-1)
+                self.comboBox_1.setCurrentIndex(n-1)
             # Restore window size and position
             if 'main_window' in CONFIG:
                 self.resize(QSize(CONFIG['main_window']['size'][0], CONFIG['main_window']['size'][1]))
