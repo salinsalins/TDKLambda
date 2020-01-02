@@ -225,7 +225,7 @@ class MainWindow(QMainWindow):
 
     def show_about(self):
         QMessageBox.information(self, 'About', APPLICATION_NAME + ' Version ' + APPLICATION_VERSION +
-                                '\nUser interface program to control TDK Lambda Genesis power supplies.', QMessageBox.Ok)
+            '\nUser interface program to control TDK Lambda Genesis power supplies.', QMessageBox.Ok)
 
     def show_main_pane(self):
         self.stackedWidget.setCurrentIndex(0)
@@ -326,12 +326,13 @@ class MainWindow(QMainWindow):
             return
         count = 0
         while time.time() - t0 < 0.2:
-            if isinstance(self.atps[self.n][1], QLabel):
-                lbl_update(self.atps[self.n][1], self.atps[self.n][0])
-            if isinstance(self.atps[self.n][1], QCheckBox):
-                cb_update(self.atps[self.n][1], self.atps[self.n][0])
-            if isinstance(self.atps[self.n][1], QtWidgets.QPushButton):
-                pb_update(self.atps[self.n][1], self.atps[self.n][0])
+            if self.atps[self.n][1].isVisible():
+                if isinstance(self.atps[self.n][1], QLabel):
+                    lbl_update(self.atps[self.n][1], self.atps[self.n][0])
+                if isinstance(self.atps[self.n][1], QCheckBox):
+                    cb_update(self.atps[self.n][1], self.atps[self.n][0])
+                if isinstance(self.atps[self.n][1], QtWidgets.QPushButton):
+                    pb_update(self.atps[self.n][1], self.atps[self.n][0])
             self.n += 1
             if self.n >= len(self.atps):
                 self.n = 0

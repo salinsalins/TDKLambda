@@ -39,12 +39,12 @@ class TangoWidget():
 
     def read(self):
         self.attr = None
-        try:
-            self.attr = self.attr_proxy.read()
-        except:
-            self.logger.debug('Exception reading', sys.exc_info()[0])
         return self.attr
 
     def update(self):
-        self.logger.error('Unsupported widget')
+        self.logger.info('Update of unsupported widget')
+        return
+
+    def connect(self, proc):
+        self.logger.error('Connect of unsupported widget')
         return

@@ -249,10 +249,22 @@
                      <item>
                       <widget class="QFrame" name="frame_20">
                        <property name="sizePolicy">
-                        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                          <horstretch>0</horstretch>
                          <verstretch>0</verstretch>
                         </sizepolicy>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                       <property name="baseSize">
+                        <size>
+                         <width>80</width>
+                         <height>0</height>
+                        </size>
                        </property>
                        <property name="frameShape">
                         <enum>QFrame::NoFrame</enum>
@@ -414,10 +426,22 @@ background:blue;
                      <item>
                       <widget class="QFrame" name="frame_23">
                        <property name="sizePolicy">
-                        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                          <horstretch>0</horstretch>
                          <verstretch>0</verstretch>
                         </sizepolicy>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>243</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                       <property name="baseSize">
+                        <size>
+                         <width>243</width>
+                         <height>0</height>
+                        </size>
                        </property>
                        <property name="frameShape">
                         <enum>QFrame::NoFrame</enum>
@@ -578,10 +602,22 @@ background:blue;
                      <item>
                       <widget class="QFrame" name="frame_25">
                        <property name="sizePolicy">
-                        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                          <horstretch>0</horstretch>
                          <verstretch>0</verstretch>
                         </sizepolicy>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>243</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                       <property name="baseSize">
+                        <size>
+                         <width>243</width>
+                         <height>0</height>
+                        </size>
                        </property>
                        <property name="frameShape">
                         <enum>QFrame::NoFrame</enum>

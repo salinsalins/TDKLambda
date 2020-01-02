@@ -13,11 +13,13 @@ from TangoWidget import TangoWidget
 class TangoLED(TangoWidget):
     def __init__(self, attribute, widget: QPushButton):
         super().__init__(attribute, widget)
+        self.update()
 
     def update(self):
         try:
             attr = self.read()
-            if attr.type == tango._tango.CmdArgType.DevBoolean and attr.data_format == tango._tango.AttrDataFormat.SCALAR:
+            if attr.type == tango._tango.CmdArgType.DevBoolean and \
+                    attr.data_format == tango._tango.AttrDataFormat.SCALAR:
                 if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
                     self.widget.setDisabled(False)
                     self.widget.setChecked(attr.value)
@@ -29,5 +31,8 @@ class TangoLED(TangoWidget):
                 self.widget.setDisabled(True)
         except:
             self.logger.debug('Exception updating widget', sys.exc_info()[0])
-            # print_exception_info()
             self.widget.setDisabled(True)
+
+    def connect(self, proc):
+        self.widget.stateChanged.connect(proc)
+
