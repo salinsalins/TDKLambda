@@ -37,7 +37,7 @@ class TangoAbstractSpinBox(TangoWidget):
                 self.decorate_invalid()
         except:
             self.logger.debug('Exception updating widget', sys.exc_info()[0])
-            self.widget.setValue(self.value)
+            ##self.widget.setValue(self.value)
             self.decorate_error()
 
     def callback(self, value=None):

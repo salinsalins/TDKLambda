@@ -32,7 +32,3 @@ class TangoLED(TangoWidget):
         except:
             self.logger.debug('Exception updating widget', sys.exc_info()[0])
             self.widget.setDisabled(True)
-
-    def connect(self, proc):
-        self.widget.stateChanged.connect(proc)
-

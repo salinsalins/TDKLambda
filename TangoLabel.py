@@ -21,7 +21,7 @@ class TangoLabel(TangoWidget):
             #attr = self.read()
             attr = self.attr_proxy.read()
             if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
-                self.logger.error('Non SCALAR attribute')
+                self.logger.error('Non scalar attribute')
                 self.decorate_error()
                 return
             ac = self.attr_proxy.get_config()
