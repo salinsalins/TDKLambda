@@ -37,6 +37,17 @@ class TangoWidget():
             self.logger.warning('tango.AttributeProxy or name<str> required')
             self.attr_proxy = None
 
+    def decorate_error(self):
+        if hasattr(self.widget, 'setText'):
+            self.widget.setText('****')
+        self.widget.setStyleSheet('color: gray')
+
+    def decorate_invalid(self):
+        self.widget.setStyleSheet('color: red')
+
+    def decorate_valid(self):
+        self.widget.setStyleSheet('color: black')
+
     def read(self):
         self.attr = None
         return self.attr
@@ -45,6 +56,6 @@ class TangoWidget():
         self.logger.info('Update of unsupported widget')
         return
 
-    def connect(self, proc):
-        self.logger.error('Connect for unsupported widget')
+    def callback(self, value=None):
+        self.logger.info('Update of unsupported widget')
         return

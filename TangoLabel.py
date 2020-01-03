@@ -10,23 +10,11 @@ import tango
 from TangoWidget import TangoWidget
 
 
-class TangoLED(TangoWidget):
+class TangoLabel(TangoWidget):
     def __init__(self, attribute, widget: QLabel):
         self.value = None
         super().__init__(attribute, widget)
         self.update()
-        self.connect()
-
-    def decorate_error(self):
-        if hasattr(self.widget, 'setText'):
-            self.widget.setText('****')
-        self.widget.setStyleSheet('color: gray')
-
-    def decorate_invalid(self):
-        self.widget.setStyleSheet('color: red')
-
-    def decorate_valid(self):
-        self.widget.setStyleSheet('color: black')
 
     def update(self) -> None:
         try:
@@ -47,8 +35,3 @@ class TangoLED(TangoWidget):
         except:
             self.logger.debug('Exception updating widget', sys.exc_info()[0])
             self.decorate_error()
-
-    def connect(self, proc=None):
-        if proc is None:
-            return
-

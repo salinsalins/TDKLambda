@@ -63,62 +63,6 @@ logger.addHandler(console_handler)
 CONFIG = {}
 
 
-class TangoWidget():
-    def __init__(self, attribute, widget: QWidget):
-        if isinstance(attribute, tango.AttributeProxy):
-            self.attr_proxy = attribute
-        elif isinstance(attribute, str):
-            try:
-                self.attr_proxy = tango.AttributeProxy(attribute)
-            except:
-                self.attr_proxy = None
-        else:
-            logger.warning('tango.AttributeProxy or name<str> required')
-            self.attr_proxy = None
-        self.widget = widget
-        self.attr = None
-
-    def read(self):
-        self.attr = self.attr_proxy.read()
-        return self.attr
-
-    def update(self):
-        try:
-            attr = self.attr_proxy.read()
-            if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
-                logger.error('Non SCALAR attribute')
-                return
-            if isinstance(self.widget, QCheckBox):
-                if attr.type == tango._tango.CmdArgType.DevBoolean:
-                    if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-                        cb_set_color(self.widget, attr.value)
-                    else:
-                        cb_set_color(self.widget, 'gray')
-                else:
-                    logger.error('Non boolean attribute for QCheckBox')
-                    cb_set_color(self.widget, 'gray')
-                return
-            if isinstance(self.widget, QCheckBox):
-                ac = self.attr_proxy.get_config()
-                value = ac.format % attr.value
-                if attr.data_format == tango._tango.AttrDataFormat.SCALAR:
-                    if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-                        self.widget.setText(value)
-                        # lbl.setStyleSheet('background: green; color: blue')
-                    else:
-                        self.widget.setText(value)
-                        self.widget.setStyleSheet('color: red')
-                        # lbl.setStyleSheet('background: red')
-                else:
-                    print('Not scalar attribute for QLabel')
-                    self.widget.setText('****')
-                    self.widget.setStyleSheet('color: red')
-        except:
-            logger.error('Attribute read error')
-            cb_set_color(self.widget, 'gray')
-            #cb.setStyleSheet('border: red')
-
-
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         global logger
