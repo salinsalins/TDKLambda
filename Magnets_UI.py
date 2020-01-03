@@ -446,7 +446,6 @@ def lbl_update(lbl: QLabel, attr_proxy: tango.AttributeProxy):
         lbl.setText('****')
         lbl.setStyleSheet('color: red')
 
-
 def get_widget_state(obj, config, name=None):
     try:
         if name is None:

@@ -24,6 +24,8 @@ logger.addHandler(console_handler)
 class TangoWidget():
     def __init__(self, attribute, widget: QWidget):
         self.logger = logger
+        self.widget = widget
+        self.attr = None
         if isinstance(attribute, tango.AttributeProxy):
             self.attr_proxy = attribute
         elif isinstance(attribute, str):
@@ -34,8 +36,6 @@ class TangoWidget():
         else:
             self.logger.warning('tango.AttributeProxy or name<str> required')
             self.attr_proxy = None
-        self.widget = widget
-        self.attr = None
 
     def read(self):
         self.attr = None
@@ -46,5 +46,5 @@ class TangoWidget():
         return
 
     def connect(self, proc):
-        self.logger.error('Connect of unsupported widget')
+        self.logger.error('Connect for unsupported widget')
         return
