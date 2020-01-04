@@ -34,6 +34,7 @@ from TangoCheckBox import TangoCheckBox
 from TangoLED import TangoLED
 from TangoLabel import TangoLabel
 from TangoAbstractSpinBox import TangoAbstractSpinBox
+from TangoRadioButton import TangoRadioButton
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Magnets_UI'
@@ -114,7 +115,10 @@ class MainWindow(QMainWindow):
         self.wtwdgts = (TangoAbstractSpinBox('binp/nbi/magnet1/programmed_current', self.doubleSpinBox_21),
                         TangoCheckBox('binp/nbi/magnet1/output_state', self.checkBox_25),
                         TangoAbstractSpinBox('binp/nbi/magnet1/programmed_voltage', self.doubleSpinBox_20),
-        )
+                        TangoRadioButton('binp/nbi/magnet/output_state', self.radioButton_47),
+                        TangoAbstractSpinBox('binp/nbi/magnet/programmed_voltage', self.doubleSpinBox_37),
+                        TangoAbstractSpinBox('binp/nbi/magnet/programmed_voltage', self.doubleSpinBox_38),
+                        )
 
     def get_widgets(self, obj, s=''):
         lout = obj.layout()
