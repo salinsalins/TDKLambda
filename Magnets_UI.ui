@@ -1123,7 +1123,7 @@ background:blue;
                            </sizepolicy>
                           </property>
                           <property name="text">
-                           <string>Voltage</string>
+                           <string>Voltage, V</string>
                           </property>
                           <property name="alignment">
                            <set>Qt::AlignCenter</set>
@@ -1281,7 +1281,7 @@ background:blue;
                            </sizepolicy>
                           </property>
                           <property name="text">
-                           <string>Currrent</string>
+                           <string>Currrent, A</string>
                           </property>
                           <property name="alignment">
                            <set>Qt::AlignCenter</set>
@@ -1757,7 +1757,7 @@ background:blue;
                            </sizepolicy>
                           </property>
                           <property name="text">
-                           <string>Voltage</string>
+                           <string>Voltage, V</string>
                           </property>
                           <property name="alignment">
                            <set>Qt::AlignCenter</set>
@@ -1927,7 +1927,7 @@ background:blue;
                            </sizepolicy>
                           </property>
                           <property name="text">
-                           <string>Currrent</string>
+                           <string>Currrent, A</string>
                           </property>
                           <property name="alignment">
                            <set>Qt::AlignCenter</set>

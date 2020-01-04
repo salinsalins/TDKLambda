@@ -15,6 +15,7 @@ import tango
 
 class TangoWidget():
     ERROR_TEXT = '****'
+    RECONNECT_TIMEOUT = 10.0
 
     def __init__(self, attribute, widget: QWidget):
         # defaults
@@ -41,18 +42,22 @@ class TangoWidget():
             self.attr_proxy = attribute
             self.connected = False
         elif isinstance(attribute, str):
-            try:
-                self.attr_proxy = tango.AttributeProxy(attribute)
-                self.connected = True
-            except:
-                self.logger.error('Can not create attribute %s', attribute)
-                self.attr_proxy = attribute
-                self.connected = False
+            self.create_attribute(attribute)
         else:
             self.logger.warning('<tango.AttributeProxy> or <str> required')
             self.attr_proxy = attribute
             self.connected = False
         self.update()
+
+    def create_attribute(self, name: str):
+        self.time = time.time()
+        try:
+            self.attr_proxy = tango.AttributeProxy(name)
+            self.connected = True
+        except:
+            self.logger.error('Can not create attribute %s', name)
+            self.attr_proxy = name
+            self.connected = False
 
     def decorate_error(self):
         if hasattr(self.widget, 'setText'):
@@ -100,6 +105,9 @@ class TangoWidget():
         except:
             if self.connected:
                 self.logger.debug('Exception %s updating widget', sys.exc_info()[0])
+            else:
+                if time.time() - self.time > TangoWidget.RECONNECT_TIMEOUT:
+                    self.create_attribute(self.attr_proxy)
             self.decorate_error()
 
     def callback(self, value):
