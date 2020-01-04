@@ -13,9 +13,15 @@ import tango
 
 
 class TangoWidget():
+    ERROR_TEXT = '****'
+
     def __init__(self, attribute, widget: QWidget):
+        # defaults
+        self.attr_proxy = None
         self.widget = widget
         self.attr = None
+        self.attr_config = None
+        self.value = None
         # Configure logging
         self.logger = logging.getLogger(__name__)
         self.logger.propagate = False
@@ -30,17 +36,14 @@ class TangoWidget():
         if isinstance(attribute, tango.AttributeProxy):
             self.attr_proxy = attribute
         elif isinstance(attribute, str):
-            try:
-                self.attr_proxy = tango.AttributeProxy(attribute)
-            except:
-                self.attr_proxy = None
+            self.attr_proxy = tango.AttributeProxy(attribute)
         else:
-            self.logger.warning('tango.AttributeProxy or name<str> required')
-            self.attr_proxy = None
+            self.logger.warning('<tango.AttributeProxy> or <str> required')
+        self.update()
 
     def decorate_error(self):
         if hasattr(self.widget, 'setText'):
-            self.widget.setText('****')
+            self.widget.setText(TangoWidget.ERROR_TEXT)
         self.widget.setStyleSheet('color: gray')
 
     def decorate_invalid(self):
@@ -56,16 +59,19 @@ class TangoWidget():
         self.attr = self.attr_proxy.read()
         return self.attr
 
-    def set_value(self, value=None):
-        if value is None:
-            value = self.attr.value
+    def set_value(self):
+        try:
+            self.attr_config = self.attr_proxy.get_config()
+            self.value = self.attr_config.format % self.attr.value
+        except:
+            self.value = str(self.attr.value)
         if hasattr(self.widget, 'setText'):
-            self.widget.setText(str(value))
+            self.widget.setText(self.value)
         elif hasattr(self.widget, 'setValue'):
-            self.widget.setValue(value)
+            self.widget.setValue(self.value)
         else:
             pass
-        return value
+        return self.value
 
     def update(self) -> None:
         try:
@@ -73,15 +79,15 @@ class TangoWidget():
             if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
                 self.logger.debug('Non sclar attribute')
                 self.decorate_error()
-                return
-            if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-                self.decorate_valid()
             else:
-                self.decorate_invalid()
+                if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+                    self.decorate_valid()
+                else:
+                    self.decorate_invalid()
         except:
             self.logger.debug('Exception updating widget', sys.exc_info()[0])
             self.decorate_error()
 
-    def callback(self, value=None):
+    def callback(self, value):
         self.logger.debug('Callback of unsupported widget')
         return
