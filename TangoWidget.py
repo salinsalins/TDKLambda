@@ -6,6 +6,7 @@ Created on Jan 1, 2020
 '''
 
 import sys
+import time
 import logging
 
 from PyQt5.QtWidgets import QWidget
@@ -17,6 +18,8 @@ class TangoWidget():
 
     def __init__(self, attribute, widget: QWidget):
         # defaults
+        self.time = time.time()
+        self.connected = False
         self.attr_proxy = None
         self.widget = widget
         self.attr = None
@@ -24,21 +27,31 @@ class TangoWidget():
         self.value = None
         # Configure logging
         self.logger = logging.getLogger(__name__)
-        self.logger.propagate = False
-        self.logger.setLevel(logging.DEBUG)
-        f_str = '%(asctime)s,%(msecs)d %(funcName)s(%(lineno)s) ' + \
-                '%(levelname)-7s %(message)s'
-        log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(log_formatter)
-        self.logger.addHandler(console_handler)
+        if not self.logger.hasHandlers():
+            self.logger.propagate = False
+            self.logger.setLevel(logging.DEBUG)
+            f_str = '%(asctime)s,%(msecs)d %(funcName)s(%(lineno)s) ' + \
+                    '%(levelname)-7s %(message)s'
+            log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(log_formatter)
+            self.logger.addHandler(console_handler)
         # create attribute proxy
         if isinstance(attribute, tango.AttributeProxy):
             self.attr_proxy = attribute
+            self.connected = False
         elif isinstance(attribute, str):
-            self.attr_proxy = tango.AttributeProxy(attribute)
+            try:
+                self.attr_proxy = tango.AttributeProxy(attribute)
+                self.connected = True
+            except:
+                self.logger.error('Can not create attribute %s', attribute)
+                self.attr_proxy = attribute
+                self.connected = False
         else:
             self.logger.warning('<tango.AttributeProxy> or <str> required')
+            self.attr_proxy = attribute
+            self.connected = False
         self.update()
 
     def decorate_error(self):
@@ -85,7 +98,8 @@ class TangoWidget():
                 else:
                     self.decorate_invalid()
         except:
-            self.logger.debug('Exception %s updating widget', sys.exc_info()[0])
+            if self.connected:
+                self.logger.debug('Exception %s updating widget', sys.exc_info()[0])
             self.decorate_error()
 
     def callback(self, value):

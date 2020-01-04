@@ -74,7 +74,7 @@ class MainWindow(QMainWindow):
         # Load the UI
         uic.loadUi(UI_FILE, self)
         # Default main window parameters
-        ##self.setMinimumSize(QSize(480, 640))       # min size
+        ##self.setMinimumSize(QSize(480, 640))        # min size
         self.resize(QSize(480, 640))                # size
         self.move(QPoint(50, 50))                   # position
         self.setWindowTitle(APPLICATION_NAME)       # title
@@ -110,7 +110,10 @@ class MainWindow(QMainWindow):
                         TangoLED('binp/nbi/magnet/output_state', self.pushButton_27),
                         TangoLabel('binp/nbi/magnet/voltage', self.label_110),
                         TangoLabel('binp/nbi/magnet/current', self.label_112),
-        )
+                        TangoLED('binp/nbi/magnet2/output_state', self.pushButton_28),
+                        TangoLabel('binp/nbi/magnet2/voltage', self.label_104),
+                        TangoLabel('binp/nbi/magnet2/current', self.label_106),
+                        )
         # write attributes TangoWidgets list
         self.wtwdgts = (TangoAbstractSpinBox('binp/nbi/magnet1/programmed_current', self.doubleSpinBox_21),
                         TangoCheckBox('binp/nbi/magnet1/output_state', self.checkBox_25),
