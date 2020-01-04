@@ -271,13 +271,15 @@ def get_widget_state(obj, config, name=None):
             name = obj.objectName()
         if isinstance(obj, QLineEdit):
             config[name] = str(obj.text())
-        if isinstance(obj, QComboBox):
+        elif isinstance(obj, QComboBox):
             config[name] = {'items': [str(obj.itemText(k)) for k in range(obj.count())],
                             'index': obj.currentIndex()}
-        if isinstance(obj, QtWidgets.QAbstractButton):
+        elif isinstance(obj, QtWidgets.QAbstractButton):
             config[name] = obj.isChecked()
-        if isinstance(obj, QPlainTextEdit) or isinstance(obj, QtWidgets.QTextEdit):
+        elif isinstance(obj, QPlainTextEdit) or isinstance(obj, QtWidgets.QTextEdit):
             config[name] = str(obj.toPlainText())
+        elif isinstance(obj, QtWidgets.QSpinBox) or isinstance(obj, QtWidgets.QDoubleSpinBox):
+            config[name] = obj.value()
     except:
         return
 
@@ -289,7 +291,7 @@ def set_widget_state(obj, config, name=None):
             return
         if isinstance(obj, QLineEdit):
             obj.setText(config[name])
-        if isinstance(obj, QComboBox):
+        elif isinstance(obj, QComboBox):
             obj.setUpdatesEnabled(False)
             obj.blockSignals(True)
             obj.clear()
@@ -300,10 +302,12 @@ def set_widget_state(obj, config, name=None):
             # Force index change event in the case of index=0
             if config[name]['index'] == 0:
                 obj.currentIndexChanged.emit(0)
-        if isinstance(obj, QtWidgets.QAbstractButton):
+        elif isinstance(obj, QtWidgets.QAbstractButton):
             obj.setChecked(config[name])
-        if isinstance(obj, QPlainTextEdit) or isinstance(obj, QtWidgets.QTextEdit):
+        elif isinstance(obj, QPlainTextEdit) or isinstance(obj, QtWidgets.QTextEdit):
             obj.setPlainText(config[name])
+        elif isinstance(obj, QtWidgets.QSpinBox) or isinstance(obj, QtWidgets.QDoubleSpinBox):
+            obj.setValue(config[name])
     except:
         return
 
