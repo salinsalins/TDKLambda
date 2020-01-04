@@ -65,6 +65,7 @@ class MainWindow(QMainWindow):
         # logging config
         self.logger = logger
         # members definition
+        self.n = 0
         self.refresh_flag = False
         self.last_selection = -1
         self.elapsed = 0
@@ -72,15 +73,14 @@ class MainWindow(QMainWindow):
         # Load the UI
         uic.loadUi(UI_FILE, self)
         # Default main window parameters
-        #self.setMinimumSize(QSize(480, 640))       # min size
+        ##self.setMinimumSize(QSize(480, 640))       # min size
         self.resize(QSize(480, 640))                # size
         self.move(QPoint(50, 50))                   # position
         self.setWindowTitle(APPLICATION_NAME)       # title
         self.setWindowIcon(QtGui.QIcon('icon.png')) # icon
         # Connect signals with slots
         ##self.plainTextEdit_1.textChanged.connect(self.refresh_on)
-        #self.checkBox_25.clicked.connect(self.phandler)
-        #self.doubleSpinBox_21.editingFinished.connect(self.phandler)
+        ##self.checkBox_25.clicked.connect(self.phandler)
         # Connect menu actions
         self.actionQuit.triggered.connect(qApp.quit)
         self.actionPlot.triggered.connect(self.show_main_pane)
@@ -102,19 +102,6 @@ class MainWindow(QMainWindow):
 
         self.restore_settings(self.config_widgets)
 
-        # read attribute list
-        self.atts = (('binp/nbi/magnet1/output_state', self.pushButton_26),
-                     ('binp/nbi/magnet1/voltage', self.label_63),
-                     ('binp/nbi/magnet1/current', self.label_65),
-                     ('binp/nbi/magnet/output_state', self.pushButton_27),
-                     ('binp/nbi/magnet/voltage', self.label_110),
-                     ('binp/nbi/magnet/current', self.label_112),
-        )
-        # write attribute list
-        self.watts = (('binp/nbi/magnet1/programmed_current', self.doubleSpinBox_21),
-                     ('binp/nbi/magnet1/output_state', self.checkBox_25),
-                     ('binp/nbi/magnet1/programmed_voltage', self.doubleSpinBox_20),
-                     )
         # read attributes TangoWidgets list
         self.rtwdgts = (TangoLED('binp/nbi/magnet1/output_state', self.pushButton_26),
                         TangoLabel('binp/nbi/magnet1/voltage', self.label_63),
@@ -128,39 +115,6 @@ class MainWindow(QMainWindow):
                         TangoCheckBox('binp/nbi/magnet1/output_state', self.checkBox_25),
                         TangoAbstractSpinBox('binp/nbi/magnet1/programmed_voltage', self.doubleSpinBox_20),
         )
-        # convert to list of [attr_poxy, widget] pairs
-        self.atps = []
-        for at in self.atts:
-            try:
-                ap = tango.AttributeProxy(at[0])
-                self.atps.append([ap, at[1]])
-                #at[1].tango = TangoHelper(ap)
-            except:
-                logger.info('Attribute proxy creation error for %s' % at[0])
-                print_exception_info()
-        self.watps = []
-        for at in self.watts:
-            try:
-                ap = tango.AttributeProxy(at[0])
-                self.watps.append([ap, at[1]])
-                v = ap.read()
-                if hasattr(at[1], 'setValue'):
-                    at[1].setValue(v.value)
-                if hasattr(at[1], 'setChecked'):
-                    at[1].setChecked(v.value)
-            except:
-                logger.info('Attribute proxy creation error for %s' % at[0])
-                print_exception_info()
-        # connect widgets with events
-        for w in self.watps:
-            if isinstance(w[1], QCheckBox):
-                w[1].stateChanged.connect(self.sb_changed)
-            elif hasattr(w[1], 'valueChanged'):
-                w[1].valueChanged.connect(self.sb_changed)
-
-        self.n = 0
-
-        #self.wap = tango.AttributeProxy('sys/tg_test/1/double_scalar_w')
 
     def get_widgets(self, obj, s=''):
         lout = obj.layout()
@@ -273,24 +227,17 @@ class MainWindow(QMainWindow):
         t = time.strftime('%H:%M:%S')
         self.clock.setText('%s' % t)
         #self.clock.setText('Elapsed: %ds    %s' % (self.elapsed, t))
-        if len(self.atps) <= 0:
+        if len(self.rtwdgts) <= 0:
             return
         count = 0
         while time.time() - t0 < 0.2:
-            # if self.atps[self.n][1].isVisible():
-            #     if isinstance(self.atps[self.n][1], QLabel):
-            #         lbl_update(self.atps[self.n][1], self.atps[self.n][0])
-            #     if isinstance(self.atps[self.n][1], QCheckBox):
-            #         cb_update(self.atps[self.n][1], self.atps[self.n][0])
-            #     if isinstance(self.atps[self.n][1], QtWidgets.QPushButton):
-            #         pb_update(self.atps[self.n][1], self.atps[self.n][0])
             if self.rtwdgts[self.n].widget.isVisible():
                 self.rtwdgts[self.n].update()
             self.n += 1
-            if self.n >= len(self.atps):
+            if self.n >= len(self.rtwdgts):
                 self.n = 0
             count += 1
-            if count == len(self.atps):
+            if count == len(self.rtwdgts):
                 break
         #print(int((time.time()-t0)*1000.0), 'ms')
         #time.sleep(1.0)
