@@ -13,7 +13,12 @@ from TangoWidget import TangoWidget
 class TangoCheckBox(TangoWidget):
     def __init__(self, attribute, widget: QCheckBox):
         super().__init__(attribute, widget)
-        self.widget.valueChanged.connect(self.callback)
+        self.widget.stateChanged.connect(self.callback)
+
+    def set_value(self):
+        self.value = self.attr.value
+        self.widget.setChecked(self.value)
+        return self.value
 
     def callback(self, value):
         #print('callback', self, value)

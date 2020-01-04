@@ -16,6 +16,11 @@ class TangoAbstractSpinBox(TangoWidget):
         self.widget.setKeyboardTracking(False)
         self.widget.valueChanged.connect(self.callback)
 
+    def set_value(self):
+        self.value = self.attr.value
+        self.widget.setValue(self.value)
+        return self.value
+
     def callback(self, value):
         #print('callback', self, value)
         try:

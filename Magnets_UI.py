@@ -9,7 +9,6 @@ import os.path
 import sys
 import json
 import logging
-import zipfile
 import time
 
 from PyQt5 import QtWidgets
@@ -17,30 +16,24 @@ from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QMainWindow
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import qApp
-from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtWidgets import QTableWidgetItem
-from PyQt5.QtWidgets import QTableWidget
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtWidgets import QComboBox
 from PyQt5.QtWidgets import QCheckBox
-from PyQt5.QtWidgets import QSpinBox
 from PyQt5.QtWidgets import QPlainTextEdit
 from PyQt5.QtWidgets import QLineEdit
 from PyQt5 import uic
 from PyQt5.QtCore import QSize
 from PyQt5.QtCore import QPoint
 from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QColor
-from PyQt5.QtGui import QBrush
-from PyQt5.QtGui import QFont
 import PyQt5.QtGui as QtGui
-import PyQt5
 
 import tango
-#from taurus.external.qt import Qt
-#from taurus.qt.qtgui.application import TaurusApplication
-#from taurus.qt.qtgui.display import TaurusLabel
+
+from TangoCheckBox import TangoCheckBox
+from TangoLED import TangoLED
+from TangoLabel import TangoLabel
+from TangoAbstractSpinBox import TangoAbstractSpinBox
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Magnets_UI'
@@ -122,6 +115,19 @@ class MainWindow(QMainWindow):
                      ('binp/nbi/magnet1/output_state', self.checkBox_25),
                      ('binp/nbi/magnet1/programmed_voltage', self.doubleSpinBox_20),
                      )
+        # read attributes TangoWidgets list
+        self.rtwdgts = (TangoLED('binp/nbi/magnet1/output_state', self.pushButton_26),
+                        TangoLabel('binp/nbi/magnet1/voltage', self.label_63),
+                        TangoLabel('binp/nbi/magnet1/current', self.label_65),
+                        TangoLED('binp/nbi/magnet/output_state', self.pushButton_27),
+                        TangoLabel('binp/nbi/magnet/voltage', self.label_110),
+                        TangoLabel('binp/nbi/magnet/current', self.label_112),
+        )
+        # write attributes TangoWidgets list
+        self.wtwdgts = (TangoAbstractSpinBox('binp/nbi/magnet1/programmed_current', self.doubleSpinBox_21),
+                        TangoCheckBox('binp/nbi/magnet1/output_state', self.checkBox_25),
+                        TangoAbstractSpinBox('binp/nbi/magnet1/programmed_voltage', self.doubleSpinBox_20),
+        )
         # convert to list of [attr_poxy, widget] pairs
         self.atps = []
         for at in self.atts:
@@ -137,7 +143,6 @@ class MainWindow(QMainWindow):
             try:
                 ap = tango.AttributeProxy(at[0])
                 self.watps.append([ap, at[1]])
-                #at[1].tango = TangoHelper(ap)
                 v = ap.read()
                 if hasattr(at[1], 'setValue'):
                     at[1].setValue(v.value)
@@ -272,13 +277,15 @@ class MainWindow(QMainWindow):
             return
         count = 0
         while time.time() - t0 < 0.2:
-            if self.atps[self.n][1].isVisible():
-                if isinstance(self.atps[self.n][1], QLabel):
-                    lbl_update(self.atps[self.n][1], self.atps[self.n][0])
-                if isinstance(self.atps[self.n][1], QCheckBox):
-                    cb_update(self.atps[self.n][1], self.atps[self.n][0])
-                if isinstance(self.atps[self.n][1], QtWidgets.QPushButton):
-                    pb_update(self.atps[self.n][1], self.atps[self.n][0])
+            # if self.atps[self.n][1].isVisible():
+            #     if isinstance(self.atps[self.n][1], QLabel):
+            #         lbl_update(self.atps[self.n][1], self.atps[self.n][0])
+            #     if isinstance(self.atps[self.n][1], QCheckBox):
+            #         cb_update(self.atps[self.n][1], self.atps[self.n][0])
+            #     if isinstance(self.atps[self.n][1], QtWidgets.QPushButton):
+            #         pb_update(self.atps[self.n][1], self.atps[self.n][0])
+            if self.rtwdgts[self.n].widget.isVisible():
+                self.rtwdgts[self.n].update()
             self.n += 1
             if self.n >= len(self.atps):
                 self.n = 0
