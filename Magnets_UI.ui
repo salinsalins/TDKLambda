@@ -1673,7 +1673,7 @@ background:blue;
                             </widget>
                            </item>
                            <item>
-                            <widget class="QCheckBox" name="checkBox_45">
+                            <widget class="QRadioButton" name="radioButton_45">
                              <property name="sizePolicy">
                               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                                <horstretch>0</horstretch>

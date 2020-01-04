@@ -120,6 +120,9 @@ class MainWindow(QMainWindow):
                         TangoRadioButton('binp/nbi/magnet/output_state', self.radioButton_47),
                         TangoAbstractSpinBox('binp/nbi/magnet/programmed_current', self.doubleSpinBox_38),
                         TangoAbstractSpinBox('binp/nbi/magnet/programmed_voltage', self.doubleSpinBox_37),
+                        TangoRadioButton('binp/nbi/magnet2/output_state', self.radioButton_45),
+                        TangoAbstractSpinBox('binp/nbi/magnet2/programmed_current', self.doubleSpinBox_36),
+                        TangoAbstractSpinBox('binp/nbi/magnet2/programmed_voltage', self.doubleSpinBox_35),
                         )
 
     def get_widgets(self, obj, s=''):

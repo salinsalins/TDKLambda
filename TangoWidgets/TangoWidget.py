@@ -121,3 +121,5 @@ class TangoWidget():
         else:
             if time.time() - self.time > TangoWidget.RECONNECT_TIMEOUT:
                 self.create_attribute(self.attr_proxy)
+            else:
+                self.decorate_error()
