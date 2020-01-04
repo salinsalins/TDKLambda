@@ -4,10 +4,8 @@ Created on Jan 3, 2020
 
 @author: sanin
 '''
-import sys
 from PyQt5.QtWidgets import QLabel
-import tango
-from TangoWidget import TangoWidget
+from TangoWidgets.TangoWidget import TangoWidget
 
 
 class TangoLabel(TangoWidget):

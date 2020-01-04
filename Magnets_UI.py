@@ -3,9 +3,8 @@
 Created on Jul 28, 2019
 
 @author: sanin
-''' 
+'''
 
-import os.path
 import sys
 import json
 import logging
@@ -30,11 +29,11 @@ import PyQt5.QtGui as QtGui
 
 import tango
 
-from TangoCheckBox import TangoCheckBox
-from TangoLED import TangoLED
-from TangoLabel import TangoLabel
-from TangoAbstractSpinBox import TangoAbstractSpinBox
-from TangoRadioButton import TangoRadioButton
+from TangoWidgets.TangoCheckBox import TangoCheckBox
+from TangoWidgets.TangoLED import TangoLED
+from TangoWidgets.TangoLabel import TangoLabel
+from TangoWidgets.TangoAbstractSpinBox import TangoAbstractSpinBox
+from TangoWidgets.TangoRadioButton import TangoRadioButton
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Magnets_UI'
@@ -119,8 +118,8 @@ class MainWindow(QMainWindow):
                         TangoCheckBox('binp/nbi/magnet1/output_state', self.checkBox_25),
                         TangoAbstractSpinBox('binp/nbi/magnet1/programmed_voltage', self.doubleSpinBox_20),
                         TangoRadioButton('binp/nbi/magnet/output_state', self.radioButton_47),
+                        TangoAbstractSpinBox('binp/nbi/magnet/programmed_current', self.doubleSpinBox_38),
                         TangoAbstractSpinBox('binp/nbi/magnet/programmed_voltage', self.doubleSpinBox_37),
-                        TangoAbstractSpinBox('binp/nbi/magnet/programmed_voltage', self.doubleSpinBox_38),
                         )
 
     def get_widgets(self, obj, s=''):
@@ -157,19 +156,6 @@ class MainWindow(QMainWindow):
 
     def phandler(self, *args, **kwargs):
         print(args, kwargs)
-
-    def sb_changed(self, value):
-        #print(value)
-        wgt = self.focusWidget()
-        if isinstance(wgt, QCheckBox):
-            value = bool(value)
-        for w in self.watps:
-            if wgt == w[1]:
-                try:
-                    w[0].write(value)
-                except:
-                    print_exception_info()
-                    #print('except')
 
     def onQuit(self) :
         # Save global settings
@@ -275,81 +261,6 @@ def cb_set_color(cb: QCheckBox, m, colors=('green', 'red')):
             # cb.setStyleSheet('QCheckBox::indicator { background: red;}')
     if isinstance(m, str):
         cb.setStyleSheet('QCheckBox::indicator { background: ' + m + ';}')
-
-def wdg_update(cb: QWidget, attr_proxy: tango.AttributeProxy):
-    try:
-        attr = attr_proxy.read()
-        value = attr.value
-        if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
-            logger.error('Non SCALAR attribute')
-            return
-        if isinstance(cb, QCheckBox):
-            if attr.type == tango._tango.CmdArgType.DevBoolean:
-                if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-                    cb_set_color(cb, value)
-                else:
-                    cb_set_color(cb, 'gray')
-            else:
-                logger.error('Non boolean attribute for QCheckBox')
-                cb_set_color(cb, 'gray')
-    except:
-        logger.debug('Exception updating widget', sys.exc_info()[0])
-        cb_set_color(cb, 'gray')
-
-def cb_update(cb: QCheckBox, attr_proxy: tango.AttributeProxy):
-    try:
-        attr = attr_proxy.read()
-        value = attr.value
-        if attr.type == tango._tango.CmdArgType.DevBoolean and attr.data_format == tango._tango.AttrDataFormat.SCALAR:
-            if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-                cb_set_color(cb, value)
-            else:
-                cb_set_color(cb, 'gray')
-        else:
-            print('Not scalar boolean attribute for QCheckBox')
-            cb_set_color(cb, 'gray')
-    except:
-        logger.debug('Exception updating widget', sys.exc_info()[0])
-        cb_set_color(cb, 'gray')
-
-def pb_update(pb: QtWidgets.QPushButton, attr_proxy: tango.AttributeProxy):
-    try:
-        attr = attr_proxy.read()
-        if attr.type == tango._tango.CmdArgType.DevBoolean and attr.data_format == tango._tango.AttrDataFormat.SCALAR:
-            if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-                pb.setDisabled(False)
-                pb.setChecked(attr.value)
-            else:
-                logger.debug('Attribute INVALID')
-                pb.setDisabled(True)
-        else:
-            logger.debug('Not scalar boolean attribute')
-            pb.setDisabled(True)
-    except:
-        logger.debug('Exception updating widget', sys.exc_info()[0])
-        #print_exception_info()
-        pb.setDisabled(True)
-
-def lbl_update(lbl: QLabel, attr_proxy: tango.AttributeProxy):
-    try:
-        attr = attr_proxy.read()
-        if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
-            logger.debug('Non scalar attribute')
-            lbl.setText('****')
-            lbl.setStyleSheet('color: red')
-            return
-        ac = attr_proxy.get_config()
-        value = ac.format % attr.value
-        if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-            lbl.setStyleSheet('color: black')
-            lbl.setText(value)
-        else:
-            lbl.setStyleSheet('color: red')
-            lbl.setText(value)
-    except:
-        logger.debug('Exception during update', sys.exc_info()[0])
-        lbl.setText('****')
-        lbl.setStyleSheet('color: red')
 
 def get_widget_state(obj, config, name=None):
     try:

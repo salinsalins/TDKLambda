@@ -65,11 +65,9 @@ class TangoWidget():
         self.widget.setStyleSheet('color: gray')
 
     def decorate_invalid(self):
-        self.set_value()
         self.widget.setStyleSheet('color: red')
 
     def decorate_valid(self):
-        self.set_value()
         self.widget.setStyleSheet('color: black')
 
     def read(self):
@@ -99,8 +97,10 @@ class TangoWidget():
                 self.decorate_error()
             else:
                 if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+                    self.set_value()
                     self.decorate_valid()
                 else:
+                    self.set_value()
                     self.decorate_invalid()
         except:
             if self.connected:
@@ -111,5 +111,13 @@ class TangoWidget():
             self.decorate_error()
 
     def callback(self, value):
-        self.logger.debug('Callback of unsupported widget')
-        return
+        if self.connected:
+            try:
+                self.attr_proxy.write(value)
+                self.decorate_valid()
+            except:
+                self.logger.debug('Exception %s in callback', sys.exc_info()[0])
+                self.decorate_error()
+        else:
+            if time.time() - self.time > TangoWidget.RECONNECT_TIMEOUT:
+                self.create_attribute(self.attr_proxy)

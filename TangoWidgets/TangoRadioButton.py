@@ -5,15 +5,14 @@ Created on Jan 3, 2020
 @author: sanin
 '''
 import sys
-from PyQt5.QtWidgets import QCheckBox
-import tango
-from TangoWidget import TangoWidget
+from PyQt5.QtWidgets import QRadioButton
+from TangoWidgets.TangoWidget import TangoWidget
 
 
-class TangoCheckBox(TangoWidget):
-    def __init__(self, attribute, widget: QCheckBox):
+class TangoRadioButton(TangoWidget):
+    def __init__(self, attribute, widget: QRadioButton):
         super().__init__(attribute, widget)
-        self.widget.stateChanged.connect(self.callback)
+        self.widget.toggled.connect(self.callback)
 
     def set_value(self):
         self.value = self.attr.value

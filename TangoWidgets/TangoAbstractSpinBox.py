@@ -1,0 +1,31 @@
+# coding: utf-8
+'''
+Created on Jan 3, 2020
+
+@author: sanin
+'''
+import sys
+import time
+from PyQt5.QtWidgets import QAbstractSpinBox
+from TangoWidgets.TangoWidget import TangoWidget
+
+
+class TangoAbstractSpinBox(TangoWidget):
+    def __init__(self, attribute, widget: QAbstractSpinBox):
+        super().__init__(attribute, widget)
+        self.widget.setKeyboardTracking(False)
+        self.widget.valueChanged.connect(self.callback)
+
+    def decorate_error(self):
+        self.widget.setStyleSheet('color: gray')
+
+    def decorate_invalid(self):
+        self.widget.setStyleSheet('color: red')
+
+    def decorate_valid(self):
+        self.widget.setStyleSheet('color: black')
+
+    def set_value(self):
+        self.value = self.attr.value
+        self.widget.setValue(self.value)
+        return self.value
