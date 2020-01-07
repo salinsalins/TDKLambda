@@ -15,7 +15,7 @@ import tango
 
 class TangoWidget():
     ERROR_TEXT = '****'
-    RECONNECT_TIMEOUT = 10.0
+    RECONNECT_TIMEOUT = 10.0    # seconds
 
     def __init__(self, attribute, widget: QWidget):
         # defaults
@@ -26,6 +26,9 @@ class TangoWidget():
         self.attr = None
         self.attr_config = None
         self.value = None
+        self.requested = False
+        self.ready = False
+        self.update_dt = 0.0
         # Configure logging
         self.logger = logging.getLogger(__name__)
         if not self.logger.hasHandlers():
@@ -71,6 +74,14 @@ class TangoWidget():
         self.widget.setStyleSheet('color: black')
 
     def read(self):
+        # if self.update_dt > 0.05:
+        #     print('update was slow', self.update_dt)
+        # id = self.attr_proxy.read_asynch()
+        # try:
+        #     repl = self.attr_proxy.read_reply(id, 0)
+        #     print(repl)
+        # except:
+        #     print('except')
         self.attr = None
         self.attr = self.attr_proxy.read()
         return self.attr
@@ -90,6 +101,9 @@ class TangoWidget():
         return self.value
 
     def update(self) -> None:
+        #if self.update_dt > 0.05:
+        #    print('slow update', self.update_dt)
+        t0 = time.time()
         try:
             attr = self.read()
             if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
@@ -109,6 +123,7 @@ class TangoWidget():
                 if time.time() - self.time > TangoWidget.RECONNECT_TIMEOUT:
                     self.create_attribute(self.attr_proxy)
             self.decorate_error()
+        self.update_dt = time.time() - t0
 
     def callback(self, value):
         if self.connected:

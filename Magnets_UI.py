@@ -54,6 +54,7 @@ logger.addHandler(console_handler)
 
 # Global configuration dictionary
 CONFIG = {}
+TIMER_PERIOD = 300  # ms
 
 
 class MainWindow(QMainWindow):
@@ -68,7 +69,7 @@ class MainWindow(QMainWindow):
         self.n = 0
         self.refresh_flag = False
         self.last_selection = -1
-        self.elapsed = 0
+        self.elapsed = 0.0
 
         # Load the UI
         uic.loadUi(UI_FILE, self)
@@ -219,14 +220,15 @@ class MainWindow(QMainWindow):
 
     def timer_handler(self):
         t0 = time.time()
-        self.elapsed += 1
+        #self.elapsed += 1
         t = time.strftime('%H:%M:%S')
         self.clock.setText('%s' % t)
         #self.clock.setText('Elapsed: %ds    %s' % (self.elapsed, t))
         if len(self.rtwdgts) <= 0:
             return
         count = 0
-        while time.time() - t0 < 0.2:
+        self.elapsed = time.time()
+        while time.time() - t0 < TIMER_PERIOD/2000.0:
             if self.rtwdgts[self.n].widget.isVisible():
                 self.rtwdgts[self.n].update()
             self.n += 1
@@ -234,7 +236,10 @@ class MainWindow(QMainWindow):
                 self.n = 0
             count += 1
             if count == len(self.rtwdgts):
-                break
+                self.elapsed = time.time() - self.elapsed
+                #print('total loop', int((time.time()-t0)*1000.0), 'ms')
+                #print('total loop', '%5.3f s'%self.elapsed)
+                return
         #print(int((time.time()-t0)*1000.0), 'ms')
         #time.sleep(1.0)
 
@@ -326,7 +331,7 @@ if __name__ == '__main__':
     # Defile and start timer task
     timer = QTimer()
     timer.timeout.connect(dmw.timer_handler)
-    timer.start(300)
+    timer.start(TIMER_PERIOD)
     # Start the Qt main loop execution, exiting from this script
     # with the same return code of Qt application
     sys.exit(app.exec_())
