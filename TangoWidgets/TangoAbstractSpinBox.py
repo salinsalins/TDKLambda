@@ -11,10 +11,11 @@ from TangoWidgets.TangoWidget import TangoWidget
 
 
 class TangoAbstractSpinBox(TangoWidget):
-    def __init__(self, attribute, widget: QAbstractSpinBox):
+    def __init__(self, attribute, widget: QAbstractSpinBox, readonly=False):
         super().__init__(attribute, widget)
         self.widget.setKeyboardTracking(False)
-        self.widget.valueChanged.connect(self.callback)
+        if not readonly:
+            self.widget.valueChanged.connect(self.callback)
 
     def decorate_error(self):
         self.widget.setStyleSheet('color: gray')
