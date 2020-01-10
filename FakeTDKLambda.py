@@ -268,8 +268,8 @@ class TDKLambda():
             self.logger.debug('COM port can not be closed')
         # try to create port
         try:
-            #self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
-            self.com = ComPort(self.port, baudrate=self.baud, timeout=self.com_timeout)
+            self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
+            #self.com = ComPort(self.port, baudrate=self.baud, timeout=self.com_timeout)
             self.com.write_timeout = 0
             self.com.writeTimeout = 0
             self.logger.debug('COM port created')

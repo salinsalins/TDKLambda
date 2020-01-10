@@ -27,6 +27,7 @@ _lock = Lock()
 
 class TDKLambda_Server(Device):
     #green_mode = tango.GreenMode.Gevent
+    READING_PERIOD = 0.5
     devices = []
 
     devicetype = attribute(label="type", dtype=str,
@@ -159,7 +160,7 @@ class TDKLambda_Server(Device):
 
     def read_voltage(self, attr: tango.Attribute):
         with _lock:
-            if time.time() - self.time > 0.12:
+            if time.time() - self.time > self.READING_PERIOD:
                 self.read_all()
             val = self.values[0]
             attr.set_value(val)
@@ -172,7 +173,7 @@ class TDKLambda_Server(Device):
 
     def read_current(self, attr: tango.Attribute):
         with _lock:
-            if time.time() - self.time > 0.12:
+            if time.time() - self.time > self.READING_PERIOD:
                 self.read_all()
             val = self.values[2]
             attr.set_value(val)
@@ -185,7 +186,7 @@ class TDKLambda_Server(Device):
 
     def read_programmed_voltage(self, attr: tango.Attribute):
         with _lock:
-            if time.time() - self.time > 0.12:
+            if time.time() - self.time > self.READING_PERIOD:
                 self.read_all()
             val = self.values[1]
             attr.set_value(val)
@@ -198,7 +199,7 @@ class TDKLambda_Server(Device):
 
     def read_programmed_current(self, attr: tango.Attribute):
         with _lock:
-            if time.time() - self.time > 0.12:
+            if time.time() - self.time > self.READING_PERIOD:
                 self.read_all()
             ##print(time.time() - self.time, self.values)
             val = self.values[3]
