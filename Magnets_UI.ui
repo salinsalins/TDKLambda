@@ -2,6 +2,14 @@
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>752</width>
+    <height>773</height>
+   </rect>
+  </property>
   <property name="font">
    <font>
     <pointsize>12</pointsize>
@@ -25,7 +33,7 @@
        <enum>QTabWidget::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tabWidgetPage1">
        <property name="sizePolicy">
@@ -63,8 +71,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>805</width>
-             <height>611</height>
+             <width>718</width>
+             <height>623</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout">
@@ -2464,7 +2472,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>839</width>
+     <width>752</width>
      <height>34</height>
     </rect>
    </property>
