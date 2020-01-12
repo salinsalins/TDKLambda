@@ -12,7 +12,7 @@ from TangoWidgets.TangoWidget import TangoWidget
 
 class TangoAbstractSpinBox(TangoWidget):
     def __init__(self, attribute, widget: QAbstractSpinBox, readonly=False):
-        super().__init__(attribute, widget)
+        super().__init__(attribute, widget, readonly)
         self.widget.setKeyboardTracking(False)
         if not readonly:
             self.widget.valueChanged.connect(self.callback)
@@ -28,5 +28,7 @@ class TangoAbstractSpinBox(TangoWidget):
 
     def set_value(self):
         self.value = self.attr.value
+        bs = self.widget.blockSignals(True)
         self.widget.setValue(self.value)
+        self.widget.blockSignals(bs)
         return self.value
