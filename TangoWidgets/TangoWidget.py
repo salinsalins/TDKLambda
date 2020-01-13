@@ -88,7 +88,7 @@ class TangoWidget():
             try:
                 self.attr = self.attr_proxy.history(1)[0]
             except:
-                self.logger.debug("Polled Exception ", exc_info=True)
+                #self.logger.debug("Polled Exception ", exc_info=True)
                 self.attr = self.attr_proxy.read()
         else:
             self.attr = self.attr_proxy.read()
@@ -132,7 +132,7 @@ class TangoWidget():
                     self.create_attribute_proxy(self.attr_proxy)
             self.decorate_error()
         self.update_dt = time.time() - t0
-        print('update', self.attr_proxy, int(self.update_dt*1000.0), 'ms')
+        #print('update', self.attr_proxy, int(self.update_dt*1000.0), 'ms')
 
     def callback(self, value):
         if self.connected:
