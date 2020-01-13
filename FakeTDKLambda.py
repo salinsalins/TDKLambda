@@ -30,8 +30,8 @@ class FakeComPort():
         self.mv = {self.last_address: 0.0}
         self.mc = {self.last_address: 0.0}
         self.out = {self.last_address: False}
-        self.SN = {self.last_address: str(ComPort.SN).encode()}
-        ComPort.SN += 1
+        self.SN = {self.last_address: str(FakeComPort.SN).encode()}
+        FakeComPort.SN += 1
         self.id = {self.last_address: b'FAKELAMBDA GEN10-100'}
         self.t = {self.last_address: time.time()}
 
@@ -228,7 +228,7 @@ class TDKLambda():
                 except:
                     pass
             self.serial_number = self._send_command(b'SN?').decode()
-            msg = 'TDKLambda %s has been created' % self.id
+            msg = 'TDKLambda: %s has been created' % self.id
             self.logger.info(msg)
         else:
             msg = 'Uninitialized TDKLambda device added to list'
@@ -278,8 +278,8 @@ class TDKLambda():
             self.logger.debug('COM port can not be closed')
         # try to create port
         try:
-            self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
-            #self.com = ComPort(self.port, baudrate=self.baud, timeout=self.com_timeout)
+            #self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
+            self.com = FakeComPort(self.port, baudrate=self.baud, timeout=self.com_timeout)
             self.com.write_timeout = 0
             self.com.writeTimeout = 0
             self.logger.debug('COM port created')
