@@ -51,8 +51,8 @@ class FakeComPort():
                     self.mv[self.last_address] = 0.0
                     self.mc[self.last_address] = 0.0
                     self.out[self.last_address] = False
-                    self.SN[self.last_address] = str(ComPort.SN).encode()
-                    ComPort.SN += 1
+                    self.SN[self.last_address] = str(FakeComPort.SN).encode()
+                    FakeComPort.SN += 1
                     self.id[self.last_address] = self.id[-1]
                     self.t[self.last_address] = time.time()
             if self.last_write.startswith(b'PV '):
