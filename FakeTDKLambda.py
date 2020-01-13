@@ -15,7 +15,7 @@ SLEEP = 0.03
 SLEEP_SMALL = 0.015
 
 
-class ComPort():
+class FakeComPort():
     SN = 123456
     RESPONSE = 0.035
 
