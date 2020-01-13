@@ -31,7 +31,8 @@ class ComPort():
         self.out = {self.last_address: False}
         self.sn = {self.last_address: str(ComPort.sn).encode()}
         ComPort.sn += 1
-        self.id = {self.last_address: b'LAMBDA GEN10-100'}
+        self.id = {self.last_address: b'FAKELAMBDA GEN10-100'}
+        self.t = {self.last_address: time.time()}
 
     def close(self):
         self.last_write = b''
@@ -39,8 +40,8 @@ class ComPort():
         return True
 
     def write(self, cmd):
+        self.last_write = cmd
         try:
-            self.last_write = cmd
             if self.last_write.startswith(b'ADR '):
                 self.last_address = int(self.last_write[4:])
                 if self.last_address not in self.pv:
@@ -52,20 +53,28 @@ class ComPort():
                     self.sn[self.last_address] = str(ComPort.sn).encode()
                     ComPort.sn += 1
                     self.id[self.last_address] = self.id[-1]
+                    self.t[self.last_address] = time.time()
             if self.last_write.startswith(b'PV '):
                 self.pv[self.last_address] = float(cmd[3:])
+                self.t[self.last_address] = time.time()
             if self.last_write.startswith(b'PC '):
                 self.pc[self.last_address] = float(cmd[3:])
+                self.t[self.last_address] = time.time()
             if self.last_write.startswith(b'OUT ON'):
                 self.out[self.last_address] = True
+                self.t[self.last_address] = time.time()
             if self.last_write.startswith(b'OUT OF'):
                 self.out[self.last_address] = False
+                self.t[self.last_address] = time.time()
         except:
             pass
 
     def read(self, *args):
         if self.last_write == b'':
             return b''
+        if time.time() - self.t[self.last_address] < 0.035:
+            return b''
+        self.t[self.last_address] = time.time()
         if self.last_write.startswith(b'ADR '):
             self.last_address = int(self.last_write[3:])
             self.last_write = b''
