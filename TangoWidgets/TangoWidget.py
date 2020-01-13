@@ -84,7 +84,15 @@ class TangoWidget():
         # except:
         #     print('except')
         self.attr = None
-        self.attr = self.attr_proxy.read()
+        if self.attr_proxy.is_polled():
+            print('polled')
+            try:
+                self.attr = self.attr_proxy.hist(1)
+            except:
+                print('polled except')
+                self.attr = self.attr_proxy.read()
+        else:
+            self.attr = self.attr_proxy.read()
         return self.attr
 
     def set_value(self):
