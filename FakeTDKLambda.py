@@ -16,7 +16,8 @@ SLEEP_SMALL = 0.015
 
 
 class ComPort():
-    sn = 123456
+    SN = 123456
+    RESPONSE = 0.035
 
     def __init__(self, port, *args, **kwargs):
         #super().__init__(self, port, args, kwargs)
@@ -29,8 +30,8 @@ class ComPort():
         self.mv = {self.last_address: 0.0}
         self.mc = {self.last_address: 0.0}
         self.out = {self.last_address: False}
-        self.sn = {self.last_address: str(ComPort.sn).encode()}
-        ComPort.sn += 1
+        self.SN = {self.last_address: str(ComPort.SN).encode()}
+        ComPort.SN += 1
         self.id = {self.last_address: b'FAKELAMBDA GEN10-100'}
         self.t = {self.last_address: time.time()}
 
@@ -50,8 +51,8 @@ class ComPort():
                     self.mv[self.last_address] = 0.0
                     self.mc[self.last_address] = 0.0
                     self.out[self.last_address] = False
-                    self.sn[self.last_address] = str(ComPort.sn).encode()
-                    ComPort.sn += 1
+                    self.SN[self.last_address] = str(ComPort.SN).encode()
+                    ComPort.SN += 1
                     self.id[self.last_address] = self.id[-1]
                     self.t[self.last_address] = time.time()
             if self.last_write.startswith(b'PV '):
@@ -72,7 +73,7 @@ class ComPort():
     def read(self, *args):
         if self.last_write == b'':
             return b''
-        if time.time() - self.t[self.last_address] < 0.035:
+        if time.time() - self.t[self.last_address] < self.RESPONSE:
             return b''
         self.t[self.last_address] = time.time()
         if self.last_write.startswith(b'ADR '):
@@ -117,7 +118,7 @@ class ComPort():
             return self.id[self.last_address] + b'\r'
         if self.last_write.startswith(b'SN?'):
             self.last_write = b''
-            return self.sn[self.last_address] + b'\r'
+            return self.SN[self.last_address] + b'\r'
         if self.last_write.startswith(b'OUT?'):
             self.last_write = b''
             if self.out[self.last_address]:
