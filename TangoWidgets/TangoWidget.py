@@ -46,14 +46,14 @@ class TangoWidget():
             self.attr_proxy = attribute
             self.connected = False
         elif isinstance(attribute, str):
-            self.create_attribute(attribute)
+            self.create_attribute_proxy(attribute)
         else:
             self.logger.warning('<tango.AttributeProxy> or <str> required')
             self.attr_proxy = attribute
             self.connected = False
         self.update()
 
-    def create_attribute(self, name: str):
+    def create_attribute_proxy(self, name: str):
         self.time = time.time()
         try:
             self.attr_proxy = tango.AttributeProxy(name)
@@ -108,7 +108,7 @@ class TangoWidget():
         try:
             attr = self.read()
             if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
-                self.logger.debug('Non sclar attribute')
+                self.logger.debug('Non scalar attribute')
                 self.decorate_error()
             else:
                 if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
@@ -121,8 +121,8 @@ class TangoWidget():
             if self.connected:
                 self.logger.debug('Exception %s updating widget', sys.exc_info()[0])
             else:
-                if time.time() - self.time > TangoWidget.RECONNECT_TIMEOUT:
-                    self.create_attribute(self.attr_proxy)
+                if time.time() - self.time > self.RECONNECT_TIMEOUT:
+                    self.create_attribute_proxy(self.attr_proxy)
             self.decorate_error()
         self.update_dt = time.time() - t0
 
@@ -136,7 +136,7 @@ class TangoWidget():
                 self.decorate_error()
         else:
             if time.time() - self.time > TangoWidget.RECONNECT_TIMEOUT:
-                self.create_attribute(self.attr_proxy)
+                self.create_attribute_proxy(self.attr_proxy)
                 self.decorate_error()
             else:
                 self.decorate_error()

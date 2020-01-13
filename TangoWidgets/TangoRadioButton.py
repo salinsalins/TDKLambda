@@ -33,6 +33,6 @@ class TangoRadioButton(TangoWidget):
                 self.decorate_error()
         else:
             if time.time() - self.time > TangoWidget.RECONNECT_TIMEOUT:
-                self.create_attribute(self.attr_proxy)
+                self.create_attribute_proxy(self.attr_proxy)
             else:
                 self.decorate_error()
