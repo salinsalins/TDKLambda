@@ -17,12 +17,13 @@ class TangoWidget():
     ERROR_TEXT = '****'
     RECONNECT_TIMEOUT = 10.0    # seconds
 
-    def __init__(self, attribute, widget: QWidget):
+    def __init__(self, attribute, widget: QWidget, readonly=False):
         # defaults
         self.time = time.time()
         self.connected = False
         self.attr_proxy = None
         self.widget = widget
+        self.readonly = readonly
         self.attr = None
         self.attr_config = None
         self.value = None
@@ -136,5 +137,6 @@ class TangoWidget():
         else:
             if time.time() - self.time > TangoWidget.RECONNECT_TIMEOUT:
                 self.create_attribute(self.attr_proxy)
+                self.decorate_error()
             else:
                 self.decorate_error()

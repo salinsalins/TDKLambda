@@ -298,10 +298,10 @@ def set_widget_state(obj, config, name=None):
             obj.setText(config[name])
         elif isinstance(obj, QComboBox):
             obj.setUpdatesEnabled(False)
-            obj.blockSignals(True)
+            bs = obj.blockSignals(True)
             obj.clear()
             obj.addItems(config[name]['items'])
-            obj.blockSignals(False)
+            obj.blockSignals(bs)
             obj.setUpdatesEnabled(True)
             obj.setCurrentIndex(config[name]['index'])
             # Force index change event in the case of index=0

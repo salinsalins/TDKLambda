@@ -6,19 +6,24 @@ Created on Jan 3, 2020
 '''
 import sys
 import time
-from PyQt5.QtWidgets import QCheckBox
+from PyQt5.QtWidgets import QComboBox
 from TangoWidgets.TangoWidget import TangoWidget
 
 
-class TangoCheckBox(TangoWidget):
-    def __init__(self, attribute, widget: QCheckBox, readonly=False):
+class TangoComboBox(TangoWidget):
+    def __init__(self, attribute, widget: QComboBox):
         super().__init__(attribute, widget)
-        if not readonly:
-            self.widget.stateChanged.connect(self.callback)
+        #self.items = self.widget.view()
+        #self.widget.currentIndexChanged.connect(self.callback)
+        self.widget.activated.connect(self.callback)
 
     def set_value(self):
-        self.value = self.attr.value
-        self.widget.setChecked(self.value)
+        self.value = None
+        try:
+            self.value = int(self.attr.value)
+            self.widget.setCurrentIndex(self.value)
+        except:
+            pass
         return self.value
 
     def decorate_error(self):
@@ -27,7 +32,7 @@ class TangoCheckBox(TangoWidget):
     def callback(self, value):
         if self.connected:
             try:
-                self.attr_proxy.write(bool(value))
+                self.attr_proxy.write(int(value))
                 self.decorate_valid()
             except:
                 self.logger.debug('Exception %s in callback', sys.exc_info()[0])
