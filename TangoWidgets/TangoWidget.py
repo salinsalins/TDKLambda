@@ -108,7 +108,7 @@ class TangoWidget():
             pass
         return self.value
 
-    def update(self) -> None:
+    def update(self, decorate_only=False) -> None:
         #if self.update_dt > 0.05:
         #    print('slow update', self.update_dt)
         t0 = time.time()
@@ -119,10 +119,12 @@ class TangoWidget():
                 self.decorate_error()
             else:
                 if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-                    self.set_value()
+                    if not decorate_only:
+                        self.set_value()
                     self.decorate_valid()
                 else:
-                    self.set_value()
+                    if not decorate_only:
+                        self.set_value()
                     self.decorate_invalid()
         except:
             if self.connected:
