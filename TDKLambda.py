@@ -13,7 +13,6 @@ MAX_TIMEOUT = 1.5   # sec
 MIN_TIMEOUT = 0.1   # sec
 RETRIES = 3
 SUSPEND = 2.0
-SLEEP = 0.03
 SLEEP_SMALL = 0.015
 
 
@@ -161,7 +160,6 @@ class TDKLambda():
         self.timeout_cear_input = 0.5
         # sleep timings
         self.sleep_small = SLEEP_SMALL
-        self.sleep = SLEEP
         self.sleep_after_write = 0.02
         self.sleep_cear_input = 0.0
         # default com port, id, and serial number
