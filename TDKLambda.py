@@ -7,6 +7,7 @@ import logging
 import serial
 from threading import Thread, Lock
 
+EMULATE = True
 MAX_TIMEOUT = 1.5   # sec
 MIN_TIMEOUT = 0.1   # sec
 RETRIES = 3
@@ -30,7 +31,7 @@ class FakeComPort():
         self.mv = {self.last_address: 0.0}
         self.mc = {self.last_address: 0.0}
         self.out = {self.last_address: False}
-        self.SN = {self.last_address: str(FakeComPort.SN).encode()}
+        self.sn = {self.last_address: str(FakeComPort.SN).encode()}
         FakeComPort.SN += 1
         self.id = {self.last_address: b'FAKELAMBDA GEN10-100'}
         self.t = {self.last_address: time.time()}
@@ -51,7 +52,7 @@ class FakeComPort():
                     self.mv[self.last_address] = 0.0
                     self.mc[self.last_address] = 0.0
                     self.out[self.last_address] = False
-                    self.SN[self.last_address] = str(FakeComPort.SN).encode()
+                    self.sn[self.last_address] = str(FakeComPort.SN).encode()
                     FakeComPort.SN += 1
                     self.id[self.last_address] = self.id[-1]
                     self.t[self.last_address] = time.time()
@@ -118,7 +119,7 @@ class FakeComPort():
             return self.id[self.last_address] + b'\r'
         if self.last_write.startswith(b'SN?'):
             self.last_write = b''
-            return self.SN[self.last_address] + b'\r'
+            return self.sn[self.last_address] + b'\r'
         if self.last_write.startswith(b'OUT?'):
             self.last_write = b''
             if self.out[self.last_address]:
@@ -278,8 +279,10 @@ class TDKLambda():
             self.logger.debug('COM port can not be closed')
         # try to create port
         try:
-            #self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
-            self.com = FakeComPort(self.port, baudrate=self.baud, timeout=self.com_timeout)
+            if EMULATE:
+                self.com = FakeComPort(self.port, baudrate=self.baud, timeout=self.com_timeout)
+            else:
+                self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
             self.com.write_timeout = 0
             self.com.writeTimeout = 0
             self.logger.debug('COM port created')
@@ -288,7 +291,7 @@ class TDKLambda():
             self.com = None
             self.logger.error('Port creation error')
             self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
-        # updete com for other devices witn the same port
+        # update com for other devices with the same port
         for d in TDKLambda.devices:
             if d.port == self.port:
                 d.com = self.com
