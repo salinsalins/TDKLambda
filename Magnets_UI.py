@@ -77,8 +77,8 @@ class MainWindow(QMainWindow):
         ##self.setMinimumSize(QSize(480, 640))        # min size
         self.resize(QSize(480, 640))                # size
         self.move(QPoint(50, 50))                   # position
-        #self.setWindowTitle(APPLICATION_NAME)       # title
-        # self.setWindowIcon(QtGui.QIcon('icon.png')) # icon
+        ##self.setWindowTitle(APPLICATION_NAME)       # title
+        ##self.setWindowIcon(QtGui.QIcon('icon.png')) # icon
         # Connect signals with slots
         ##self.plainTextEdit_1.textChanged.connect(self.refresh_on)
         ##self.checkBox_25.clicked.connect(self.phandler)
