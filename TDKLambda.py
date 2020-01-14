@@ -7,7 +7,8 @@ import logging
 import serial
 from threading import Thread, Lock
 
-EMULATE = False
+LOG_LEVEL = logging.INFO
+EMULATE = True
 MAX_TIMEOUT = 1.5   # sec
 MIN_TIMEOUT = 0.1   # sec
 RETRIES = 3
@@ -174,7 +175,7 @@ class TDKLambda():
         if self.logger is None:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.DEBUG)
+            self.logger.setLevel(LOG_LEVEL)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s,%(msecs)d %(process)d %(thread)d %(funcName)s(%(lineno)s) ' +\
