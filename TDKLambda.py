@@ -7,7 +7,7 @@ import logging
 import serial
 from threading import Thread, Lock
 
-EMULATE = True
+EMULATE = False
 MAX_TIMEOUT = 1.5   # sec
 MIN_TIMEOUT = 0.1   # sec
 RETRIES = 3
@@ -161,8 +161,8 @@ class TDKLambda():
         # sleep timings
         self.sleep_small = SLEEP_SMALL
         self.sleep = SLEEP
-        self.sleep_after_write = 0.03
-        self.sleep_cear_input = 0.01
+        self.sleep_after_write = 0.02
+        self.sleep_cear_input = 0.0
         # default com port, id, and serial number
         self.com = None
         self.id = None
@@ -174,7 +174,7 @@ class TDKLambda():
         if self.logger is None:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(logging.INFO)
+            self.logger.setLevel(logging.DEBUG)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s,%(msecs)d %(process)d %(thread)d %(funcName)s(%(lineno)s) ' +\
