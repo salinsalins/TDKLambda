@@ -1,46 +1,45 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-ORGANIZATION_NAME = 'BINP'
-APPLICATION_NAME = 'TDKLambda_Server'
-APPLICATION_NAME_SHORT = 'TDKLambda_Server'
-APPLICATION_VERSION = '1_1'
-#CONFIG_FILE = APPLICATION_NAME_SHORT + '.json'
-#UI_FILE = APPLICATION_NAME_SHORT + '.ui'
-
-"""TDK Lambda Genesis series power supply tango device server"""
+from FakeTDKLambda import TDKLambda
 
 import logging
 import time
+from threading import Thread, Lock
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
 from tango.server import Device, attribute, command
 
-from FakeTDKLambda import TDKLambda
+ORGANIZATION_NAME = 'BINP'
+APPLICATION_NAME = 'TDKLambda_Server'
+APPLICATION_NAME_SHORT = 'TDKLambda_Server'
+APPLICATION_VERSION = '1_1'
+# CONFIG_FILE = APPLICATION_NAME_SHORT + '.json'
+# UI_FILE = APPLICATION_NAME_SHORT + '.ui'
 
-from threading import Thread, Lock
+"""TDK Lambda Genesis series power supply tango device server"""
 
 # init a thread lock
 _lock = Lock()
 
 
 class TDKLambda_Server(Device):
-    #green_mode = tango.GreenMode.Gevent
+    # green_mode = tango.GreenMode.Gevent
     READING_PERIOD = 0.5
     devices = []
 
     devicetype = attribute(label="type", dtype=str,
-                        display_level=DispLevel.OPERATOR,
-                        access=AttrWriteType.READ,
-                        unit="", format="%s",
-                        doc="TDKLambda device type")
+                           display_level=DispLevel.OPERATOR,
+                           access=AttrWriteType.READ,
+                           unit="", format="%s",
+                           doc="TDKLambda device type")
 
     output_state = attribute(label="Output", dtype=bool,
-                        display_level=DispLevel.OPERATOR,
-                        access=AttrWriteType.READ_WRITE,
-                        unit="", format="",
-                        doc="Output on/off state")
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="", format="",
+                             doc="Output on/off state")
 
     voltage = attribute(label="Voltage", dtype=float,
                         display_level=DispLevel.OPERATOR,
@@ -50,11 +49,11 @@ class TDKLambda_Server(Device):
                         doc="Measured voltage")
 
     programmed_voltage = attribute(label="Programmed Voltage", dtype=float,
-                        display_level=DispLevel.OPERATOR,
-                        access=AttrWriteType.READ_WRITE,
-                        unit="V", format="%6.2f",
-                        min_value=0.0,
-                        doc="Programmed voltage")
+                                   display_level=DispLevel.OPERATOR,
+                                   access=AttrWriteType.READ_WRITE,
+                                   unit="V", format="%6.2f",
+                                   min_value=0.0,
+                                   doc="Programmed voltage")
 
     current = attribute(label="Current", dtype=float,
                         display_level=DispLevel.OPERATOR,
@@ -64,11 +63,11 @@ class TDKLambda_Server(Device):
                         doc="Measured current")
 
     programmed_current = attribute(label="Programmed Current", dtype=float,
-                        display_level=DispLevel.OPERATOR,
-                        access=AttrWriteType.READ_WRITE,
-                        unit="A", format="%6.2f",
-                        min_value=0.0,
-                        doc="Programmed current")
+                                   display_level=DispLevel.OPERATOR,
+                                   access=AttrWriteType.READ_WRITE,
+                                   unit="A", format="%6.2f",
+                                   min_value=0.0,
+                                   doc="Programmed current")
 
     def get_device_property(self, prop: str, default=None):
         name = self.get_name()
@@ -142,20 +141,20 @@ class TDKLambda_Server(Device):
 
     def read_all(self):
         t0 = time.time()
-        #msg = '%s:%d read_all' % (self.tdk.port, self.tdk.addr)
-        #print(msg)
-        #self.debug_stream(msg)
+        # msg = '%s:%d read_all' % (self.tdk.port, self.tdk.addr)
+        # print(msg)
+        # self.debug_stream(msg)
         try:
             values = self.tdk.read_all()
             self.values = values
             self.time = time.time()
             msg = '%s:%d read_all %s ms %s' % \
-                  (self.tdk.port, self.tdk.addr, int((self.time-t0)*1000.0), values)
-            #print(msg)
+                  (self.tdk.port, self.tdk.addr, int((self.time - t0) * 1000.0), values)
+            # print(msg)
             self.debug_stream(msg)
         except:
             msg = '%s:%d TDKLambda read error' % (self.tdk.port, self.tdk.addr)
-            #print(msg)
+            # print(msg)
             self.info_stream(msg)
 
     def read_voltage(self, attr: tango.Attribute):
@@ -225,8 +224,8 @@ class TDKLambda_Server(Device):
                 self.info_stream("Error writing programmed voltage")
                 self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
             ##print(self.tdk.port, self.tdk.addr, 'write_programmed_voltage value: ', value, result)
-            #msg = 'write_voltage: %s = %s' % (str(value), str(result))
-            #print(msg)
+            # msg = 'write_voltage: %s = %s' % (str(value), str(result))
+            # print(msg)
             return result
 
     def write_programmed_current(self, value):
@@ -280,8 +279,8 @@ class TDKLambda_Server(Device):
                     msg = '%s:%d Error switch output' % (self.tdk.port, self.tdk.addr)
                     self.info_stream(msg)
                     self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
-                    #v = self.read_output_state(self.output_state)
-                    #self.output_state.set_value(v)
+                    # v = self.read_output_state(self.output_state)
+                    # self.output_state.set_value(v)
                     result = False
             return result
 
@@ -426,14 +425,14 @@ class TDKLambda_Server(Device):
         with _lock:
             # turn on the actual power supply here
             self.write_output_state(True)
-            #self.set_state(DevState.ON)
+            # self.set_state(DevState.ON)
 
     @command
     def TurnOff(self):
         with _lock:
             # turn off the actual power supply here
             self.write_output_state(False)
-            #self.set_state(DevState.OFF)
+            # self.set_state(DevState.OFF)
 
 
 if __name__ == "__main__":
