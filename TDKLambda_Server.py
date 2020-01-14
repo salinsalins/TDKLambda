@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from FakeTDKLambda import TDKLambda
+from TDKLambda import TDKLambda
 
 import logging
 import time
