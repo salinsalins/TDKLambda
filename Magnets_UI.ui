@@ -65,8 +65,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>387</width>
-             <height>392</height>
+             <width>429</width>
+             <height>375</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout">
@@ -705,8 +705,14 @@
                  <property name="decimals">
                   <number>1</number>
                  </property>
+                 <property name="maximum">
+                  <double>999999.000000000000000</double>
+                 </property>
                  <property name="singleStep">
-                  <double>1.000000000000000</double>
+                  <double>0.500000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>200.000000000000000</double>
                  </property>
                 </widget>
                </item>
@@ -726,8 +732,17 @@
                  <property name="keyboardTracking">
                   <bool>false</bool>
                  </property>
+                 <property name="decimals">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <double>99999.000000000000000</double>
+                 </property>
                  <property name="singleStep">
-                  <double>1.000000000000000</double>
+                  <double>0.500000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>200.000000000000000</double>
                  </property>
                 </widget>
                </item>
