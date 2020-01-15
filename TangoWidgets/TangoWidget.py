@@ -44,7 +44,7 @@ class TangoWidget():
         # create attribute proxy
         if isinstance(attribute, tango.AttributeProxy):
             self.attr_proxy = attribute
-            self.connected = False
+            self.connected = True
         elif isinstance(attribute, str):
             self.create_attribute_proxy(attribute)
         else:
@@ -84,28 +84,48 @@ class TangoWidget():
         # except:
         #     print('except')
         self.attr = None
-        if self.attr_proxy.is_polled():
-            #try:
-            self.attr = self.attr_proxy.history(1)[0]
-            #except:
-            #    #self.logger.debug("Polled Exception ", exc_info=True)
-            #    self.attr = self.attr_proxy.read()
-        else:
-            self.attr = self.attr_proxy.read()
+        try:
+            if self.attr_proxy.is_polled():
+                try:
+                    self.attr = self.attr_proxy.history(1)[0]
+                except Exception as ex:
+                    self.ex_count += 1
+                    if self.ex_cpunt > 3:
+                        self.time = time.time()
+                        if isinstance(self.attr_proxy, tango.AttributeProxy):
+                            self.attr_proxy = self.attr_proxy.name()
+                        self.connected = False
+                        self.ex_count = 0
+                    raise ex
+                    #self.logger.debug("Polled Exception ", exc_info=True)
+                    #self.attr = self.attr_proxy.read()
+            else:
+                self.attr = self.attr_proxy.read()
+        except Exception as ex:
+            self.time = time.time()
+            if isinstance(self.attr_proxy, tango.AttributeProxy):
+                self.attr_proxy = self.attr_proxy.name()
+            self.connected = False
+            self.ex_count = 0
+            raise ex
+        self.ex_count = 0
         return self.attr
 
     def set_value(self):
-        try:
-            self.attr_config = self.attr_proxy.get_config()
-            self.value = self.attr_config.format % self.attr.value
-        except:
-            self.value = str(self.attr.value)
-        if hasattr(self.widget, 'setText'):
-            self.widget.setText(self.value)
-        elif hasattr(self.widget, 'setValue'):
-            self.widget.setValue(self.value)
+        if hasattr(self.attr, 'value'):
+            try:
+                self.attr_config = self.attr_proxy.get_config()
+                self.value = self.attr_config.format % self.attr.value
+            except:
+                self.value = str(self.attr.value)
+            if hasattr(self.widget, 'setText'):
+                self.widget.setText(self.value)
+            elif hasattr(self.widget, 'setValue'):
+                self.widget.setValue(self.value)
+            else:
+                pass
         else:
-            pass
+            self.value = None
         return self.value
 
     def update(self, decorate_only=False) -> None:
