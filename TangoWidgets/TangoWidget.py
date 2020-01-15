@@ -58,19 +58,21 @@ class TangoWidget():
         if attribute is None:
             attribute = self.attr_proxy
         self.time = time.time()
-        if isinstance(attribute, tango.AttributeProxy):
-            self.attr_proxy = attribute
-            self.connected = True
-        elif isinstance(attribute, str):
-            try:
-                self.attr_proxy = tango.AttributeProxy(attribute)
-                self.connected = True
-            except:
-                self.logger.error('Can not create attribute %s', attribute)
+        try:
+            if isinstance(attribute, tango.AttributeProxy):
+                self.attr_proxy = self.attr_proxy.name()
+                self.attr_proxy.ping()
                 self.attr_proxy = attribute
+                self.connected = True
+            elif isinstance(attribute, str):
+                    self.attr_proxy = tango.AttributeProxy(attribute)
+                    self.connected = True
+            else:
+                self.logger.warning('<tango.AttributeProxy> or <str> required')
+                self.attr_proxy = str(attribute)
                 self.connected = False
-        else:
-            self.logger.warning('<tango.AttributeProxy> or <str> required')
+        except:
+            self.logger.error('Can not create attribute %s', attribute)
             self.attr_proxy = str(attribute)
             self.connected = False
 
@@ -86,14 +88,6 @@ class TangoWidget():
         self.widget.setStyleSheet('color: black')
 
     def read(self):
-        # if self.update_dt > 0.05:
-        #     print('update was slow', self.update_dt)
-        # id = self.attr_proxy.read_asynch()
-        # try:
-        #     repl = self.attr_proxy.read_reply(id, 0)
-        #     print(repl)
-        # except:
-        #     print('except')
         self.attr = None
         try:
             if self.attr_proxy.is_polled():
@@ -102,11 +96,7 @@ class TangoWidget():
                 except Exception as ex:
                     self.ex_count += 1
                     if self.ex_count > 3:
-                        self.time = time.time()
-                        if isinstance(self.attr_proxy, tango.AttributeProxy):
-                            self.attr_proxy = self.attr_proxy.name()
-                        self.connected = False
-                        self.ex_count = 0
+                        self.disconnect_attribute_proxy()
                     raise ex
                     #self.logger.debug("Polled Exception ", exc_info=True)
                     #self.attr = self.attr_proxy.read()
@@ -114,10 +104,7 @@ class TangoWidget():
                 self.attr = self.attr_proxy.read()
         except Exception as ex:
             self.time = time.time()
-            if isinstance(self.attr_proxy, tango.AttributeProxy):
-                self.attr_proxy = self.attr_proxy.name()
-            self.connected = False
-            self.ex_count = 0
+            self.disconnect_attribute_proxy()
             raise ex
         self.ex_count = 0
         return self.attr
