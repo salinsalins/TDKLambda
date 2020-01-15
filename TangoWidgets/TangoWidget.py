@@ -30,6 +30,7 @@ class TangoWidget():
         self.requested = False
         self.ready = False
         self.update_dt = 0.0
+        self.ex_count = 0
         # Configure logging
         self.logger = logging.getLogger(__name__)
         if not self.logger.hasHandlers():
@@ -42,25 +43,27 @@ class TangoWidget():
             console_handler.setFormatter(log_formatter)
             self.logger.addHandler(console_handler)
         # create attribute proxy
+        self.create_attribute_proxy(attribute)
+        self.update()
+
+    def create_attribute_proxy(self, attribute=None):
+        if attribute is None:
+            attribute = self.attr_proxy
+        self.time = time.time()
         if isinstance(attribute, tango.AttributeProxy):
             self.attr_proxy = attribute
             self.connected = True
         elif isinstance(attribute, str):
-            self.create_attribute_proxy(attribute)
+            try:
+                self.attr_proxy = tango.AttributeProxy(attribute)
+                self.connected = True
+            except:
+                self.logger.error('Can not create attribute %s', attribute)
+                self.attr_proxy = attribute
+                self.connected = False
         else:
             self.logger.warning('<tango.AttributeProxy> or <str> required')
-            self.attr_proxy = attribute
-            self.connected = False
-        self.update()
-
-    def create_attribute_proxy(self, name: str):
-        self.time = time.time()
-        try:
-            self.attr_proxy = tango.AttributeProxy(name)
-            self.connected = True
-        except:
-            self.logger.error('Can not create attribute %s', name)
-            self.attr_proxy = name
+            self.attr_proxy = str(attribute)
             self.connected = False
 
     def decorate_error(self):
