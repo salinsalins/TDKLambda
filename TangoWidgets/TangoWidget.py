@@ -48,6 +48,8 @@ class TangoWidget:
         self.update()
 
     def disconnect_attribute_proxy(self):
+        if not self.connected:
+            return
         self.ex_count += 1
         if self.ex_count > 3:
             self.time = time.time()
@@ -67,6 +69,7 @@ class TangoWidget:
                 self.logger.debug('Reconnected to Attribute %s', name)
             elif isinstance(name, str):
                 self.attr_proxy = tango.AttributeProxy(name)
+                self.attr_proxy.ping()
                 self.connected = True
                 self.logger.debug('Connected to Attribute %s', name)
             else:
@@ -75,7 +78,7 @@ class TangoWidget:
                 self.attr_proxy = None
                 self.connected = False
         except:
-            self.logger.error('Can not create attribute %s', name)
+            self.logger.warning('Can not create attribute %s', name)
             self.name = str(name)
             self.attr_proxy = None
             self.connected = False
