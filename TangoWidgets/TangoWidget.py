@@ -46,6 +46,14 @@ class TangoWidget():
         self.create_attribute_proxy(attribute)
         self.update()
 
+    def disconnect_attribute_proxy(self):
+        self.time = time.time()
+        if isinstance(self.attr_proxy, tango.AttributeProxy):
+            self.attr_proxy = self.attr_proxy.name()
+        self.connected = False
+        self.ex_count = 0
+        pass
+
     def create_attribute_proxy(self, attribute=None):
         if attribute is None:
             attribute = self.attr_proxy
@@ -93,7 +101,7 @@ class TangoWidget():
                     self.attr = self.attr_proxy.history(1)[0]
                 except Exception as ex:
                     self.ex_count += 1
-                    if self.ex_cpunt > 3:
+                    if self.ex_count > 3:
                         self.time = time.time()
                         if isinstance(self.attr_proxy, tango.AttributeProxy):
                             self.attr_proxy = self.attr_proxy.name()
