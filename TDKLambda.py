@@ -8,7 +8,7 @@ import serial
 from threading import Thread, Lock
 
 LOG_LEVEL = logging.INFO
-EMULATE = True
+EMULATE = False
 MAX_TIMEOUT = 1.5   # sec
 MIN_TIMEOUT = 0.1   # sec
 RETRIES = 3
