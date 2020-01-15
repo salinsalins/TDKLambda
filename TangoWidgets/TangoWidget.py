@@ -13,17 +13,18 @@ from PyQt5.QtWidgets import QWidget
 import tango
 
 
-class TangoWidget():
+class TangoWidget:
     ERROR_TEXT = '****'
-    RECONNECT_TIMEOUT = 10.0    # seconds
+    RECONNECT_TIMEOUT = 3.0    # seconds
 
-    def __init__(self, attribute, widget: QWidget, readonly=False):
+    def __init__(self, name: str, widget: QWidget, readonly=False):
         # defaults
         self.time = time.time()
-        self.connected = False
-        self.attr_proxy = None
+        self.name = name
         self.widget = widget
         self.readonly = readonly
+        self.connected = False
+        self.attr_proxy = None
         self.attr = None
         self.attr_config = None
         self.value = None
@@ -43,37 +44,36 @@ class TangoWidget():
             console_handler.setFormatter(log_formatter)
             self.logger.addHandler(console_handler)
         # create attribute proxy
-        self.create_attribute_proxy(attribute)
+        self.create_attribute_proxy(name)
         self.update()
 
     def disconnect_attribute_proxy(self):
-        self.time = time.time()
-        if isinstance(self.attr_proxy, tango.AttributeProxy):
-            self.attr_proxy = self.attr_proxy.name()
-        self.connected = False
-        self.ex_count = 0
-        pass
+        self.ex_count += 1
+        if self.ex_count > 3:
+            self.time = time.time()
+            self.connected = False
+            self.ex_count = 0
 
-    def create_attribute_proxy(self, attribute=None):
-        if attribute is None:
-            attribute = self.attr_proxy
+    def create_attribute_proxy(self, name: str = None):
+        if name is None:
+            name = self.name
         self.time = time.time()
         try:
-            if isinstance(attribute, tango.AttributeProxy):
-                self.attr_proxy = self.attr_proxy.name()
+            if isinstance(self.attr_proxy, tango.AttributeProxy):
                 self.attr_proxy.ping()
-                self.attr_proxy = attribute
                 self.connected = True
-            elif isinstance(attribute, str):
-                    self.attr_proxy = tango.AttributeProxy(attribute)
-                    self.connected = True
+            elif isinstance(name, str):
+                self.attr_proxy = tango.AttributeProxy(name)
+                self.connected = True
             else:
                 self.logger.warning('<tango.AttributeProxy> or <str> required')
-                self.attr_proxy = str(attribute)
+                self.name = str(name)
+                self.attr_proxy = None
                 self.connected = False
         except:
-            self.logger.error('Can not create attribute %s', attribute)
-            self.attr_proxy = str(attribute)
+            self.logger.error('Can not create attribute %s', name)
+            self.name = str(name)
+            self.attr_proxy = None
             self.connected = False
 
     def decorate_error(self):
@@ -94,16 +94,11 @@ class TangoWidget():
                 try:
                     self.attr = self.attr_proxy.history(1)[0]
                 except Exception as ex:
-                    self.ex_count += 1
-                    if self.ex_count > 3:
-                        self.disconnect_attribute_proxy()
+                    self.disconnect_attribute_proxy()
                     raise ex
-                    #self.logger.debug("Polled Exception ", exc_info=True)
-                    #self.attr = self.attr_proxy.read()
             else:
                 self.attr = self.attr_proxy.read()
         except Exception as ex:
-            self.time = time.time()
             self.disconnect_attribute_proxy()
             raise ex
         self.ex_count = 0
@@ -128,7 +123,6 @@ class TangoWidget():
 
     def update(self, decorate_only=False) -> None:
         #if self.update_dt > 0.05:
-        #    print('slow update', self.update_dt)
         t0 = time.time()
         try:
             attr = self.read()
@@ -147,9 +141,10 @@ class TangoWidget():
         except:
             if self.connected:
                 self.logger.debug('Exception %s updating widget', sys.exc_info()[0])
+                self.disconnect_attribute_proxy()
             else:
-                if time.time() - self.time > self.RECONNECT_TIMEOUT:
-                    self.create_attribute_proxy(self.attr_proxy)
+                if (time.time() - self.time) > self.RECONNECT_TIMEOUT:
+                    self.create_attribute_proxy()
             self.decorate_error()
         self.update_dt = time.time() - t0
         #print('update', self.attr_proxy, int(self.update_dt*1000.0), 'ms')

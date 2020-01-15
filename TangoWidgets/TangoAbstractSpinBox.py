@@ -11,8 +11,8 @@ from TangoWidgets.TangoWidget import TangoWidget
 
 
 class TangoAbstractSpinBox(TangoWidget):
-    def __init__(self, attribute, widget: QAbstractSpinBox, readonly=False):
-        super().__init__(attribute, widget, readonly)
+    def __init__(self, name, widget: QAbstractSpinBox, readonly=False):
+        super().__init__(name, widget, readonly)
         self.widget.setKeyboardTracking(False)
         if not readonly:
             self.widget.valueChanged.connect(self.callback)

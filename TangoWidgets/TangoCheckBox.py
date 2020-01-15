@@ -11,8 +11,8 @@ from TangoWidgets.TangoWidget import TangoWidget
 
 
 class TangoCheckBox(TangoWidget):
-    def __init__(self, attribute, widget: QCheckBox, readonly=False):
-        super().__init__(attribute, widget)
+    def __init__(self, name, widget: QCheckBox, readonly=False):
+        super().__init__(name, widget)
         if not readonly:
             self.widget.stateChanged.connect(self.callback)
 

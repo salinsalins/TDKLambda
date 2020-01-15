@@ -11,8 +11,8 @@ from TangoWidgets.TangoWidget import TangoWidget
 
 
 class TangoComboBox(TangoWidget):
-    def __init__(self, attribute, widget: QComboBox):
-        super().__init__(attribute, widget)
+    def __init__(self, name, widget: QComboBox):
+        super().__init__(name, widget)
         #self.items = self.widget.view()
         #self.widget.currentIndexChanged.connect(self.callback)
         self.widget.activated.connect(self.callback)

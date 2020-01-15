@@ -9,5 +9,5 @@ from TangoWidgets.TangoWidget import TangoWidget
 
 
 class TangoLabel(TangoWidget):
-    def __init__(self, attribute, widget: QLabel):
-        super().__init__(attribute, widget)
+    def __init__(self, name, widget: QLabel):
+        super().__init__(name, widget)

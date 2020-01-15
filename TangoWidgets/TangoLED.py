@@ -9,9 +9,9 @@ from TangoWidgets.TangoWidget import TangoWidget
 
 
 class TangoLED(TangoWidget):
-    def __init__(self, attribute, widget: QPushButton):
+    def __init__(self, name, widget: QPushButton):
         self.value = False
-        super().__init__(attribute, widget)
+        super().__init__(name, widget)
 
     def set_value(self):
         self.value = bool(self.attr.value)
