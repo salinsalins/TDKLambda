@@ -29,6 +29,9 @@ class TangoComboBox(TangoWidget):
     def decorate_error(self):
         self.widget.setStyleSheet('color: gray')
 
+    def update(self, decorate_only=True) -> None:
+        super.update(decorate_only)
+
     def callback(self, value):
         if self.connected:
             try:

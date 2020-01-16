@@ -8,7 +8,7 @@ import serial
 from threading import Thread, Lock
 
 LOG_LEVEL = logging.INFO
-EMULATE = False
+EMULATE = True
 MAX_TIMEOUT = 1.5   # sec
 MIN_TIMEOUT = 0.1   # sec
 RETRIES = 3
@@ -82,36 +82,40 @@ class FakeComPort():
             self.last_write = b''
             return b'OK\r'
         if self.last_write.startswith(b'DVC?'):
-            self.mv[self.last_address] += 0.5
-            if self.mv[self.last_address] > 10.0:
-                self.mv[self.last_address] = -10.0
-            self.mc[self.last_address] += 1.0
-            if self.mc[self.last_address] > 100.0:
-                self.mc[self.last_address] = -100.0
+            if self.out[self.last_address]:
+                self.mv[self.last_address] = self.pv[self.last_address]
+                self.mc[self.last_address] = self.pc[self.last_address]
+            else:
+                self.mv[self.last_address] += 0.5
+                if self.mv[self.last_address] > 10.0:
+                    self.mv[self.last_address] = 0.0
+                self.mc[self.last_address] += 1.0
+                if self.mc[self.last_address] > 100.0:
+                    self.mc[self.last_address] = 0.0
             self.last_write = b''
             return b'%f, %f, %f, %f, 0.0, 0.0\r' % (self.mv[self.last_address], self.pv[self.last_address], self.mc[self.last_address], self.pc[self.last_address])
         if self.last_write.startswith(b'PV?'):
-            self.mv[self.last_address] += 0.5
-            if self.mv[self.last_address] > 10.0:
-                self.mv[self.last_address] = -10.0
             self.last_write = b''
             return str(self.pv[self.last_address]).encode() + b'\r'
         if self.last_write.startswith(b'MV?'):
-            self.mv[self.last_address] += 0.5
-            if self.mv[self.last_address] > 10.0:
-                self.mv[self.last_address] = -10.0
+            if self.out[self.last_address]:
+                self.mv[self.last_address] = self.pv[self.last_address]
+            else:
+                self.mv[self.last_address] += 0.5
+                if self.mv[self.last_address] > 10.0:
+                    self.mv[self.last_address] = 0.0
             self.last_write = b''
             return str(self.mv[self.last_address]).encode() + b'\r'
         if self.last_write.startswith(b'PC?'):
             self.last_write = b''
-            self.mc[self.last_address] += 1.0
-            if self.mc[self.last_address] > 100.0:
-                self.mc[self.last_address] = -100.0
             return str(self.pc[self.last_address]).encode() + b'\r'
-        if self.last_write.startswith(b'MV?'):
-            self.mv[self.last_address] += 1.0
-            if self.mv[self.last_address] > 100.0:
-                self.mv[self.last_address] = -100.0
+        if self.last_write.startswith(b'MC?'):
+            if self.out[self.last_address]:
+                self.mc[self.last_address] = self.pc[self.last_address]
+            else:
+                self.mv[self.last_address] += 1.0
+                if self.mv[self.last_address] > 100.0:
+                    self.mv[self.last_address] = 0.0
             self.last_write = b''
             return str(self.mv[self.last_address]).encode() + b'\r'
         if self.last_write.startswith(b'IDN?'):

@@ -45,7 +45,7 @@ class TangoWidget:
             self.logger.addHandler(console_handler)
         # create attribute proxy
         self.create_attribute_proxy(name)
-        self.update()
+        self.update(decorate_only=False)
 
     def disconnect_attribute_proxy(self):
         if not self.connected:
