@@ -32,7 +32,7 @@ class TangoWidget:
         self.ready = False
         self.update_dt = 0.0
         self.ex_count = 0
-        # Configure logging
+        # configure logging
         self.logger = logging.getLogger(__name__)
         if not self.logger.hasHandlers():
             self.logger.propagate = False
@@ -45,6 +45,7 @@ class TangoWidget:
             self.logger.addHandler(console_handler)
         # create attribute proxy
         self.create_attribute_proxy(name)
+        # update view
         self.update(decorate_only=False)
 
     def disconnect_attribute_proxy(self):
@@ -111,6 +112,9 @@ class TangoWidget:
         self.ex_count = 0
         return self.attr
 
+    def write(self, value):
+        self.attr_proxy.write(value)
+
     def set_value(self):
         if hasattr(self.attr, 'value'):
             try:
@@ -159,7 +163,7 @@ class TangoWidget:
     def callback(self, value):
         if self.connected:
             try:
-                self.attr_proxy.write(value)
+                self.write(value)
                 self.decorate_valid()
             except:
                 self.logger.debug('Exception %s in callback', sys.exc_info()[0])

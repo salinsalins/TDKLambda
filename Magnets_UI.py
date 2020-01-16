@@ -105,7 +105,7 @@ class MainWindow(QMainWindow):
 
         # read attributes TangoWidgets list
         if False:
-            self.rtwdgts = (TangoLED('binp/nbi/magnet1/output_state', self.pushButton_37),
+            self.rdwdgts = (TangoLED('binp/nbi/magnet1/output_state', self.pushButton_37),
                             TangoLabel('binp/nbi/magnet1/voltage', self.label_140),
                             TangoLabel('binp/nbi/magnet1/current', self.label_142),
                             TangoLED('binp/nbi/magnet2/output_state', self.pushButton_33),
@@ -127,7 +127,7 @@ class MainWindow(QMainWindow):
                             TangoAbstractSpinBox('binp/nbi/pg_offset/programmed_voltage', self.doubleSpinBox_42),
                             )
         else:
-            self.rtwdgts = (TangoLED('binp/test/test1/output_state', self.pushButton_37),
+            self.rdwdgts = (TangoLED('binp/test/test1/output_state', self.pushButton_37),
                             TangoLabel('binp/test/test1/voltage', self.label_140),
                             TangoLabel('binp/test/test1/current', self.label_142),
                             TangoLED('binp/test/test2/output_state', self.pushButton_33),
@@ -238,18 +238,21 @@ class MainWindow(QMainWindow):
         t = time.strftime('%H:%M:%S')
         self.clock.setText('%s' % t)
         #self.clock.setText('Elapsed: %ds    %s' % (self.elapsed, t))
-        if len(self.rtwdgts) <= 0:
+        if len(self.rdwdgts) <= 0:
             return
         count = 0
         self.elapsed = time.time()
         while time.time() - t0 < TIMER_PERIOD/2000.0:
-            if self.rtwdgts[self.n].widget.isVisible():
-                self.rtwdgts[self.n].update()
+            if self.rdwdgts[self.n].widget.isVisible():
+                if self.n < len(self.rdwdgts):
+                    self.rdwdgts[self.n].update()
+                if self.n < len(self.wtwdgts):
+                    self.wtwdgts[self.n].update(decorate_only=True)
             self.n += 1
-            if self.n >= len(self.rtwdgts):
+            if self.n >= max(len(self.rdwdgts), len(self.wtwdgts)):
                 self.n = 0
             count += 1
-            if count == len(self.rtwdgts):
+            if count == max(len(self.rdwdgts), len(self.wtwdgts)):
                 self.elapsed = time.time() - self.elapsed
                 #print('total loop', int((time.time()-t0)*1000.0), 'ms')
                 #print('total loop', '%5.3f s'%self.elapsed)
