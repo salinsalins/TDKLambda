@@ -27,6 +27,7 @@ class TangoComboBox(TangoWidget):
         return self.value
 
     def decorate_error(self):
+        print('decorate error', self)
         self.widget.setStyleSheet('color: gray')
 
     def update(self, decorate_only=True) -> None:
