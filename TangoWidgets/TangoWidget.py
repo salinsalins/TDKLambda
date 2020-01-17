@@ -43,7 +43,7 @@ class TangoWidget:
             console_handler.setFormatter(log_formatter)
             self.logger.addHandler(console_handler)
         # create attribute proxy
-        self.create_attribute_proxy(name)
+        self.connect_attribute_proxy(name)
         # update view
         self.update(decorate_only=False)
 
@@ -58,13 +58,15 @@ class TangoWidget:
             self.ex_count = 0
             self.logger.debug('Attribute %s disconnected', self.name)
 
-    def create_attribute_proxy(self, name: str = None):
+    def connect_attribute_proxy(self, name: str = None):
         if name is None:
             name = self.name
         self.time = time.time()
         try:
             if isinstance(self.attr_proxy, tango.AttributeProxy):
                 self.attr_proxy.ping()
+                if not self.attr_proxy.is_polled():
+                    self.logger.info('Recommended to swith polling on for %s', name)
                 self.attr = self.attr_proxy.read()
                 self.config = self.attr_proxy.get_config()
                 self.format = self.config.format
@@ -74,6 +76,8 @@ class TangoWidget:
             elif isinstance(name, str):
                 self.attr_proxy = tango.AttributeProxy(name)
                 self.attr_proxy.ping()
+                if not self.attr_proxy.is_polled():
+                    self.logger.info('Recommended to swith polling on for %s', name)
                 self.attr = self.attr_proxy.read()
                 self.config = self.attr_proxy.get_config()
                 self.format = self.config.format
@@ -119,11 +123,13 @@ class TangoWidget:
                 try:
                     self.attr = self.attr_proxy.history(1)[0]
                 except Exception as ex:
+                    self.attr = None
                     self.disconnect_attribute_proxy()
                     raise ex
             else:
                 self.attr = self.attr_proxy.read()
         except Exception as ex:
+            self.attr = None
             self.disconnect_attribute_proxy()
             raise ex
         self.ex_count = 0
@@ -134,6 +140,11 @@ class TangoWidget:
             return
         self.attr_proxy.write(value)
 
+    def write_read(self, value):
+        if self.readonly:
+            return None
+        return self.attr_proxy.write_read(value)
+
     # compare widget displayed value and read attribute value
     def compare(self):
         return True
@@ -143,14 +154,12 @@ class TangoWidget:
         if hasattr(self.attr, 'value'):
             if hasattr(self.widget, 'setText'):
                 if self.format is not None:
-                    text = self.config.format % self.attr.value
+                    text = self.format % self.attr.value
                 else:
                     text = str(self.attr.value)
                 self.widget.setText(text)
             elif hasattr(self.widget, 'setValue'):
                 self.widget.setValue(self.attr.value)
-            else:
-                pass
         self.widget.blockSignals(bs)
 
     def update(self, decorate_only=False) -> None:
@@ -173,19 +182,24 @@ class TangoWidget:
                 self.disconnect_attribute_proxy()
             else:
                 if (time.time() - self.time) > self.RECONNECT_TIMEOUT:
-                    self.create_attribute_proxy()
+                    self.connect_attribute_proxy()
             self.decorate_error()
         self.update_dt = time.time() - t0
         #print('update', self.attr_proxy, int(self.update_dt*1000.0), 'ms')
 
     def callback(self, value):
+        if self.readonly:
+            return
         if self.connected:
             try:
-                self.write(value)
-                self.decorate_valid()
+                attr = self.write_read(value)
+                if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+                    self.decorate_valid()
+                else:
+                    self.decorate_invalid()
             except:
                 self.logger.debug('Exception %s in callback', sys.exc_info()[0])
                 self.decorate_error()
         else:
-            self.create_attribute_proxy()
+            self.connect_attribute_proxy()
             self.decorate_error()

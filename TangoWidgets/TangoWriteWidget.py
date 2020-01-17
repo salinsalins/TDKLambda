@@ -17,7 +17,7 @@ class TangoWriteWidget(TangoWidget):
         self.widget.setStyleSheet('color: gray')
         self.widget.setEnabled(False)
 
-    def decorate_invalid(self):
+    def decorate_invalid(self, text: str = None):
         self.widget.setStyleSheet('color: red')
         self.widget.setEnabled(True)
 

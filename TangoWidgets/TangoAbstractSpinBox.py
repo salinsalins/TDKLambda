@@ -13,6 +13,7 @@ class TangoAbstractSpinBox(TangoWidget):
     def __init__(self, name, widget: QAbstractSpinBox, readonly=False):
         super().__init__(name, widget, readonly)
         self.widget.setKeyboardTracking(False)
+        #self.widget.keyPressEvent = self.keyPressEvent
         if not readonly:
             self.widget.valueChanged.connect(self.callback)
 
@@ -20,7 +21,7 @@ class TangoAbstractSpinBox(TangoWidget):
         self.widget.setStyleSheet('color: gray')
         self.widget.setEnabled(False)
 
-    def decorate_invalid(self):
+    def decorate_invalid(self, text: str = None):
         self.widget.setStyleSheet('color: red')
         self.widget.setEnabled(True)
 
@@ -49,6 +50,10 @@ class TangoAbstractSpinBox(TangoWidget):
         return self.value
 
     def keyPressEvent(self, e):
-        print(e.key())
-        if e.key() == QtCore.Qt.Key_Escape:
+        k = e.key()
+        #print(k)
+        #if k == QtCore.Qt.Key_Escape:
+        #    print('esc')
+        if k == QtCore.Qt.Key_Enter or k == QtCore.Qt.Key_Return:
             self.callback(self.widget.value())
+            #print('enter')
