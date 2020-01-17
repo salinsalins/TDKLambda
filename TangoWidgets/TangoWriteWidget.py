@@ -4,13 +4,12 @@ Created on Jan 17, 2020
 
 @author: sanin
 '''
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import QAbstractSpinBox
+from PyQt5.QtWidgets import QWidget
 from TangoWidgets.TangoWidget import TangoWidget
 
 
 class TangoWriteWidget(TangoWidget):
-    def __init__(self, name, widget: QAbstractSpinBox, readonly=False):
+    def __init__(self, name, widget: QWidget, readonly=False):
         super().__init__(name, widget, readonly)
 
     def decorate_error(self):
@@ -34,17 +33,7 @@ class TangoWriteWidget(TangoWidget):
                 if self.attr.value == self.widget.value():
                     return True
                 else:
+                    #print(self.attr.value, self.widget.value())
                     return False
             except:
                 return False
-
-    def set_widget_value(self):
-        bs = self.widget.blockSignals(True)
-        self.widget.setValue(self.attr.value)
-        self.widget.blockSignals(bs)
-        return self.attr.value
-
-    def keyPressEvent(self, e):
-        print(e.key())
-        if e.key() == QtCore.Qt.Key_Escape:
-            self.callback(self.widget.value())

@@ -10,4 +10,4 @@ from TangoWidgets.TangoWidget import TangoWidget
 
 class TangoLabel(TangoWidget):
     def __init__(self, name, widget: QLabel):
-        super().__init__(name, widget)
+        super().__init__(name, widget, True)

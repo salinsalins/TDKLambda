@@ -192,8 +192,9 @@ class TangoWidget:
             return
         if self.connected:
             try:
-                attr = self.write_read(value)
-                if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
+                self.attr = self.write_read(value)
+                #print('wr', attr.value, value)
+                if self.attr.quality == tango._tango.AttrQuality.ATTR_VALID:
                     self.decorate_valid()
                 else:
                     self.decorate_invalid()
