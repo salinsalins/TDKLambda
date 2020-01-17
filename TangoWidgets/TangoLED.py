@@ -13,7 +13,7 @@ class TangoLED(TangoWidget):
         self.value = False
         super().__init__(name, widget)
 
-    def set_value(self):
+    def set_widget_value(self):
         self.value = bool(self.attr.value)
         self.widget.setChecked(self.value)
         return self.value

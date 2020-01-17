@@ -16,7 +16,7 @@ class TangoCheckBox(TangoWidget):
         if not readonly:
             self.widget.stateChanged.connect(self.callback)
 
-    def set_value(self):
+    def set_widget_value(self):
         self.value = self.attr.value
         self.widget.setChecked(self.value)
         return self.value

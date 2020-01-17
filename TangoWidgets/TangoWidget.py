@@ -17,21 +17,20 @@ class TangoWidget:
     ERROR_TEXT = '****'
     RECONNECT_TIMEOUT = 3.0    # seconds
 
-    def __init__(self, name: str, widget: QWidget, readonly=False):
+    def __init__(self, name: str, widget: QWidget, readonly=True):
         # defaults
-        self.time = time.time()
         self.name = name
         self.widget = widget
         self.readonly = readonly
-        self.connected = False
         self.attr_proxy = None
         self.attr = None
-        self.attr_config = None
+        self.config = None
+        self.format = None
         self.value = None
-        self.requested = False
-        self.ready = False
+        self.connected = False
         self.update_dt = 0.0
         self.ex_count = 0
+        self.time = time.time()
         # configure logging
         self.logger = logging.getLogger(__name__)
         if not self.logger.hasHandlers():
@@ -66,22 +65,38 @@ class TangoWidget:
         try:
             if isinstance(self.attr_proxy, tango.AttributeProxy):
                 self.attr_proxy.ping()
+                self.attr = self.attr_proxy.read()
+                self.config = self.attr_proxy.get_config()
+                self.format = self.config.format
+                self.value = self.attr.value
                 self.connected = True
                 self.logger.debug('Reconnected to Attribute %s', name)
             elif isinstance(name, str):
                 self.attr_proxy = tango.AttributeProxy(name)
                 self.attr_proxy.ping()
+                self.attr = self.attr_proxy.read()
+                self.config = self.attr_proxy.get_config()
+                self.format = self.config.format
+                self.value = self.attr.value
                 self.connected = True
                 self.logger.debug('Connected to Attribute %s', name)
             else:
                 self.logger.warning('<str> required for attribute name')
                 self.name = str(name)
                 self.attr_proxy = None
+                self.attr = None
+                self.config = None
+                self.format = None
+                self.value = None
                 self.connected = False
         except:
             self.logger.warning('Can not create attribute %s', name)
             self.name = str(name)
             self.attr_proxy = None
+            self.attr = None
+            self.config = None
+            self.format = None
+            self.value = None
             self.connected = False
 
     def decorate_error(self):
@@ -89,7 +104,9 @@ class TangoWidget:
             self.widget.setText(TangoWidget.ERROR_TEXT)
         self.widget.setStyleSheet('color: gray')
 
-    def decorate_invalid(self):
+    def decorate_invalid(self, text: str = None):
+        if hasattr(self.widget, 'setText') and text is not None:
+            self.widget.setText(text)
         self.widget.setStyleSheet('color: red')
 
     def decorate_valid(self):
@@ -113,41 +130,42 @@ class TangoWidget:
         return self.attr
 
     def write(self, value):
+        if self.readonly:
+            return
         self.attr_proxy.write(value)
 
-    def set_value(self):
+    # compare widget displayed value and read attribute value
+    def compare(self):
+        return True
+
+    def set_widget_value(self):
+        bs = self.widget.blockSignals(True)
         if hasattr(self.attr, 'value'):
-            try:
-                self.attr_config = self.attr_proxy.get_config()
-                self.value = self.attr_config.format % self.attr.value
-            except:
-                self.value = str(self.attr.value)
             if hasattr(self.widget, 'setText'):
-                self.widget.setText(self.value)
+                if self.format is not None:
+                    text = self.config.format % self.attr.value
+                else:
+                    text = str(self.attr.value)
+                self.widget.setText(text)
             elif hasattr(self.widget, 'setValue'):
-                self.widget.setValue(self.value)
+                self.widget.setValue(self.attr.value)
             else:
                 pass
-        else:
-            self.value = None
-        return self.value
+        self.widget.blockSignals(bs)
 
     def update(self, decorate_only=False) -> None:
-        #if self.update_dt > 0.05:
         t0 = time.time()
         try:
             attr = self.read()
             if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
                 self.logger.debug('Non scalar attribute')
-                self.decorate_error()
+                self.decorate_invalid('format!')
             else:
-                if attr.quality == tango._tango.AttrQuality.ATTR_VALID:
-                    if not decorate_only:
-                        self.set_value()
+                if not decorate_only:
+                    self.set_widget_value()
+                if attr.quality == tango._tango.AttrQuality.ATTR_VALID and self.compare():
                     self.decorate_valid()
                 else:
-                    if not decorate_only:
-                        self.set_value()
                     self.decorate_invalid()
         except:
             if self.connected:
@@ -169,8 +187,5 @@ class TangoWidget:
                 self.logger.debug('Exception %s in callback', sys.exc_info()[0])
                 self.decorate_error()
         else:
-            if time.time() - self.time > TangoWidget.RECONNECT_TIMEOUT:
-                self.create_attribute_proxy(self.attr_proxy)
-                self.decorate_error()
-            else:
-                self.decorate_error()
+            self.create_attribute_proxy()
+            self.decorate_error()

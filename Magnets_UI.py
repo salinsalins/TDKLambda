@@ -116,15 +116,15 @@ class MainWindow(QMainWindow):
                             TangoLabel('binp/nbi/pg_offset/current', self.label_122),
                             )
             # write attributes TangoWidgets list
-            self.wtwdgts = (TangoAbstractSpinBox('binp/nbi/magnet1/programmed_current', self.doubleSpinBox_49),
-                            TangoRadioButton('binp/nbi/magnet1/output_state', self.radioButton_52),
-                            TangoAbstractSpinBox('binp/nbi/magnet1/programmed_voltage', self.doubleSpinBox_50),
-                            TangoRadioButton('binp/nbi/magnet2/output_state', self.radioButton_49),
-                            TangoAbstractSpinBox('binp/nbi/magnet2/programmed_current', self.doubleSpinBox_43),
-                            TangoAbstractSpinBox('binp/nbi/magnet2/programmed_voltage', self.doubleSpinBox_44),
-                            TangoRadioButton('binp/nbi/pg_offset/output_state', self.radioButton_48),
-                            TangoAbstractSpinBox('binp/nbi/pg_offset/programmed_current', self.doubleSpinBox_41),
-                            TangoAbstractSpinBox('binp/nbi/pg_offset/programmed_voltage', self.doubleSpinBox_42),
+            self.wtwdgts = (TangoAbstractSpinBox('binp/nbi/magnet1/programmed_current', self.doubleSpinBox_49, False),
+                            TangoRadioButton('binp/nbi/magnet1/output_state', self.radioButton_52, False),
+                            TangoAbstractSpinBox('binp/nbi/magnet1/programmed_voltage', self.doubleSpinBox_50, False),
+                            TangoRadioButton('binp/nbi/magnet2/output_state', self.radioButton_49, False),
+                            TangoAbstractSpinBox('binp/nbi/magnet2/programmed_current', self.doubleSpinBox_43, False),
+                            TangoAbstractSpinBox('binp/nbi/magnet2/programmed_voltage', self.doubleSpinBox_44, False),
+                            TangoRadioButton('binp/nbi/pg_offset/output_state', self.radioButton_48, False),
+                            TangoAbstractSpinBox('binp/nbi/pg_offset/programmed_current', self.doubleSpinBox_41, False),
+                            TangoAbstractSpinBox('binp/nbi/pg_offset/programmed_voltage', self.doubleSpinBox_42, False),
                             )
         else:
             self.rdwdgts = (TangoLED('binp/test/test1/output_state', self.pushButton_37),
@@ -135,12 +135,12 @@ class MainWindow(QMainWindow):
                             TangoLabel('binp/test/test2/current', self.label_127),
                             )
             # write attributes TangoWidgets list
-            self.wtwdgts = (TangoAbstractSpinBox('binp/test/test1/programmed_current', self.doubleSpinBox_49),
+            self.wtwdgts = (TangoAbstractSpinBox('binp/test/test1/programmed_current', self.doubleSpinBox_49, False),
                             TangoRadioButton('binp/test/test1/output_state', self.radioButton_52),
-                            TangoAbstractSpinBox('binp/test/test1/programmed_voltage', self.doubleSpinBox_50),
+                            TangoAbstractSpinBox('binp/test/test1/programmed_voltage', self.doubleSpinBox_50, False),
                             TangoRadioButton('binp/test/test2/output_state', self.radioButton_49),
-                            TangoAbstractSpinBox('binp/test/test2/programmed_current', self.doubleSpinBox_43),
-                            TangoAbstractSpinBox('binp/test/test2/programmed_voltage', self.doubleSpinBox_44),
+                            TangoAbstractSpinBox('binp/test/test2/programmed_current', self.doubleSpinBox_43, False),
+                            TangoAbstractSpinBox('binp/test/test2/programmed_voltage', self.doubleSpinBox_44, False),
                             )
 
     def get_widgets(self, obj, s=''):

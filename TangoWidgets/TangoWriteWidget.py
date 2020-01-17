@@ -1,6 +1,6 @@
 # coding: utf-8
 '''
-Created on Jan 3, 2020
+Created on Jan 17, 2020
 
 @author: sanin
 '''
@@ -9,12 +9,9 @@ from PyQt5.QtWidgets import QAbstractSpinBox
 from TangoWidgets.TangoWidget import TangoWidget
 
 
-class TangoAbstractSpinBox(TangoWidget):
+class TangoWriteWidget(TangoWidget):
     def __init__(self, name, widget: QAbstractSpinBox, readonly=False):
         super().__init__(name, widget, readonly)
-        self.widget.setKeyboardTracking(False)
-        if not readonly:
-            self.widget.valueChanged.connect(self.callback)
 
     def decorate_error(self):
         self.widget.setStyleSheet('color: gray')
@@ -42,11 +39,10 @@ class TangoAbstractSpinBox(TangoWidget):
                 return False
 
     def set_widget_value(self):
-        self.value = self.attr.value
         bs = self.widget.blockSignals(True)
-        self.widget.setValue(self.value)
+        self.widget.setValue(self.attr.value)
         self.widget.blockSignals(bs)
-        return self.value
+        return self.attr.value
 
     def keyPressEvent(self, e):
         print(e.key())

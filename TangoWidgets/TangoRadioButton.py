@@ -15,7 +15,7 @@ class TangoRadioButton(TangoWidget):
         super().__init__(name, widget)
         self.widget.toggled.connect(self.callback)
 
-    def set_value(self):
+    def set_widget_value(self):
         self.value = self.attr.value
         self.widget.setChecked(self.value)
         return self.value

@@ -17,7 +17,7 @@ class TangoComboBox(TangoWidget):
         #self.widget.currentIndexChanged.connect(self.callback)
         self.widget.activated.connect(self.callback)
 
-    def set_value(self):
+    def set_widget_value(self):
         self.value = None
         try:
             self.value = int(self.attr.value)
