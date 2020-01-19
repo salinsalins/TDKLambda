@@ -19,5 +19,5 @@ class TangoLabel(TangoWidget):
             super().update(decorate_only)
             return
         else:
-            self.value = self.attr_proxy.read_property(property)[property][0]
+            self.value = self.attr_proxy.get_property(property)[property][0]
 
