@@ -15,7 +15,6 @@ class TangoAbstractSpinBox(TangoWriteWidget):
         self.widget.setKeyboardTracking(False)
         self.widget.last_keyPressEvent = self.widget.keyPressEvent
         self.widget.keyPressEvent = self.keyPressEvent
-
         if not readonly:
             self.widget.valueChanged.connect(self.callback)
 

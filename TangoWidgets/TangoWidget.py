@@ -143,7 +143,15 @@ class TangoWidget:
     def write_read(self, value):
         if self.readonly:
             return None
-        return self.attr_proxy.write_read(value)
+        self.attr = None
+        try:
+            self.attr = self.attr_proxy.write_read(value)
+        except Exception as ex:
+            self.attr = None
+            self.disconnect_attribute_proxy()
+            raise ex
+        self.ex_count = 0
+        return self.compare()
 
     # compare widget displayed value and read attribute value
     def compare(self):
@@ -188,7 +196,7 @@ class TangoWidget:
         #print('update', self.attr_proxy, int(self.update_dt*1000.0), 'ms')
 
     def callback(self, value):
-        self.logger.debug('Callback entry')
+        #self.logger.debug('Callback entry')
         if self.readonly:
             return
         if self.connected:
