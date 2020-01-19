@@ -112,11 +112,13 @@ class TangoWidget:
         self.widget.setStyleSheet('color: black')
 
     def read(self):
-        self.attr = None
         try:
             if self.attr_proxy.is_polled():
                 try:
-                    self.attr = self.attr_proxy.history(1)[0]
+                    attrib = self.attr_proxy.history(1)[0]
+                    if attrib.time.tv_sec > self.attr.time.tv_sec or \
+                            (attrib.time.tv_sec == self.attr.time.tv_sec and attrib.time.tv_usec > self.attr.time.tv_usec):
+                        self.attr = attrib
                 except Exception as ex:
                     self.attr = None
                     self.disconnect_attribute_proxy()
@@ -196,7 +198,7 @@ class TangoWidget:
             return
         if self.connected:
             try:
-                self.attr = self.write_read(value)
+                self.write_read(value)
                 #self.write(value)
                 #print('wr', attr.value, value)
                 if self.attr.quality == tango._tango.AttrQuality.ATTR_VALID:
