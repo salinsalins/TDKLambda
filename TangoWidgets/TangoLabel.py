@@ -9,5 +9,15 @@ from TangoWidgets.TangoWidget import TangoWidget
 
 
 class TangoLabel(TangoWidget):
-    def __init__(self, name, widget: QLabel):
-        super().__init__(name, widget, True)
+    def __init__(self, name, widget: QLabel, property=None, refresh=False):
+        self.property = property
+        self.refresh = refresh
+        super().__init__(name, widget, readonly=True)
+
+    def update(self, decorate_only=False) -> None:
+        if self.property is None:
+            super().update(decorate_only)
+            return
+        else:
+            self.value = self.attr_proxy.read_property(property)[property][0]
+
