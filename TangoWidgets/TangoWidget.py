@@ -188,6 +188,7 @@ class TangoWidget:
         #print('update', self.attr_proxy, int(self.update_dt*1000.0), 'ms')
 
     def callback(self, value):
+        self.logger.debug('Callback entry')
         if self.readonly:
             return
         if self.connected:
