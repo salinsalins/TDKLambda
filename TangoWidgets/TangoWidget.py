@@ -146,7 +146,7 @@ class TangoWidget:
             self.disconnect_attribute_proxy()
             raise ex
         self.ex_count = 0
-        return self.compare()
+        return self.attr
 
     # compare widget displayed value and read attribute value
     def compare(self):
@@ -197,6 +197,7 @@ class TangoWidget:
         if self.connected:
             try:
                 self.attr = self.write_read(value)
+                #self.write(value)
                 #print('wr', attr.value, value)
                 if self.attr.quality == tango._tango.AttrQuality.ATTR_VALID:
                     self.decorate_valid()
