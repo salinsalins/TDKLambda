@@ -26,7 +26,6 @@ class TangoWidget:
         self.attr = None
         self.config = None
         self.format = None
-        self.value = None
         self.connected = False
         self.update_dt = 0.0
         self.ex_count = 0
@@ -70,7 +69,6 @@ class TangoWidget:
                 self.attr = self.attr_proxy.read()
                 self.config = self.attr_proxy.get_config()
                 self.format = self.config.format
-                self.value = self.attr.value
                 self.connected = True
                 self.logger.debug('Reconnected to Attribute %s', name)
             elif isinstance(name, str):
@@ -81,7 +79,6 @@ class TangoWidget:
                 self.attr = self.attr_proxy.read()
                 self.config = self.attr_proxy.get_config()
                 self.format = self.config.format
-                self.value = self.attr.value
                 self.connected = True
                 self.logger.debug('Connected to Attribute %s', name)
             else:
@@ -91,7 +88,6 @@ class TangoWidget:
                 self.attr = None
                 self.config = None
                 self.format = None
-                self.value = None
                 self.connected = False
         except:
             self.logger.warning('Can not create attribute %s', name)
@@ -100,7 +96,6 @@ class TangoWidget:
             self.attr = None
             self.config = None
             self.format = None
-            self.value = None
             self.connected = False
 
     def decorate_error(self):
