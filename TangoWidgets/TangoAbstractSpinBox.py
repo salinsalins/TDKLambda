@@ -19,8 +19,7 @@ class TangoAbstractSpinBox(TangoWriteWidget):
             self.widget.valueChanged.connect(self.callback)
 
     def keyPressEvent(self, e):
+        self.widget.last_keyPressEvent(e)
         k = e.key()
         if k == QtCore.Qt.Key_Enter or k == QtCore.Qt.Key_Return:
             self.callback(self.widget.value())
-        else:
-            self.widget.last_keyPressEvent(e)

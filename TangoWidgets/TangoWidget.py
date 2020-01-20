@@ -214,7 +214,7 @@ class TangoWidget:
                 self.write(value)
                 self.read(True)
                 #self.write(value)
-                #print('wr', attr.value, value)
+                print('wr', self.attr.value, value)
                 if self.attr.quality == tango._tango.AttrQuality.ATTR_VALID:
                     self.decorate_valid()
                 else:
