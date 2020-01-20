@@ -54,6 +54,9 @@ class TangoWidget:
             self.time = time.time()
             self.connected = False
             self.attr_proxy = None
+            self.attr = None
+            self.config = None
+            self.format = None
             self.ex_count = 0
             self.logger.debug('Attribute %s disconnected', self.name)
 
@@ -170,14 +173,14 @@ class TangoWidget:
     def update(self, decorate_only=False) -> None:
         t0 = time.time()
         try:
-            attr = self.read()
-            if attr.data_format != tango._tango.AttrDataFormat.SCALAR:
+            self.read()
+            if self.attr.data_format != tango._tango.AttrDataFormat.SCALAR:
                 self.logger.debug('Non scalar attribute')
                 self.decorate_invalid('format!')
             else:
                 if not decorate_only:
                     self.set_widget_value()
-                if attr.quality == tango._tango.AttrQuality.ATTR_VALID and self.compare():
+                if self.attr.quality == tango._tango.AttrQuality.ATTR_VALID and self.compare():
                     self.decorate_valid()
                 else:
                     self.decorate_invalid()
