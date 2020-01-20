@@ -10,13 +10,15 @@ from TangoWidgets.TangoWidget import TangoWidget
 
 class TangoLED(TangoWidget):
     def __init__(self, name, widget: QPushButton):
-        self.value = False
         super().__init__(name, widget)
+        #self.bs = self.widget.blockSignals(True)
+        #self.widget.released.connect(self.callback)
+        self.widget.clicked.connect(self.callback)
+        #self.widget.toggled.connect(self.callback2)
 
     def set_widget_value(self):
-        self.value = bool(self.attr.value)
-        self.widget.setChecked(self.value)
-        return self.value
+        self.widget.setChecked(bool(self.attr.value))
+        return self.attr.value
 
     def decorate_error(self):
         self.widget.setDisabled(True)
@@ -26,3 +28,6 @@ class TangoLED(TangoWidget):
 
     def decorate_valid(self):
         self.widget.setDisabled(False)
+
+    def callback(self, value=None):
+        self.set_widget_value()
