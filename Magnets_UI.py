@@ -141,6 +141,7 @@ class MainWindow(QMainWindow):
                             TangoRadioButton('binp/test/test2/output_state', self.radioButton_49),
                             TangoAbstractSpinBox('binp/test/test2/programmed_current', self.doubleSpinBox_43, False),
                             TangoAbstractSpinBox('binp/test/test2/programmed_voltage', self.doubleSpinBox_44, False),
+                            TangoAbstractSpinBox('binp/nbi/dac0/channel0', self.spinBox_3, False),
                             )
 
     def get_widgets(self, obj, s=''):
@@ -243,11 +244,10 @@ class MainWindow(QMainWindow):
         count = 0
         self.elapsed = time.time()
         while time.time() - t0 < TIMER_PERIOD/2000.0:
-            if self.rdwdgts[self.n].widget.isVisible():
-                if self.n < len(self.rdwdgts):
-                    self.rdwdgts[self.n].update()
-                if self.n < len(self.wtwdgts):
-                    self.wtwdgts[self.n].update(decorate_only=True)
+            if self.n < len(self.rdwdgts) and self.rdwdgts[self.n].widget.isVisible():
+                self.rdwdgts[self.n].update()
+            if self.n < len(self.wtwdgts) and self.wtwdgts[self.n].widget.isVisible():
+                self.wtwdgts[self.n].update(decorate_only=True)
             self.n += 1
             if self.n >= max(len(self.rdwdgts), len(self.wtwdgts)):
                 self.n = 0

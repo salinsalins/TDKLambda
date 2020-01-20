@@ -1080,6 +1080,11 @@
                <height>35</height>
               </size>
              </property>
+             <property name="font">
+              <font>
+               <pointsize>14</pointsize>
+              </font>
+             </property>
              <property name="maximum">
               <number>9999</number>
              </property>
@@ -1326,6 +1331,11 @@
                <height>35</height>
               </size>
              </property>
+             <property name="font">
+              <font>
+               <pointsize>14</pointsize>
+              </font>
+             </property>
              <property name="maximum">
               <number>9999</number>
              </property>
@@ -1446,6 +1456,11 @@
                <width>16777215</width>
                <height>35</height>
               </size>
+             </property>
+             <property name="font">
+              <font>
+               <pointsize>14</pointsize>
+              </font>
              </property>
              <property name="maximum">
               <number>300</number>
@@ -2178,6 +2193,11 @@
                <height>35</height>
               </size>
              </property>
+             <property name="font">
+              <font>
+               <pointsize>14</pointsize>
+              </font>
+             </property>
             </widget>
            </item>
            <item row="10" column="0" colspan="6">
@@ -2231,6 +2251,11 @@
                <width>16777215</width>
                <height>35</height>
               </size>
+             </property>
+             <property name="font">
+              <font>
+               <pointsize>14</pointsize>
+              </font>
              </property>
              <property name="maximum">
               <number>9999</number>
@@ -2312,6 +2337,11 @@
                <width>16777215</width>
                <height>35</height>
               </size>
+             </property>
+             <property name="font">
+              <font>
+               <pointsize>14</pointsize>
+              </font>
              </property>
              <property name="maximum">
               <number>9999</number>

@@ -30,8 +30,9 @@ class TangoWriteWidget(TangoWidget):
             return True
         else:
             try:
-                if self.attr.value == self.widget.value():
-                    return True
+                #if (self.attr.value * self.coeff) == self.widget.value():
+                if abs(((self.attr.value * self.coeff) - self.widget.value())) <= (1e-5 * self.widget.value()):
+                        return True
                 else:
                     #print(self.attr.value, self.widget.value())
                     return False

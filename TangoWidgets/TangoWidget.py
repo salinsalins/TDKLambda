@@ -73,6 +73,10 @@ class TangoWidget:
                 self.attr = self.attr_proxy.read()
                 self.config = self.attr_proxy.get_config()
                 self.format = self.config.format
+                try:
+                    self.coeff = float(self.config.display_unit)
+                except:
+                    self.coeff = 1.0
                 self.connected = True
                 self.logger.debug('Reconnected to Attribute %s', name)
             elif isinstance(name, str):
@@ -83,6 +87,10 @@ class TangoWidget:
                 self.attr = self.attr_proxy.read()
                 self.config = self.attr_proxy.get_config()
                 self.format = self.config.format
+                try:
+                    self.coeff = float(self.config.display_unit)
+                except:
+                    self.coeff = 1.0
                 self.connected = True
                 self.logger.debug('Connected to Attribute %s', name)
             else:
@@ -115,9 +123,9 @@ class TangoWidget:
     def decorate_valid(self):
         self.widget.setStyleSheet('color: black')
 
-    def read(self):
+    def read(self, force=False):
         try:
-            if self.attr_proxy.is_polled():
+            if not force and self.attr_proxy.is_polled():
                 try:
                     attrib = self.attr_proxy.history(1)[0]
                     if attrib.time.tv_sec > self.attr.time.tv_sec or \
@@ -139,14 +147,14 @@ class TangoWidget:
     def write(self, value):
         if self.readonly:
             return
-        self.attr_proxy.write(value)
+        self.attr_proxy.write(value/self.coeff)
 
     def write_read(self, value):
         if self.readonly:
             return None
         self.attr = None
         try:
-            self.attr = self.attr_proxy.write_read(value)
+            self.attr = self.attr_proxy.write_read(value/self.coeff)
         except Exception as ex:
             self.attr = None
             self.disconnect_attribute_proxy()
@@ -163,12 +171,12 @@ class TangoWidget:
         if hasattr(self.attr, 'value'):
             if hasattr(self.widget, 'setText'):
                 if self.format is not None:
-                    text = self.format % self.attr.value
+                    text = self.format % (self.attr.value * self.coeff)
                 else:
                     text = str(self.attr.value)
                 self.widget.setText(text)
             elif hasattr(self.widget, 'setValue'):
-                self.widget.setValue(self.attr.value)
+                self.widget.setValue(self.attr.value * self.coeff)
         self.widget.blockSignals(bs)
 
     def update(self, decorate_only=False) -> None:
@@ -202,7 +210,9 @@ class TangoWidget:
             return
         if self.connected:
             try:
-                self.write_read(value)
+                #self.write_read(value)
+                self.write(value)
+                self.read(True)
                 #self.write(value)
                 #print('wr', attr.value, value)
                 if self.attr.quality == tango._tango.AttrQuality.ATTR_VALID:
