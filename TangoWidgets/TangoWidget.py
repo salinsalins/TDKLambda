@@ -26,6 +26,7 @@ class TangoWidget:
         self.attr = None
         self.config = None
         self.format = None
+        self.coeff = 1.0
         self.connected = False
         self.update_dt = 0.0
         self.ex_count = 0
