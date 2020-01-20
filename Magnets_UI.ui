@@ -1052,11 +1052,16 @@
                <height>35</height>
               </size>
              </property>
+             <property name="font">
+              <font>
+               <pointsize>14</pointsize>
+              </font>
+             </property>
              <property name="text">
               <string>Off</string>
              </property>
              <property name="checkable">
-              <bool>false</bool>
+              <bool>true</bool>
              </property>
             </widget>
            </item>
@@ -1303,11 +1308,16 @@
                <height>35</height>
               </size>
              </property>
+             <property name="font">
+              <font>
+               <pointsize>14</pointsize>
+              </font>
+             </property>
              <property name="text">
               <string>Reset</string>
              </property>
              <property name="checkable">
-              <bool>false</bool>
+              <bool>true</bool>
              </property>
             </widget>
            </item>
@@ -1812,11 +1822,16 @@
                <height>35</height>
               </size>
              </property>
+             <property name="font">
+              <font>
+               <pointsize>14</pointsize>
+              </font>
+             </property>
              <property name="text">
               <string>On</string>
              </property>
              <property name="checkable">
-              <bool>false</bool>
+              <bool>true</bool>
              </property>
             </widget>
            </item>

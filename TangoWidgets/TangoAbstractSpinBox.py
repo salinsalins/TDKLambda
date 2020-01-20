@@ -4,6 +4,8 @@ Created on Jan 3, 2020
 
 @author: sanin
 '''
+import math
+
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QAbstractSpinBox
 from TangoWidgets.TangoWriteWidget import TangoWriteWidget
@@ -17,6 +19,12 @@ class TangoAbstractSpinBox(TangoWriteWidget):
         self.widget.keyPressEvent = self.keyPressEvent
         if not readonly:
             self.widget.valueChanged.connect(self.callback)
+
+    def set_widget_value(self):
+        if math.isnan(self.attr.value):
+            self.widget.setValue(0.0)
+        else:
+            super().set_widget_value()
 
     def keyPressEvent(self, e):
         self.widget.last_keyPressEvent(e)

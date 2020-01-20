@@ -34,6 +34,7 @@ from TangoWidgets.TangoLED import TangoLED
 from TangoWidgets.TangoLabel import TangoLabel
 from TangoWidgets.TangoAbstractSpinBox import TangoAbstractSpinBox
 from TangoWidgets.TangoRadioButton import TangoRadioButton
+from TangoWidgets.TangoPushButton import TangoPushButton
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Magnets_UI'
@@ -104,7 +105,7 @@ class MainWindow(QMainWindow):
         self.restore_settings(self.config_widgets)
 
         # read attributes TangoWidgets list
-        if False:
+        if True:
             self.rdwdgts = (TangoLED('binp/nbi/magnet1/output_state', self.pushButton_37),
                             TangoLabel('binp/nbi/magnet1/voltage', self.label_140),
                             TangoLabel('binp/nbi/magnet1/current', self.label_142),
@@ -125,6 +126,12 @@ class MainWindow(QMainWindow):
                             TangoRadioButton('binp/nbi/pg_offset/output_state', self.radioButton_48, False),
                             TangoAbstractSpinBox('binp/nbi/pg_offset/programmed_current', self.doubleSpinBox_41, False),
                             TangoAbstractSpinBox('binp/nbi/pg_offset/programmed_voltage', self.doubleSpinBox_42, False),
+                            TangoAbstractSpinBox('binp/nbi/dac0/channel0', self.spinBox_3, False),
+                            TangoAbstractSpinBox('binp/nbi/dac0/channel1', self.spinBox_2, False),
+                            TangoAbstractSpinBox('binp/nbi/dac0/channel1', self.spinBox_2, False),
+                            TangoPushButton('binp/nbi/timing/do0', self.pushButton_7, False),
+                            TangoPushButton('binp/nbi/timing/do1', self.pushButton_8, False),
+                            TangoPushButton('binp/nbi/timing/do2', self.pushButton_5, False),
                             )
         else:
             self.rdwdgts = (TangoLED('binp/test/test1/output_state', self.pushButton_37),
@@ -141,7 +148,6 @@ class MainWindow(QMainWindow):
                             TangoRadioButton('binp/test/test2/output_state', self.radioButton_49),
                             TangoAbstractSpinBox('binp/test/test2/programmed_current', self.doubleSpinBox_43, False),
                             TangoAbstractSpinBox('binp/test/test2/programmed_voltage', self.doubleSpinBox_44, False),
-                            TangoAbstractSpinBox('binp/nbi/dac0/channel0', self.spinBox_3, False),
                             )
 
     def get_widgets(self, obj, s=''):

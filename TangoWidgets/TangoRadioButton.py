@@ -11,8 +11,8 @@ from TangoWidgets.TangoWidget import TangoWidget
 
 
 class TangoRadioButton(TangoWidget):
-    def __init__(self, name, widget: QRadioButton):
-        super().__init__(name, widget)
+    def __init__(self, name, widget: QRadioButton, readonly=True):
+        super().__init__(name, widget, readonly)
         self.widget.toggled.connect(self.callback)
 
     def set_widget_value(self):
