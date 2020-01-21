@@ -34,10 +34,10 @@ class TangoPushButton(TangoWriteWidget):
             return
         super().callback(1)
 
-    def clicked(self, value):
+    def clicked(self):
         if not self.widget.isCheckable():
             return
-        super().callback(value)
+        super().callback(self.widget.isChecked())
 
     # compare widget displayed value and read attribute value
     def compare(self):
