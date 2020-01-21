@@ -33,3 +33,13 @@ class TangoPushButton(TangoWriteWidget):
         if self.widget.isCheckable():
             return
         self.write(1)
+
+    # compare widget displayed value and read attribute value
+    def compare(self):
+        if self.readonly:
+            return True
+        else:
+            if self.widget.isCheckable():
+                return self.attr.value == self.widget.isChecked()
+            else:
+                return True

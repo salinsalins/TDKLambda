@@ -115,6 +115,7 @@ class MainWindow(QMainWindow):
                             TangoLED('binp/nbi/pg_offset/output_state', self.pushButton_30),
                             TangoLabel('binp/nbi/pg_offset/voltage', self.label_121),
                             TangoLabel('binp/nbi/pg_offset/current', self.label_122),
+                            TangoLED('binp/nbi/timing/di63', self.pushButton_32),
                             )
             # write attributes TangoWidgets list
             self.wtwdgts = (TangoAbstractSpinBox('binp/nbi/magnet1/programmed_current', self.doubleSpinBox_49, False),
