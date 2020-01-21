@@ -11,7 +11,7 @@ from TangoWidgets.TangoWriteWidget import TangoWriteWidget
 class TangoPushButton(TangoWriteWidget):
     def __init__(self, name, widget: QPushButton, readonly=False):
         super().__init__(name, widget, readonly)
-        self.widget.clicked.connect(self.callback)
+        self.widget.clicked.connect(self.clicked)
         self.widget.pressed.connect(self.pressed)
         self.widget.released.connect(self.released)
 
@@ -27,12 +27,17 @@ class TangoPushButton(TangoWriteWidget):
     def released(self):
         if self.widget.isCheckable():
             return
-        self.write(0)
+        super().callback(0)
 
     def pressed(self):
         if self.widget.isCheckable():
             return
-        self.write(1)
+        super().callback(1)
+
+    def clicked(self, value):
+        if not self.widget.isCheckable():
+            return
+        super().callback(value)
 
     # compare widget displayed value and read attribute value
     def compare(self):
