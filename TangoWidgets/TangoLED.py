@@ -13,7 +13,7 @@ class TangoLED(TangoWidget):
         super().__init__(name, widget)
         #self.bs = self.widget.blockSignals(True)
         #self.widget.released.connect(self.callback)
-        self.widget.clicked.connect(self.callback)
+        #self.widget.clicked.connect(self.callback)
         #self.widget.toggled.connect(self.callback2)
 
     def set_widget_value(self):
