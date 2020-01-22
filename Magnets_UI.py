@@ -135,6 +135,8 @@ class MainWindow(QMainWindow):
                             TangoPushButton('binp/nbi/timing/do0', self.pushButton_7, False),
                             TangoPushButton('binp/nbi/timing/do1', self.pushButton_8, False),
                             TangoPushButton('binp/nbi/timing/do2', self.pushButton_5, False),
+                            TangoAbstractSpinBox('ET7000_server/test/pet9_7026/ao00', self.doubleSpinBox_7, False),
+                            TangoAbstractSpinBox('ET7000_server/test/pet7_7026/ao00', self.doubleSpinBox_8, False),
                             )
         else:
             self.rdwdgts = (TangoLED('binp/test/test1/output_state', self.pushButton_37),
