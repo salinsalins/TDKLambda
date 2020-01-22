@@ -106,38 +106,67 @@ class MainWindow(QMainWindow):
 
         # read attributes TangoWidgets list
         if True:
-            self.rdwdgts = (TangoLED('binp/nbi/magnet1/output_state', self.pushButton_37),
-                            TangoLabel('binp/nbi/magnet1/voltage', self.label_140),
-                            TangoLabel('binp/nbi/magnet1/current', self.label_142),
-                            TangoLED('binp/nbi/magnet2/output_state', self.pushButton_33),
-                            TangoLabel('binp/nbi/magnet2/voltage', self.label_125),
-                            TangoLabel('binp/nbi/magnet2/current', self.label_127),
-                            TangoLED('binp/nbi/pg_offset/output_state', self.pushButton_30),
-                            TangoLabel('binp/nbi/pg_offset/voltage', self.label_121),
-                            TangoLabel('binp/nbi/pg_offset/current', self.label_122),
-                            TangoLED('binp/nbi/timing/di63', self.pushButton_32),
-                            #TangoLED('binp/nbi/lauda/6230_7', self.pushButton_31),
-                            #TangoLED('binp/nbi/lauda/6230_0', self.pushButton_34),
-                            )
+            self.rdwdgts = (
+                # magnet 1
+                TangoLED('binp/nbi/magnet1/output_state', self.pushButton_37),
+                TangoLabel('binp/nbi/magnet1/voltage', self.label_140),
+                TangoLabel('binp/nbi/magnet1/current', self.label_142),
+                # magnet 2
+                TangoLED('binp/nbi/magnet2/output_state', self.pushButton_33),
+                TangoLabel('binp/nbi/magnet2/voltage', self.label_125),
+                TangoLabel('binp/nbi/magnet2/current', self.label_127),
+                # pg
+                TangoLED('binp/nbi/pg_offset/output_state', self.pushButton_30),
+                TangoLabel('binp/nbi/pg_offset/voltage', self.label_121),
+                TangoLabel('binp/nbi/pg_offset/current', self.label_122),
+                # rf system
+                TangoLED('binp/nbi/timing/di63', self.pushButton_32),
+                # lauda
+                TangoLED('binp/nbi/lauda/6230_7', self.pushButton_31),
+                TangoLED('binp/nbi/lauda/6230_0', self.pushButton_34),
+                #TangoLabel('binp/nbi/lauda/6230', self.label_23),
+                # acceleration
+                #TangoLabel('ET7000_server/test/pet9_7026/ai00', self.label_25),
+                # extraction
+                #TangoLabel('ET7000_server/test/pet9_7026/ai00', self.label_34),
+                # timer
+                #TangoLED('binp/nbi/timing/', self.pushButton_6),
+            )
             # write attributes TangoWidgets list
-            self.wtwdgts = (TangoAbstractSpinBox('binp/nbi/magnet1/programmed_current', self.doubleSpinBox_49, False),
-                            TangoRadioButton('binp/nbi/magnet1/output_state', self.radioButton_52, False),
-                            TangoAbstractSpinBox('binp/nbi/magnet1/programmed_voltage', self.doubleSpinBox_50, False),
-                            TangoRadioButton('binp/nbi/magnet2/output_state', self.radioButton_49, False),
-                            TangoAbstractSpinBox('binp/nbi/magnet2/programmed_current', self.doubleSpinBox_43, False),
-                            TangoAbstractSpinBox('binp/nbi/magnet2/programmed_voltage', self.doubleSpinBox_44, False),
-                            TangoRadioButton('binp/nbi/pg_offset/output_state', self.radioButton_48, False),
-                            TangoAbstractSpinBox('binp/nbi/pg_offset/programmed_current', self.doubleSpinBox_41, False),
-                            TangoAbstractSpinBox('binp/nbi/pg_offset/programmed_voltage', self.doubleSpinBox_42, False),
-                            TangoAbstractSpinBox('binp/nbi/dac0/channel0', self.spinBox_3, False),
-                            TangoAbstractSpinBox('binp/nbi/dac0/channel1', self.spinBox_2, False),
-                            TangoAbstractSpinBox('binp/nbi/dac0/channel1', self.spinBox_2, False),
-                            TangoPushButton('binp/nbi/timing/do0', self.pushButton_7, False),
-                            TangoPushButton('binp/nbi/timing/do1', self.pushButton_8, False),
-                            TangoPushButton('binp/nbi/timing/do2', self.pushButton_5, False),
-                            TangoAbstractSpinBox('ET7000_server/test/pet9_7026/ao00', self.doubleSpinBox_7, False),
-                            TangoAbstractSpinBox('ET7000_server/test/pet7_7026/ao00', self.doubleSpinBox_8, False),
-                            )
+            self.wtwdgts = (
+                # magnet 1
+                TangoAbstractSpinBox('binp/nbi/magnet1/programmed_current', self.doubleSpinBox_49, False),
+                TangoRadioButton('binp/nbi/magnet1/output_state', self.radioButton_52, False),
+                TangoAbstractSpinBox('binp/nbi/magnet1/programmed_voltage', self.doubleSpinBox_50, False),
+                # magnet 2
+                TangoRadioButton('binp/nbi/magnet2/output_state', self.radioButton_49, False),
+                TangoAbstractSpinBox('binp/nbi/magnet2/programmed_current', self.doubleSpinBox_43, False),
+                TangoAbstractSpinBox('binp/nbi/magnet2/programmed_voltage', self.doubleSpinBox_44, False),
+                # pg
+                TangoRadioButton('binp/nbi/pg_offset/output_state', self.radioButton_48, False),
+                TangoAbstractSpinBox('binp/nbi/pg_offset/programmed_current', self.doubleSpinBox_41, False),
+                TangoAbstractSpinBox('binp/nbi/pg_offset/programmed_voltage', self.doubleSpinBox_42, False),
+                # rf system
+                TangoAbstractSpinBox('binp/nbi/dac0/channel0', self.spinBox_3, False),
+                TangoAbstractSpinBox('binp/nbi/dac0/channel1', self.spinBox_2, False),
+                TangoPushButton('binp/nbi/timing/do0', self.pushButton_7, False),
+                TangoPushButton('binp/nbi/timing/do1', self.pushButton_8, False),
+                TangoPushButton('binp/nbi/timing/do2', self.pushButton_5, False),
+                # lauda
+                #TangoAbstractSpinBox('binp/nbi/lauda/6230_7', self.spinBox_4, False),
+                #TangoPushButton('binp/nbi/lauda/6230_7', self.pushButton_4, False),
+                #TangoPushButton('binp/nbi/lauda/6230_7', self.pushButton_3, False),
+                # extraction
+                #TangoAbstractSpinBox('ET7000_server/test/pet9_7026/ao00', self.doubleSpinBox_5, False),
+                #TangoAbstractSpinBox('ET7000_server/test/pet7_7026/ao00', self.doubleSpinBox_6, False),
+                # acceleration
+                TangoAbstractSpinBox('ET7000_server/test/pet9_7026/ao00', self.doubleSpinBox_7, False),
+                TangoAbstractSpinBox('ET7000_server/test/pet7_7026/ao00', self.doubleSpinBox_8, False),
+                # timer
+                #TangoAbstractSpinBox('binp/nbi/timing/', self.spinBox, False),
+                #TangoPushButton('binp/nbi/timing/', self.pushButton, False),
+                #TangoComboBox('binp/nbi/timing/', self.comboBox, False),
+            )
         else:
             self.rdwdgts = (TangoLED('binp/test/test1/output_state', self.pushButton_37),
                             TangoLabel('binp/test/test1/voltage', self.label_140),
@@ -154,6 +183,40 @@ class MainWindow(QMainWindow):
                             TangoAbstractSpinBox('binp/test/test2/programmed_current', self.doubleSpinBox_43, False),
                             TangoAbstractSpinBox('binp/test/test2/programmed_voltage', self.doubleSpinBox_44, False),
                             )
+        self.sb8 = None
+        self.sb7 = None
+        self.sb5 = None
+        self.sb6 = None
+        # Connect signals with slots
+        # acceleration
+        #self.checkBox_6.stateChanged.connect(self.cb6_callback)
+        #self.checkBox_6.stateChanged.connect(self.cb2_callback)
+
+    def cb6_callback(self, value):
+        if  value:
+            if self.cb7 is not None and self.cb7 is not None:
+                self.doubleSpinBox_8.setValue(self.sb8)
+                self.doubleSpinBox_7.setValue(self.sb7)
+            self.sb8 = None
+            self.sb7 = None
+        else:
+            self.sb8 = self.doubleSpinBox_8.value()
+            self.doubleSpinBox_8.setValue(0.0)
+            self.sb7 = self.doubleSpinBox_7.value()
+            self.doubleSpinBox_7.setValue(0.0)
+
+    def cb2_callback(self, value):
+        if  value:
+            if self.cb5 is not None and self.cb6 is not None:
+                self.doubleSpinBox_5.setValue(self.sb8)
+                self.doubleSpinBox_6.setValue(self.sb7)
+            self.sb5 = None
+            self.sb6 = None
+        else:
+            self.sb5 = self.doubleSpinBox_5.value()
+            self.doubleSpinBox_5.setValue(0.0)
+            self.sb6 = self.doubleSpinBox_6.value()
+            self.doubleSpinBox_6.setValue(0.0)
 
     def get_widgets(self, obj, s=''):
         lout = obj.layout()
