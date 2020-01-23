@@ -124,7 +124,7 @@ class MainWindow(QMainWindow):
                 # lauda
                 TangoLED('binp/nbi/lauda/6230_7', self.pushButton_31),
                 TangoLED('binp/nbi/lauda/6230_0', self.pushButton_34),
-                #TangoLabel('binp/nbi/lauda/6230', self.label_23),
+                #TangoLabel('binp/nbi/lauda/1012', self.label_23),
                 # acceleration
                 #TangoLabel('ET7000_server/test/pet9_7026/ai00', self.label_25),
                 # extraction

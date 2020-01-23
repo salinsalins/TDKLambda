@@ -18,7 +18,7 @@ class TangoWidget:
     RECONNECT_TIMEOUT = 3.0    # seconds
 
     def __init__(self, name: str, widget: QWidget, readonly=True):
-        print('TangoWidgetinit', name)
+        print('TangoWidgetinitEntry', name)
         # defaults
         self.name = name
         self.widget = widget
@@ -44,8 +44,10 @@ class TangoWidget:
             console_handler.setFormatter(log_formatter)
             self.logger.addHandler(console_handler)
         # create attribute proxy
+        print('TangoWidgetinit_1', name)
         self.connect_attribute_proxy(name)
         # update view
+        print('TangoWidgetinit_2', name)
         self.update(decorate_only=False)
         print('TangoWidgetinitExit', name)
 
@@ -64,9 +66,11 @@ class TangoWidget:
             self.logger.debug('Attribute %s disconnected', self.name)
 
     def connect_attribute_proxy(self, name: str = None):
+        print('connect_attribute_proxy_1', name)
         if name is None:
             name = self.name
         self.time = time.time()
+        print('connect_attribute_proxy_2', name)
         try:
             if isinstance(self.attr_proxy, tango.AttributeProxy):
                 self.attr_proxy.ping()
@@ -82,8 +86,14 @@ class TangoWidget:
                 self.connected = True
                 self.logger.debug('Reconnected to Attribute %s', name)
             elif isinstance(name, str):
-                self.attr_proxy = tango.AttributeProxy(name)
+                print('connect_attribute_proxy_3', name)
+                try:
+                    self.attr_proxy = tango.AttributeProxy(name)
+                except:
+                    print('connect_attribute_proxy_7', name)
+                print('connect_attribute_proxy_4', name)
                 self.attr_proxy.ping()
+                print('connect_attribute_proxy_5', name)
                 if not self.attr_proxy.is_polled():
                     self.logger.info('Recommended to swith polling on for %s', name)
                 self.attr = self.attr_proxy.read()
@@ -104,6 +114,7 @@ class TangoWidget:
                 self.format = None
                 self.connected = False
         except:
+            print('connect_attribute_proxy_6', name)
             self.logger.warning('Can not create attribute %s', name)
             self.name = str(name)
             self.attr_proxy = None
