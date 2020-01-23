@@ -1,9 +1,10 @@
 # coding: utf-8
-'''
+"""
 Created on Jan 3, 2020
 
 @author: sanin
-'''
+"""
+
 from PyQt5.QtWidgets import QPushButton
 from TangoWidgets.TangoWriteWidget import TangoWriteWidget
 
