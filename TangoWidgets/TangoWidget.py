@@ -87,6 +87,11 @@ class TangoWidget:
                 self.logger.debug('Reconnected to Attribute %s', name)
             elif isinstance(name, str):
                 print('connect_attribute_proxy_3', name)
+                n = name.rfind('/')
+                self.dn = name[:n]
+                self.an = name[n+1:]
+                self.dp = tango.DeviceProxy(self.dn)
+                print('connect_attribute_proxy_8', name)
                 try:
                     time.sleep(0.5)
                     self.attr_proxy = tango.AttributeProxy(name)
