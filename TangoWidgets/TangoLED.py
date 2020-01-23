@@ -11,14 +11,15 @@ from TangoWidgets.TangoWidget import TangoWidget
 class TangoLED(TangoWidget):
     def __init__(self, name, widget: QPushButton):
         try:
-            print('inx', name)
+            print('TangoLEDinit', name)
             super().__init__(name, widget)
             #self.bs = self.widget.blockSignals(True)
             #self.widget.released.connect(self.callback)
             self.widget.clicked.connect(self.callback)
             #self.widget.toggled.connect(self.callback2)
         except:
-            print('exxx', name)
+            print('TangoLEDexeption', name)
+        print('TangoLEDinitexit', name)
 
     def set_widget_value(self):
         self.widget.setChecked(bool(self.attr.value))

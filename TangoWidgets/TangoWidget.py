@@ -18,6 +18,7 @@ class TangoWidget:
     RECONNECT_TIMEOUT = 3.0    # seconds
 
     def __init__(self, name: str, widget: QWidget, readonly=True):
+        print('TangoWidgetinit', name)
         # defaults
         self.name = name
         self.widget = widget
@@ -46,6 +47,7 @@ class TangoWidget:
         self.connect_attribute_proxy(name)
         # update view
         self.update(decorate_only=False)
+        print('TangoWidgetinitExit', name)
 
     def disconnect_attribute_proxy(self):
         if not self.connected:

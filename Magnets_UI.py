@@ -190,7 +190,7 @@ class MainWindow(QMainWindow):
         # Connect signals with slots
         # acceleration
         #self.checkBox_6.stateChanged.connect(self.cb6_callback)
-        #self.checkBox_6.stateChanged.connect(self.cb2_callback)
+        #self.checkBox_2.stateChanged.connect(self.cb2_callback)
 
     def cb6_callback(self, value):
         if  value:
