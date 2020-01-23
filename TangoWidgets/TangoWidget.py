@@ -92,6 +92,7 @@ class TangoWidget:
                 self.an = name[n+1:]
                 self.dp = tango.DeviceProxy(self.dn)
                 print('connect_attribute_proxy_8', name)
+                self.dp.ping()
                 try:
                     print('connect_attribute_proxy_9', name)
                     self.attr_proxy = tango.AttributeProxy(name)
