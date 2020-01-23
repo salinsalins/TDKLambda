@@ -92,20 +92,21 @@ class TangoWidget:
                 self.an = name[n+1:]
                 self.dp = tango.DeviceProxy(self.dn)
                 print('connect_attribute_proxy_8', name)
-                self.dp.ping()
+                print(self.dp.ping())
                 print(self.dp.read_attribute(self.an))
-                try:
-                    print('connect_attribute_proxy_9', name)
-                    self.attr_proxy = tango.AttributeProxy(name)
-                except:
-                    print('connect_attribute_proxy_7', name)
+                print('connect_attribute_proxy_9', name)
+                #self.attr_proxy = tango.AttributeProxy(name)
+                self.attr_proxy = None
                 print('connect_attribute_proxy_4', name)
-                self.attr_proxy.ping()
+                #self.attr_proxy.ping()
                 print('connect_attribute_proxy_5', name)
-                if not self.attr_proxy.is_polled():
+                if not self.dp.is_attribute_polled(self.an):
+                #if not self.attr_proxy.is_polled():
                     self.logger.info('Recommended to swith polling on for %s', name)
-                self.attr = self.attr_proxy.read()
-                self.config = self.attr_proxy.get_config()
+                self.attr = self.dp.read_attribute(self.an)
+                #self.attr = self.attr_proxy.read()
+                self.config = self.dp.get_attribute_config_ex(self.an)
+                #self.config = self.attr_proxy.get_config()
                 self.format = self.config.format
                 try:
                     self.coeff = float(self.config.display_unit)
@@ -116,6 +117,7 @@ class TangoWidget:
             else:
                 self.logger.warning('<str> required for attribute name')
                 self.name = str(name)
+                self.dp = None
                 self.attr_proxy = None
                 self.attr = None
                 self.config = None
@@ -125,6 +127,7 @@ class TangoWidget:
             print('connect_attribute_proxy_6', name)
             self.logger.warning('Can not create attribute %s', name)
             self.name = str(name)
+            self.dp = None
             self.attr_proxy = None
             self.attr = None
             self.config = None
@@ -146,9 +149,11 @@ class TangoWidget:
 
     def read(self, force=False):
         try:
-            if not force and self.attr_proxy.is_polled():
+            if not force and self.dp.is_attribute_polled(self.an):
+            #if not force and self.attr_proxy.is_polled():
                 try:
-                    attrib = self.attr_proxy.history(1)[0]
+                    attrib = self.dp.attribute_history(self.an, 1)[0]
+                    #attrib = self.attr_proxy.history(1)[0]
                     if attrib.time.tv_sec > self.attr.time.tv_sec or \
                             (attrib.time.tv_sec == self.attr.time.tv_sec and attrib.time.tv_usec > self.attr.time.tv_usec):
                         self.attr = attrib
@@ -157,7 +162,8 @@ class TangoWidget:
                     self.disconnect_attribute_proxy()
                     raise ex
             else:
-                self.attr = self.attr_proxy.read()
+                #self.attr = self.attr_proxy.read()
+                self.attr = self.dp.read_attribute(self.an)
         except Exception as ex:
             self.attr = None
             self.disconnect_attribute_proxy()
@@ -168,14 +174,16 @@ class TangoWidget:
     def write(self, value):
         if self.readonly:
             return
-        self.attr_proxy.write(value/self.coeff)
+        self.dp.write_attribute(self.an, value/self.coeff)
+        #self.attr_proxy.write(value/self.coeff)
 
     def write_read(self, value):
         if self.readonly:
             return None
         self.attr = None
         try:
-            self.attr = self.attr_proxy.write_read(value/self.coeff)
+            self.attr = self.dp.write_read_attribute(self.an, value/self.coeff)
+            #self.attr = self.attr_proxy.write_read(value/self.coeff)
         except Exception as ex:
             self.attr = None
             self.disconnect_attribute_proxy()
