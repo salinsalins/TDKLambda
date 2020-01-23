@@ -16,9 +16,10 @@ import tango
 class TangoWidget:
     ERROR_TEXT = '****'
     RECONNECT_TIMEOUT = 3.0    # seconds
+    DEVICES = []
 
     def __init__(self, name: str, widget: QWidget, readonly=True):
-        print('TangoWidgetinitEntry', name)
+        #print('TangoWidgetinitEntry', name)
         # defaults
         self.name = name
         self.widget = widget
@@ -44,12 +45,12 @@ class TangoWidget:
             console_handler.setFormatter(log_formatter)
             self.logger.addHandler(console_handler)
         # create attribute proxy
-        print('TangoWidgetinit_1', name)
+        #print('TangoWidgetinit_1', name)
         self.connect_attribute_proxy(name)
         # update view
-        print('TangoWidgetinit_2', name)
+        #print('TangoWidgetinit_2', name)
         self.update(decorate_only=False)
-        print('TangoWidgetinitExit', name)
+        #print('TangoWidgetinitExit', name)
 
     def disconnect_attribute_proxy(self):
         if not self.connected:
@@ -66,11 +67,11 @@ class TangoWidget:
             self.logger.debug('Attribute %s disconnected', self.name)
 
     def connect_attribute_proxy(self, name: str = None):
-        print('connect_attribute_proxy_1', name)
+        #print('connect_attribute_proxy_1', name)
         if name is None:
             name = self.name
         self.time = time.time()
-        print('connect_attribute_proxy_2', name)
+        #print('connect_attribute_proxy_2', name)
         try:
             if isinstance(self.attr_proxy, tango.AttributeProxy):
                 self.attr_proxy.ping()
@@ -86,20 +87,27 @@ class TangoWidget:
                 self.connected = True
                 self.logger.debug('Reconnected to Attribute %s', name)
             elif isinstance(name, str):
-                print('connect_attribute_proxy_3', name)
+                #print('connect_attribute_proxy_3', name)
                 n = name.rfind('/')
                 self.dn = name[:n]
                 self.an = name[n+1:]
-                self.dp = tango.DeviceProxy(self.dn)
-                print('connect_attribute_proxy_8', name)
+                self.dp = None
+                for d in TangoWidget.DEVICES:
+                    if d[0] == self.dn:
+                        self.dp = d[1]
+                        break
+                if self.dp is None:
+                    self.dp = tango.DeviceProxy(self.dn)
+                    TangoWidget.DEVICES.append((self.dn, self.dp))
+                #print('connect_attribute_proxy_8', name)
                 print(self.dp.ping())
                 print(self.dp.read_attribute(self.an))
-                print('connect_attribute_proxy_9', name)
+                #print('connect_attribute_proxy_9', name)
                 #self.attr_proxy = tango.AttributeProxy(name)
                 self.attr_proxy = None
-                print('connect_attribute_proxy_4', name)
+                #print('connect_attribute_proxy_4', name)
                 #self.attr_proxy.ping()
-                print('connect_attribute_proxy_5', name)
+                #print('connect_attribute_proxy_5', name)
                 if not self.dp.is_attribute_polled(self.an):
                 #if not self.attr_proxy.is_polled():
                     self.logger.info('Recommended to swith polling on for %s', name)
@@ -124,7 +132,7 @@ class TangoWidget:
                 self.format = None
                 self.connected = False
         except:
-            print('connect_attribute_proxy_6', name)
+            #print('connect_attribute_proxy_6', name)
             self.logger.warning('Can not create attribute %s', name)
             self.name = str(name)
             self.dp = None
