@@ -93,8 +93,7 @@ class TangoWidget:
                 self.dp = tango.DeviceProxy(self.dn)
                 print('connect_attribute_proxy_8', name)
                 try:
-                    #dp = tango.DeviceProxy('binp/nbi/lauda')
-                    print('connect_attribute_proxy_8', name)
+                    print('connect_attribute_proxy_9', name)
                     self.attr_proxy = tango.AttributeProxy(name)
                 except:
                     print('connect_attribute_proxy_7', name)
