@@ -88,6 +88,7 @@ class TangoWidget:
             elif isinstance(name, str):
                 print('connect_attribute_proxy_3', name)
                 try:
+                    time.sleep(0.5)
                     self.attr_proxy = tango.AttributeProxy(name)
                 except:
                     print('connect_attribute_proxy_7', name)
