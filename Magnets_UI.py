@@ -190,10 +190,13 @@ class MainWindow(QMainWindow):
         # Connect signals with slots
         # acceleration
         #self.checkBox_6.stateChanged.connect(self.cb6_callback)
+        # extraction
         #self.checkBox_2.stateChanged.connect(self.cb2_callback)
+        # lauda
+        self.pushButton_3.clicked.connect(self.lauda_pump_on_cb)
 
     def cb6_callback(self, value):
-        if  value:
+        if value:
             if self.cb7 is not None and self.cb7 is not None:
                 self.doubleSpinBox_8.setValue(self.sb8)
                 self.doubleSpinBox_7.setValue(self.sb7)
@@ -205,8 +208,15 @@ class MainWindow(QMainWindow):
             self.sb7 = self.doubleSpinBox_7.value()
             self.doubleSpinBox_7.setValue(0.0)
 
+    def lauda_pump_on_cb(self, value):
+        #print('cb1', value)
+        if value:
+            pass
+        else:
+            pass
+
     def cb2_callback(self, value):
-        if  value:
+        if value:
             if self.cb5 is not None and self.cb6 is not None:
                 self.doubleSpinBox_5.setValue(self.sb8)
                 self.doubleSpinBox_6.setValue(self.sb7)
