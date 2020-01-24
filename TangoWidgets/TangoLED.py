@@ -29,7 +29,7 @@ class TangoLED(TangoWidget):
     def decorate_error(self):
         self.widget.setDisabled(True)
 
-    def decorate_invalid(self):
+    def decorate_invalid(self, text: str = None):
         self.widget.setDisabled(True)
 
     def decorate_valid(self):
