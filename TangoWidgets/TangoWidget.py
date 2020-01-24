@@ -99,8 +99,8 @@ class TangoWidget:
                 if self.dp is None:
                     self.dp = tango.DeviceProxy(self.dn)
                     TangoWidget.DEVICES.append((self.dn, self.dp))
-                #print('connect_attribute_proxy_8', name)
-                #print(self.dp.ping())
+                    #print('connect_attribute_proxy_8', name)
+                    print('ping to', self.dn, self.dp.ping(), 'ms')
                 #print(self.dp.read_attribute(self.an))
                 #print('connect_attribute_proxy_9', name)
                 #self.attr_proxy = tango.AttributeProxy(name)

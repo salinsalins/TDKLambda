@@ -122,9 +122,9 @@ class MainWindow(QMainWindow):
                 # rf system
                 TangoLED('binp/nbi/timing/di63', self.pushButton_32),
                 # lauda
-                TangoLED('binp/nbi/lauda/6230_7', self.pushButton_31),
-                TangoLED('binp/nbi/lauda/6230_0', self.pushButton_34),
-                #TangoLabel('binp/nbi/lauda/1012', self.label_23),
+                TangoLED('binp/nbi/lauda/6210_1', self.pushButton_31),  # Pump On
+                TangoLED('binp/nbi/lauda/6210_3', self.pushButton_34),  # Valve
+                TangoLabel('binp/nbi/lauda/1012', self.label_23),       # Return
                 # acceleration
                 #TangoLabel('ET7000_server/test/pet9_7026/ai00', self.label_25),
                 # extraction
@@ -153,9 +153,9 @@ class MainWindow(QMainWindow):
                 TangoPushButton('binp/nbi/timing/do1', self.pushButton_8, False),
                 TangoPushButton('binp/nbi/timing/do2', self.pushButton_5, False),
                 # lauda
-                #TangoAbstractSpinBox('binp/nbi/lauda/6230_7', self.spinBox_4, False),
-                #TangoPushButton('binp/nbi/lauda/6230_7', self.pushButton_4, False),
-                #TangoPushButton('binp/nbi/lauda/6230_7', self.pushButton_3, False),
+                TangoAbstractSpinBox('binp/nbi/lauda/1100', self.spinBox_4, False),  # SetPoint
+                #TangoPushButton('binp/nbi/lauda/6210_3', self.pushButton_4, False),  # Valve
+                #TangoPushButton('binp/nbi/lauda/6210_1', self.pushButton_3, False),  # Run
                 # extraction
                 #TangoAbstractSpinBox('ET7000_server/test/pet9_7026/ao00', self.doubleSpinBox_5, False),
                 #TangoAbstractSpinBox('ET7000_server/test/pet7_7026/ao00', self.doubleSpinBox_6, False),
@@ -190,10 +190,13 @@ class MainWindow(QMainWindow):
         # Connect signals with slots
         # acceleration
         #self.checkBox_6.stateChanged.connect(self.cb6_callback)
+        # extraction
         #self.checkBox_2.stateChanged.connect(self.cb2_callback)
+        # lauda
+        self.pushButton_3.clicked.connect(self.lauda_pump_on_cb)
 
     def cb6_callback(self, value):
-        if  value:
+        if value:
             if self.cb7 is not None and self.cb7 is not None:
                 self.doubleSpinBox_8.setValue(self.sb8)
                 self.doubleSpinBox_7.setValue(self.sb7)
@@ -205,8 +208,15 @@ class MainWindow(QMainWindow):
             self.sb7 = self.doubleSpinBox_7.value()
             self.doubleSpinBox_7.setValue(0.0)
 
+    def lauda_pump_on_cb(self, value):
+        #print('cb1', value)
+        if value:
+            pass
+        else:
+            pass
+
     def cb2_callback(self, value):
-        if  value:
+        if value:
             if self.cb5 is not None and self.cb6 is not None:
                 self.doubleSpinBox_5.setValue(self.sb8)
                 self.doubleSpinBox_6.setValue(self.sb7)
