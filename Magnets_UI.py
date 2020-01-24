@@ -122,9 +122,9 @@ class MainWindow(QMainWindow):
                 # rf system
                 TangoLED('binp/nbi/timing/di63', self.pushButton_32),
                 # lauda
-                TangoLED('binp/nbi/lauda/6230_7', self.pushButton_31),
-                TangoLED('binp/nbi/lauda/6230_0', self.pushButton_34),
-                #TangoLabel('binp/nbi/lauda/1012', self.label_23),
+                TangoLED('binp/nbi/lauda/6210_1', self.pushButton_31),  # Pump On
+                TangoLED('binp/nbi/lauda/6210_3', self.pushButton_34),  # Valve
+                TangoLabel('binp/nbi/lauda/1012', self.label_23),       # Return
                 # acceleration
                 #TangoLabel('ET7000_server/test/pet9_7026/ai00', self.label_25),
                 # extraction
@@ -153,7 +153,7 @@ class MainWindow(QMainWindow):
                 TangoPushButton('binp/nbi/timing/do1', self.pushButton_8, False),
                 TangoPushButton('binp/nbi/timing/do2', self.pushButton_5, False),
                 # lauda
-                #TangoAbstractSpinBox('binp/nbi/lauda/6230_7', self.spinBox_4, False),
+                TangoAbstractSpinBox('binp/nbi/lauda/1100', self.spinBox_4, False),  # SetPoint
                 #TangoPushButton('binp/nbi/lauda/6230_7', self.pushButton_4, False),
                 #TangoPushButton('binp/nbi/lauda/6230_7', self.pushButton_3, False),
                 # extraction
