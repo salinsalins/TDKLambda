@@ -14,15 +14,15 @@ class TangoWriteWidget(TangoWidget):
 
     def decorate_error(self):
         self.widget.setStyleSheet('color: gray')
-        self.widget.setEnabled(False)
+        #self.widget.setEnabled(False)
 
     def decorate_invalid(self, text: str = None):
         self.widget.setStyleSheet('color: red')
-        self.widget.setEnabled(True)
+        #self.widget.setEnabled(True)
 
     def decorate_valid(self):
         self.widget.setStyleSheet('color: black')
-        self.widget.setEnabled(True)
+        #self.widget.setEnabled(True)
 
     # compare widget displayed value and read attribute value
     def compare(self):

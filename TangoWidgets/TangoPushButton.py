@@ -20,11 +20,6 @@ class TangoPushButton(TangoWriteWidget):
         self.widget.setChecked(bool(self.attr.value))
         return self.attr.value
 
-    def write(self, value):
-        if self.readonly:
-            return
-        self.attr_proxy.write(int(value))
-
     def released(self):
         if self.widget.isCheckable():
             return
