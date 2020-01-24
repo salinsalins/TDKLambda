@@ -100,8 +100,8 @@ class TangoWidget:
                     self.dp = tango.DeviceProxy(self.dn)
                     TangoWidget.DEVICES.append((self.dn, self.dp))
                 #print('connect_attribute_proxy_8', name)
-                print(self.dp.ping())
-                print(self.dp.read_attribute(self.an))
+                print('ping to', self.dn, self.dp.ping(), 'ms')
+                #print(self.dp.read_attribute(self.an))
                 #print('connect_attribute_proxy_9', name)
                 #self.attr_proxy = tango.AttributeProxy(name)
                 self.attr_proxy = None
@@ -113,7 +113,7 @@ class TangoWidget:
                     self.logger.info('Recommended to swith polling on for %s', name)
                 self.attr = self.dp.read_attribute(self.an)
                 #self.attr = self.attr_proxy.read()
-                self.config = self.dp.get_attribute_config_ex(self.an)
+                self.config = self.dp.get_attribute_config_ex(self.an)[0]
                 #self.config = self.attr_proxy.get_config()
                 self.format = self.config.format
                 try:
