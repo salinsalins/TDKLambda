@@ -154,8 +154,8 @@ class MainWindow(QMainWindow):
                 TangoPushButton('binp/nbi/timing/do2', self.pushButton_5, False),
                 # lauda
                 TangoAbstractSpinBox('binp/nbi/lauda/1100', self.spinBox_4, False),  # SetPoint
-                #TangoPushButton('binp/nbi/lauda/6230_7', self.pushButton_4, False),
-                #TangoPushButton('binp/nbi/lauda/6230_7', self.pushButton_3, False),
+                #TangoPushButton('binp/nbi/lauda/6210_3', self.pushButton_4, False),  # Valve
+                #TangoPushButton('binp/nbi/lauda/6210_1', self.pushButton_3, False),  # Run
                 # extraction
                 #TangoAbstractSpinBox('ET7000_server/test/pet9_7026/ao00', self.doubleSpinBox_5, False),
                 #TangoAbstractSpinBox('ET7000_server/test/pet7_7026/ao00', self.doubleSpinBox_6, False),
