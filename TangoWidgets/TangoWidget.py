@@ -228,8 +228,10 @@ class TangoWidget:
                 if not decorate_only:
                     self.set_widget_value()
                 if self.attr.quality == tango._tango.AttrQuality.ATTR_VALID and self.compare():
+                    print('VALID', self.name)
                     self.decorate_valid()
                 else:
+                    print('INVALID', self.name)
                     self.decorate_invalid()
         except:
             if self.connected:

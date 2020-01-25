@@ -244,22 +244,24 @@ class TDKLambda_Server(Device):
 
     def read_output_state(self, attr: tango.Attribute):
         with _lock:
+            qual = tango.AttrQuality.ATTR_INVALID
             if self.tdk.com is None:
                 value = False
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+                qual = tango.AttrQuality.ATTR_INVALID
             else:
                 response = self.tdk.send_command(b'OUT?')
                 if response.upper().startswith(b'ON'):
-                    attr.set_quality(tango.AttrQuality.ATTR_VALID)
+                    qual = tango.AttrQuality.ATTR_VALID
                     value = True
                 elif response.upper().startswith(b'OFF'):
-                    attr.set_quality(tango.AttrQuality.ATTR_VALID)
+                    qual = tango.AttrQuality.ATTR_VALID
                     value = False
                 else:
                     self.info_stream("Read output error")
-                    attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+                    qual = tango.AttrQuality.ATTR_INVALID
                     value = False
             attr.set_value(value)
+            attr.set_quality(qual)
             return value
 
     def write_output_state(self, value):
