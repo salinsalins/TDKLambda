@@ -192,7 +192,7 @@ class MainWindow(QMainWindow):
         # extraction
         self.checkBox_2.stateChanged.connect(self.cb2_callback)
         # lauda
-        #self.pushButton_3.clicked.connect(self.lauda_pump_on_cb)
+        #self.pushButton_3.clicked.connect(self.lauda_pump_on_callback)
 
     def cb6_callback(self, value):
         if value:
@@ -204,13 +204,6 @@ class MainWindow(QMainWindow):
             self.doubleSpinBox_7.setValue(0.0)
             self.doubleSpinBox_7.setReadOnly(True)
 
-    def lauda_pump_on_cb(self, value):
-        #print('cb1', value)
-        if value:
-            pass
-        else:
-            pass
-
     def cb2_callback(self, value):
         if value:
             self.doubleSpinBox_5.setReadOnly(False)
@@ -220,6 +213,13 @@ class MainWindow(QMainWindow):
             self.doubleSpinBox_5.setReadOnly(True)
             self.doubleSpinBox_6.setValue(0.0)
             self.doubleSpinBox_6.setReadOnly(True)
+
+    def lauda_pump_on_callback(self, value):
+        #print('cb1', value)
+        if value:
+            pass
+        else:
+            pass
 
     def get_widgets(self, obj, s=''):
         lout = obj.layout()
