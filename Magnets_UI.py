@@ -190,7 +190,7 @@ class MainWindow(QMainWindow):
         # extraction
         self.checkBox_2.stateChanged.connect(self.cb2_callback)
         # lauda
-        #self.pushButton_3.clicked.connect(self.lauda_pump_on_callback)
+        self.pushButton_3.clicked.connect(self.lauda_pump_on_callback)
 
     def cb6_callback(self, value):
         if value:
