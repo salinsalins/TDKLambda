@@ -35,7 +35,7 @@ class TangoRadioButton(TangoWidget):
     def callback(self, value):
         if self.connected:
             try:
-                self.dp.write_attrubute(self.dp, bool(value))
+                self.dp.write_attrubute(self.an, bool(value))
                 self.decorate_valid()
             except:
                 self.logger.debug('Exception %s in callback', sys.exc_info()[0])
