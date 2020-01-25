@@ -252,8 +252,6 @@ class MainWindow(QMainWindow):
         else:
             self.pushButton.setText('Run')
 
-
-
     def get_widgets(self, obj, s=''):
         lout = obj.layout()
         for k in range(lout.count()):
