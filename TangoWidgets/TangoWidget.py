@@ -100,9 +100,7 @@ class TangoWidget:
                 if self.dp is None:
                     self.dp = tango.DeviceProxy(self.dn)
                     TangoWidget.DEVICES.append((self.dn, self.dp))
-                    #print('connect_attribute_proxy_8', name)
-                    print('ping to', self.dn, self.dp.ping(), 'ms')
-                #print(self.dp.read_attribute(self.an))
+                    #print('ping to', self.dn, self.dp.ping(), 'ms')
                 #print('connect_attribute_proxy_9', name)
                 #self.attr_proxy = tango.AttributeProxy(name)
                 self.attr_proxy = None
@@ -122,7 +120,7 @@ class TangoWidget:
                 except:
                     self.coeff = 1.0
                 self.connected = True
-                self.logger.debug('Connected to Attribute %s', name)
+                self.logger.info('Connected to Attribute %s', name)
             else:
                 self.logger.warning('<str> required for attribute name')
                 self.name = str(name)
