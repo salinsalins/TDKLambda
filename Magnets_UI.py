@@ -71,6 +71,9 @@ class MainWindow(QMainWindow):
         self.refresh_flag = False
         self.last_selection = -1
         self.elapsed = 0.0
+        self.elapsed_time = 0.0
+        self.pulse_duration = 0.0
+        self.pulse_start = time.time()
 
         # Load the UI
         uic.loadUi(UI_FILE, self)
@@ -128,8 +131,11 @@ class MainWindow(QMainWindow):
                 TangoLabel('ET7000_server/test/pet9_7026/ai00', self.label_34),
                 # extraction
                 TangoLabel('ET7000_server/test/pet4_7026/ai00', self.label_25),
+                TangoLabel('ET7000_server/test/pet4_7026/ai00', self.label_25),
                 # timer
-                #TangoLED('binp/nbi/timing/', self.pushButton_6),
+                #TangoLED('binp/nbi/timing/', self.pushButton_6),  # shot is running
+                #TangoLabel('binp/nbi/timing/', self.label_3),  # elapsed
+                #TangoLabel('binp/nbi/timing/', self.label_5),  # remained
             )
             # write attributes TangoWidgets list
             self.wtwdgts = (
@@ -164,9 +170,9 @@ class MainWindow(QMainWindow):
                 TangoAbstractSpinBox('ET7000_server/test/pet9_7026/ao00', self.doubleSpinBox_7, False),
                 TangoAbstractSpinBox('ET7000_server/test/pet7_7026/ao00', self.doubleSpinBox_8, False),
                 # timer
-                #TangoAbstractSpinBox('binp/nbi/timing/', self.spinBox, False),
-                #TangoPushButton('binp/nbi/timing/', self.pushButton, False),
-                #TangoComboBox('binp/nbi/timing/', self.comboBox, False),
+                #TangoAbstractSpinBox('binp/nbi/timing/', self.spinBox, False),  # period
+                #TangoPushButton('binp/nbi/timing/', self.pushButton, False),  # run
+                #TangoComboBox('binp/nbi/timing/', self.comboBox, False),  # single/periodical
             )
         else:
             self.rdwdgts = (TangoLED('binp/test/test1/output_state', self.pushButton_37),
@@ -191,6 +197,9 @@ class MainWindow(QMainWindow):
         self.checkBox_2.stateChanged.connect(self.cb2_callback)
         # lauda
         self.pushButton_3.clicked.connect(self.lauda_pump_on_callback)
+        # timer
+        #self.comboBox.currentIndexChanged.connect(self.single_periodical_callback)  # single/periodical combo
+        #self.pushButton.clicked.connect(self.timer_run_callback)  # run button
 
     def cb6_callback(self, value):
         if value:
@@ -219,6 +228,25 @@ class MainWindow(QMainWindow):
             # reset
             self.pushButton_9.setChecked(True)
             self.pushButton_9.setChecked(False)
+
+    def single_periodical_callback(self, value):
+        if value == 0:
+            # hide remained
+            self.label_4.setVisible(False)
+            self.label_5.setVisible(False)
+        elif value == 1:
+            # show remained
+            self.label_4.setVisible(True)
+            self.label_5.setVisible(True)
+
+    def timer_run_callback(self, value):
+        if value:
+            # elapsed to 0.0
+            self.label_5.setText('0.0 s')
+            self.elapsed_time = 0.0
+            self.pulse_duration = 0.0
+            self.pulse_start = time.time()
+
 
     def get_widgets(self, obj, s=''):
         lout = obj.layout()
