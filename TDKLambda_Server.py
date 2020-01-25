@@ -321,7 +321,7 @@ class TDKLambda_Server(Device):
     @command
     def Reset(self):
         with _lock:
-            msg = '%s:%d Reset' % (self.tdk.port, self.tdk.addr)
+            msg = '%s:%d Reset TDKLambda PS' % (self.tdk.port, self.tdk.addr)
             self.info_stream(msg)
             self.tdk._send_command(b'RST')
 
@@ -426,14 +426,14 @@ class TDKLambda_Server(Device):
     def TurnOn(self):
         with _lock:
             # turn on the actual power supply here
-            self.write_output_state(True)
+            self.output_state = True
             # self.set_state(DevState.ON)
 
     @command
     def TurnOff(self):
         with _lock:
             # turn off the actual power supply here
-            self.write_output_state(False)
+            self.output_state = False
             # self.set_state(DevState.OFF)
 
 
