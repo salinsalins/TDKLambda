@@ -23,6 +23,7 @@ class TangoWidget:
         # defaults
         self.name = name
         self.widget = widget
+        self.widget.tango_widget = self
         self.readonly = readonly
         self.attr_proxy = None
         self.attr = None

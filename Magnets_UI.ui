@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>457</width>
+    <width>591</width>
     <height>686</height>
    </rect>
   </property>
@@ -116,6 +116,9 @@
                <pointsize>14</pointsize>
               </font>
              </property>
+             <property name="keyboardTracking">
+              <bool>false</bool>
+             </property>
             </widget>
            </item>
            <item row="4" column="1">
@@ -142,6 +145,9 @@
               <font>
                <pointsize>14</pointsize>
               </font>
+             </property>
+             <property name="keyboardTracking">
+              <bool>false</bool>
              </property>
              <property name="maximum">
               <number>9999</number>
@@ -511,6 +517,9 @@
                <pointsize>14</pointsize>
               </font>
              </property>
+             <property name="keyboardTracking">
+              <bool>false</bool>
+             </property>
              <property name="maximum">
               <number>9999</number>
              </property>
@@ -546,6 +555,9 @@
               <font>
                <pointsize>14</pointsize>
               </font>
+             </property>
+             <property name="keyboardTracking">
+              <bool>false</bool>
              </property>
              <property name="maximum">
               <number>300</number>
@@ -1355,6 +1367,9 @@
                <pointsize>14</pointsize>
               </font>
              </property>
+             <property name="keyboardTracking">
+              <bool>false</bool>
+             </property>
              <property name="decimals">
               <number>1</number>
              </property>
@@ -1453,6 +1468,18 @@
                <pointsize>14</pointsize>
               </font>
              </property>
+             <property name="frame">
+              <bool>true</bool>
+             </property>
+             <property name="readOnly">
+              <bool>false</bool>
+             </property>
+             <property name="keyboardTracking">
+              <bool>false</bool>
+             </property>
+             <property name="suffix">
+              <string/>
+             </property>
              <property name="decimals">
               <number>1</number>
              </property>
@@ -1521,6 +1548,9 @@
               <font>
                <pointsize>14</pointsize>
               </font>
+             </property>
+             <property name="keyboardTracking">
+              <bool>false</bool>
              </property>
              <property name="decimals">
               <number>1</number>
@@ -1670,6 +1700,9 @@
               <font>
                <pointsize>14</pointsize>
               </font>
+             </property>
+             <property name="keyboardTracking">
+              <bool>false</bool>
              </property>
              <property name="decimals">
               <number>1</number>
@@ -1850,8 +1883,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>399</width>
-             <height>357</height>
+             <width>533</width>
+             <height>467</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout">
@@ -2917,8 +2950,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>279</width>
-             <height>222</height>
+             <width>531</width>
+             <height>493</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_7">
@@ -3141,8 +3174,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>457</width>
-     <height>23</height>
+     <width>591</width>
+     <height>34</height>
     </rect>
    </property>
    <property name="font">

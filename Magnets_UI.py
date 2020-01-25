@@ -104,8 +104,9 @@ class MainWindow(QMainWindow):
 
         self.restore_settings(self.config_widgets)
 
+        test = True
         # read attributes TangoWidgets list
-        if True:
+        if not test:
             self.rdwdgts = (
                 # magnet 1
                 TangoLED('binp/nbi/magnet1/output_state', self.pushButton_37),
@@ -195,13 +196,13 @@ class MainWindow(QMainWindow):
 
     def cb6_callback(self, value):
         if value:
-            self.doubleSpinBox_8.setReadOnly(True)
-            self.doubleSpinBox_7.setReadOnly(True)
+            self.doubleSpinBox_8.setReadOnly(False)
+            self.doubleSpinBox_7.setReadOnly(False)
         else:
             self.doubleSpinBox_8.setValue(0.0)
-            self.doubleSpinBox_8.setReadOnly(False)
+            self.doubleSpinBox_8.setReadOnly(True)
             self.doubleSpinBox_7.setValue(0.0)
-            self.doubleSpinBox_7.setReadOnly(False)
+            self.doubleSpinBox_7.setReadOnly(True)
 
     def lauda_pump_on_cb(self, value):
         #print('cb1', value)
@@ -212,15 +213,13 @@ class MainWindow(QMainWindow):
 
     def cb2_callback(self, value):
         if value:
-            self.doubleSpinBox_5.setReadOnly(True)
-            #self.doubleSpinBox_5.setVisible(True)
-            self.doubleSpinBox_6.setReadOnly(True)
+            self.doubleSpinBox_5.setReadOnly(False)
+            self.doubleSpinBox_6.setReadOnly(False)
         else:
             self.doubleSpinBox_5.setValue(0.0)
-            self.doubleSpinBox_5.setReadOnly(False)
-            #self.doubleSpinBox_5.setVisible(False)
+            self.doubleSpinBox_5.setReadOnly(True)
             self.doubleSpinBox_6.setValue(0.0)
-            self.doubleSpinBox_6.setReadOnly(False)
+            self.doubleSpinBox_6.setReadOnly(True)
 
     def get_widgets(self, obj, s=''):
         lout = obj.layout()
