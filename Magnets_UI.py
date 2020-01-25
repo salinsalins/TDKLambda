@@ -85,8 +85,6 @@ class MainWindow(QMainWindow):
         ##self.checkBox_25.clicked.connect(self.phandler)
         # Connect menu actions
         self.actionQuit.triggered.connect(qApp.quit)
-        self.actionPlot.triggered.connect(self.show_main_pane)
-        self.actionParameters.triggered.connect(self.show_param_pane)
         self.actionAbout.triggered.connect(self.show_about)
         # Additional decorations
         ##self.radioButton.setStyleSheet('QRadioButton {background-color: red}')
@@ -215,11 +213,12 @@ class MainWindow(QMainWindow):
             self.doubleSpinBox_6.setReadOnly(True)
 
     def lauda_pump_on_callback(self, value):
-        #print('cb1', value)
         if value:
-            pass
-        else:
-            pass
+            # enable
+            self.pushButton_6.setChecked(True)
+            # reset
+            self.pushButton_9.setChecked(True)
+            self.pushButton_9.setChecked(False)
 
     def get_widgets(self, obj, s=''):
         lout = obj.layout()
@@ -233,19 +232,7 @@ class MainWindow(QMainWindow):
 
     def show_about(self):
         QMessageBox.information(self, 'About', APPLICATION_NAME + ' Version ' + APPLICATION_VERSION +
-            '\nUser interface program to control TDK Lambda Genesis power supplies.', QMessageBox.Ok)
-
-    def show_main_pane(self):
-        self.stackedWidget.setCurrentIndex(0)
-        self.actionPlot.setChecked(True)
-        self.actionLog.setChecked(False)
-        self.actionParameters.setChecked(False)
-
-    def show_param_pane(self):
-        self.stackedWidget.setCurrentIndex(2)
-        self.actionPlot.setChecked(False)
-        self.actionLog.setChecked(False)
-        self.actionParameters.setChecked(True)
+            '\nUser interface program to control 1 MeV stand', QMessageBox.Ok)
 
     def log_level_changed(self, m):
         levels = [logging.NOTSET, logging.DEBUG, logging.INFO,
