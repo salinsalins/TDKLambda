@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>591</width>
+    <width>638</width>
     <height>718</height>
    </rect>
   </property>
@@ -78,7 +78,7 @@
           <property name="frameShadow">
            <enum>QFrame::Raised</enum>
           </property>
-          <layout class="QGridLayout" name="gridLayout_5" columnstretch="3,0,0,0,0,0">
+          <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,0,0,0,0,0">
            <property name="leftMargin">
             <number>0</number>
            </property>
@@ -834,7 +834,7 @@
            <item row="1" column="0">
             <widget class="QComboBox" name="comboBox">
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+              <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
@@ -847,7 +847,7 @@
              </property>
              <property name="maximumSize">
               <size>
-               <width>100</width>
+               <width>16777215</width>
                <height>35</height>
               </size>
              </property>
@@ -855,6 +855,9 @@
               <font>
                <pointsize>14</pointsize>
               </font>
+             </property>
+             <property name="currentIndex">
+              <number>1</number>
              </property>
              <item>
               <property name="text">
@@ -1896,7 +1899,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>533</width>
+             <width>580</width>
              <height>467</height>
             </rect>
            </property>
@@ -2976,7 +2979,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>505</width>
+             <width>552</width>
              <height>559</height>
             </rect>
            </property>
@@ -3257,7 +3260,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>591</width>
+     <width>638</width>
      <height>34</height>
     </rect>
    </property>

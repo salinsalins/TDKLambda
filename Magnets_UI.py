@@ -198,8 +198,8 @@ class MainWindow(QMainWindow):
         # lauda
         self.pushButton_3.clicked.connect(self.lauda_pump_on_callback)
         # timer
-        #self.comboBox.currentIndexChanged.connect(self.single_periodical_callback)  # single/periodical combo
-        #self.pushButton.clicked.connect(self.timer_run_callback)  # run button
+        self.comboBox.currentIndexChanged.connect(self.single_periodical_callback)  # single/periodical combo
+        self.pushButton.clicked.connect(self.timer_run_callback)  # run button
 
     def cb6_callback(self, value):
         if value:
@@ -234,18 +234,24 @@ class MainWindow(QMainWindow):
             # hide remained
             self.label_4.setVisible(False)
             self.label_5.setVisible(False)
+            self.pushButton.setCheckable(False)
         elif value == 1:
             # show remained
             self.label_4.setVisible(True)
             self.label_5.setVisible(True)
+            self.pushButton.setCheckable(True)
 
     def timer_run_callback(self, value):
+        # elapsed to 0.0
+        self.label_5.setText('0.0 s')
+        self.elapsed_time = 0.0
+        self.pulse_duration = 0.0
+        self.pulse_start = time.time()
         if value:
-            # elapsed to 0.0
-            self.label_5.setText('0.0 s')
-            self.elapsed_time = 0.0
-            self.pulse_duration = 0.0
-            self.pulse_start = time.time()
+            self.pushButton.setText('Stop')
+        else:
+            self.pushButton.setText('Run')
+
 
 
     def get_widgets(self, obj, s=''):
@@ -333,8 +339,11 @@ class MainWindow(QMainWindow):
         #self.clock.setText('Elapsed: %ds    %s' % (self.elapsed, t))
         if len(self.rdwdgts) <= 0:
             return
-        count = 0
+        # pulse duration update
+        self.pulse_duration = time.time() - self.pulse_start
+        self.label_6.setText('%d s' % int(self.pulse_duration))
         self.elapsed = time.time()
+        count = 0
         while time.time() - t0 < TIMER_PERIOD/2000.0:
             if self.n < len(self.rdwdgts) and self.rdwdgts[self.n].widget.isVisible():
                 self.rdwdgts[self.n].update()
