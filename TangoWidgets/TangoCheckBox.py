@@ -25,7 +25,7 @@ class TangoCheckBox(TangoWidget):
         self.widget.setStyleSheet('color: gray')
         self.widget.setEnabled(False)
 
-    def decorate_invalid(self):
+    def decorate_invalid(self, text: str = None):
         self.widget.setStyleSheet('color: red')
         self.widget.setEnabled(True)
 
@@ -36,7 +36,7 @@ class TangoCheckBox(TangoWidget):
     def callback(self, value):
         if self.connected:
             try:
-                self.attr_proxy.write(bool(value))
+                self.dp.write_attrubute(self.dp, bool(value))
                 self.decorate_valid()
             except:
                 self.logger.debug('Exception %s in callback', sys.exc_info()[0])

@@ -15,7 +15,7 @@ class TangoLabel(TangoWidget):
         self.refresh = refresh
         super().__init__(name, widget, readonly=True)
 
-    def read(self):
+    def read(self, force=False):
         if self.property is None:
             super().read()
             return

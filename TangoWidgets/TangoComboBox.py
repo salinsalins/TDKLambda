@@ -31,7 +31,7 @@ class TangoComboBox(TangoWidget):
         self.widget.setStyleSheet('color: gray')
 
     def update(self, decorate_only=True) -> None:
-        super.update(decorate_only)
+        super().update(decorate_only)
 
     def callback(self, value):
         if self.connected:
