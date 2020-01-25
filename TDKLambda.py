@@ -198,7 +198,7 @@ class TDKLambda():
                 # suspend for a year
                 self.suspend(3.1e7)
                 msg = 'Uninitialized TDKLambda device added to list'
-                self.logger.info(msg)
+                self.logger.debug(msg)
                 TDKLambda.devices.append(self)
                 return
 

@@ -14,7 +14,7 @@ from tango.server import Device, attribute, command
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'TDKLambda_Server'
 APPLICATION_NAME_SHORT = 'TDKLambda_Server'
-APPLICATION_VERSION = '1_1'
+APPLICATION_VERSION = '2_1'
 # CONFIG_FILE = APPLICATION_NAME_SHORT + '.json'
 # UI_FILE = APPLICATION_NAME_SHORT + '.ui'
 
