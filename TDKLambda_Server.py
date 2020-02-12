@@ -288,6 +288,9 @@ class TDKLambda_Server(Device):
     def write_output_state(self, value):
         with _lock:
             if self.tdk.com is None:
+                msg = '%s:%d Switch output for offlie device' % (self.tdk.port, self.tdk.addr)
+                self.debug_stream(msg)
+                logger.debug(msg)
                 self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
                 result = False
             else:
@@ -300,8 +303,8 @@ class TDKLambda_Server(Device):
                     result = True
                 else:
                     msg = '%s:%d Error switch output %s' % (self.tdk.port, self.tdk.addr, response)
-                    self.info_stream(msg)
-                    logger.info(msg)
+                    self.error_stream(msg)
+                    logger.error(msg)
                     self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
                     # v = self.read_output_state(self.output_state)
                     # self.output_state.set_value(v)
@@ -344,6 +347,7 @@ class TDKLambda_Server(Device):
     def Reset(self):
         with _lock:
             msg = '%s:%d Reset TDKLambda PS' % (self.tdk.port, self.tdk.addr)
+            logger.info(msg)
             self.info_stream(msg)
             self.tdk._send_command(b'RST')
 
@@ -352,19 +356,24 @@ class TDKLambda_Server(Device):
         with _lock:
             if self.tdk.logger.getEffectiveLevel() != logging.DEBUG:
                 self.last_level = self.tdk.logger.getEffectiveLevel()
+                logger.setLevel(logging.DEBUG)
                 self.tdk.logger.setLevel(logging.DEBUG)
                 msg = '%s:%d switch logging to DEBUG' % (self.tdk.port, self.tdk.addr)
+                logger.info(msg)
                 self.info_stream(msg)
             else:
                 self.tdk.logger.setLevel(self.last_level)
                 msg = '%s:%d switch logging from DEBUG' % (self.tdk.port, self.tdk.addr)
+                logger.info(msg)
                 self.info_stream(msg)
 
     @command(dtype_in=int)
     def SetLogLevel(self, level):
         with _lock:
             msg = '%s:%d set log level to %d' % (self.tdk.port, self.tdk.addr, level)
+            logger.info(msg)
             self.info_stream(msg)
+            logger.setLevel(level)
             self.tdk.logger.setLevel(level)
 
     """
@@ -435,11 +444,12 @@ class TDKLambda_Server(Device):
         with _lock:
             rsp = self.tdk.send_command(cmd).decode()
             msg = '%s:%d %s -> %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
+            logger.debug(msg)
             self.debug_stream(msg)
             if self.tdk.com is None:
-                msg = 'COM port is None'
+                msg = '%s COM port is None' % self
                 logger.debug(msg)
-                self.info_stream(msg)
+                self.debug_stream(msg)
                 self.set_state(DevState.FAULT)
                 return
             return rsp
@@ -448,6 +458,8 @@ class TDKLambda_Server(Device):
     def TurnOn(self):
         with _lock:
             # turn on the actual power supply here
+            msg = '%s Turn On' % self
+            logger.debug(msg)
             self.output_state = True
             # self.set_state(DevState.ON)
 
@@ -455,6 +467,8 @@ class TDKLambda_Server(Device):
     def TurnOff(self):
         with _lock:
             # turn off the actual power supply here
+            msg = '%s Turn Off' % self
+            logger.debug(msg)
             self.output_state = False
             # self.set_state(DevState.OFF)
 
