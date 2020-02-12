@@ -1,15 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""TDK Lambda Genesis series power supply tango device server"""
+
 
 from TDKLambda import TDKLambda
 
 import logging
 import time
 from threading import Thread, Lock
+from math import isnan
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
 from tango.server import Device, attribute, command
+
+from Utils import *
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'TDKLambda_Server'
@@ -18,14 +23,12 @@ APPLICATION_VERSION = '2_1'
 # CONFIG_FILE = APPLICATION_NAME_SHORT + '.json'
 # UI_FILE = APPLICATION_NAME_SHORT + '.ui'
 
-"""TDK Lambda Genesis series power supply tango device server"""
-
 # init a thread lock
 _lock = Lock()
+logger = config_logger(level=logging.DEBUG)
 
 
 class TDKLambda_Server(Device):
-    # green_mode = tango.GreenMode.Gevent
     READING_PERIOD = 0.5
     devices = []
 
@@ -88,7 +91,7 @@ class TDKLambda_Server(Device):
                 result = type(default)(result)
             return result
         except:
-            return result
+            return default
 
     def init_device(self):
         with _lock:
@@ -104,8 +107,8 @@ class TDKLambda_Server(Device):
             self.tdk = TDKLambda(port, addr)
             # check if device OK
             if self.tdk.com is None:
-                msg = 'TDKLambda device creation error for %s' % self
-                print(msg)
+                msg = '%s TDKLambda device creation error' % self
+                logger.error(msg)
                 self.error_stream(msg)
                 self.set_state(DevState.FAULT)
                 return
@@ -115,12 +118,12 @@ class TDKLambda_Server(Device):
                 # set state to running
                 self.set_state(DevState.RUNNING)
                 msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
-                print(msg)
+                logger.info(msg)
                 self.info_stream(msg)
             else:
                 # unknown device id
                 msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
-                print(msg)
+                logger.error(msg)
                 self.error_stream(msg)
                 self.set_state(DevState.FAULT)
 
@@ -130,7 +133,7 @@ class TDKLambda_Server(Device):
                 TDKLambda_Server.devices.remove(self)
                 self.tdk.__del__()
                 msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
-                print(msg)
+                logger.info(msg)
                 self.info_stream(msg)
 
     def read_devicetype(self):
@@ -142,7 +145,7 @@ class TDKLambda_Server(Device):
     def read_all(self):
         t0 = time.time()
         # msg = '%s:%d read_all' % (self.tdk.port, self.tdk.addr)
-        # print(msg)
+        # logger.debug(msg)
         # self.debug_stream(msg)
         try:
             values = self.tdk.read_all()
@@ -150,11 +153,11 @@ class TDKLambda_Server(Device):
             self.time = time.time()
             msg = '%s:%d read_all %s ms %s' % \
                   (self.tdk.port, self.tdk.addr, int((self.time - t0) * 1000.0), values)
-            # print(msg)
-            self.debug_stream(msg)
+            logger.debug(msg)
+            #self.debug_stream(msg)
         except:
             msg = '%s:%d TDKLambda read error' % (self.tdk.port, self.tdk.addr)
-            # print(msg)
+            logger.info(msg)
             self.info_stream(msg)
 
     def read_voltage(self, attr: tango.Attribute):
@@ -163,9 +166,11 @@ class TDKLambda_Server(Device):
                 self.read_all()
             val = self.values[0]
             attr.set_value(val)
-            if val is float('nan'):
+            if isnan(val):
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                self.info_stream("Output voltage read error ")
+                msg = "%s Output voltage read error" % self
+                self.info_stream(msg)
+                logger.warning(msg)
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
             return val
@@ -176,9 +181,11 @@ class TDKLambda_Server(Device):
                 self.read_all()
             val = self.values[2]
             attr.set_value(val)
-            if val is float('nan'):
+            if isnan(val):
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                self.info_stream("Output current read error ")
+                msg = "%s Output current read error" % self
+                self.info_stream(msg)
+                logger.warning(msg)
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
             return val
@@ -189,9 +196,11 @@ class TDKLambda_Server(Device):
                 self.read_all()
             val = self.values[1]
             attr.set_value(val)
-            if val is float('nan'):
+            if isnan(val):
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                self.info_stream("Programmed voltage read error")
+                msg = "%s Programmed voltage read error" % self
+                self.info_stream(msg)
+                logger.warning(msg)
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
             return val
@@ -200,12 +209,13 @@ class TDKLambda_Server(Device):
         with _lock:
             if time.time() - self.time > self.READING_PERIOD:
                 self.read_all()
-            ##print(time.time() - self.time, self.values)
             val = self.values[3]
             attr.set_value(val)
-            if val is float('nan'):
+            if isnan(val):
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                self.info_stream("Programmed current read error")
+                msg = "%s Programmed current  read error" % self
+                self.info_stream(msg)
+                logger.warning(msg)
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
             return val
@@ -214,32 +224,41 @@ class TDKLambda_Server(Device):
         with _lock:
             if self.tdk.com is None:
                 self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
-                ##print(self.tdk.port, self.tdk.addr, 'write_programmed_voltage to offline device')
+                msg = "%s Writing to offline device" % self
+                self.info_stream(msg)
+                logger.warning(msg)
                 result = False
             else:
                 result = self.tdk.write_value(b'PV', value)
             if result:
                 self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_VALID)
             else:
-                self.info_stream("Error writing programmed voltage")
                 self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
+                msg = "%s Error writing programmed voltage" % self
+                self.info_stream(msg)
+                logger.warning(msg)
             ##print(self.tdk.port, self.tdk.addr, 'write_programmed_voltage value: ', value, result)
             # msg = 'write_voltage: %s = %s' % (str(value), str(result))
-            # print(msg)
+            # logger.debug(msg)
             return result
 
     def write_programmed_current(self, value):
         with _lock:
             if self.tdk.com is None:
                 self.programmed_current.set_quality(tango.AttrQuality.ATTR_INVALID)
+                msg = "%s Writing to offline device" % self
+                self.info_stream(msg)
+                logger.warning(msg)
                 result = False
             else:
                 result = self.tdk.write_value(b'PC', value)
             if result:
                 self.programmed_current.set_quality(tango.AttrQuality.ATTR_VALID)
             else:
-                self.info_stream("Error writing programmed current")
                 self.programmed_current.set_quality(tango.AttrQuality.ATTR_INVALID)
+                msg = "%s Error writing programmed current" % self
+                self.info_stream(msg)
+                logger.warning(msg)
             return result
 
     def read_output_state(self, attr: tango.Attribute):
@@ -257,7 +276,9 @@ class TDKLambda_Server(Device):
                     qual = tango.AttrQuality.ATTR_VALID
                     value = False
                 else:
-                    self.info_stream("Read output error")
+                    msg = "%s Error reading output state" % self
+                    self.info_stream(msg)
+                    logger.warning(msg)
                     qual = tango.AttrQuality.ATTR_INVALID
                     value = False
             attr.set_value(value)
@@ -278,8 +299,9 @@ class TDKLambda_Server(Device):
                     self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
                     result = True
                 else:
-                    msg = '%s:%d Error switch output' % (self.tdk.port, self.tdk.addr)
+                    msg = '%s:%d Error switch output %s' % (self.tdk.port, self.tdk.addr, response)
                     self.info_stream(msg)
+                    logger.info(msg)
                     self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
                     # v = self.read_output_state(self.output_state)
                     # self.output_state.set_value(v)
@@ -301,7 +323,7 @@ class TDKLambda_Server(Device):
     #         # check if COM OK
     #         if self.tdk.com is None:
     #             msg = 'TDKLambda device creation error for %s' % self
-    #             print(msg)
+    #             logger.debug(msg)
     #             self.error_stream(msg)
     #             self.set_state(DevState.FAULT)
     #             return
@@ -309,12 +331,12 @@ class TDKLambda_Server(Device):
     #             # set state to running
     #             self.set_state(DevState.RUNNING)
     #             msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
-    #             print(msg)
+    #             logger.debug(msg)
     #             self.info_stream(msg)
     #         else:
     #             # unknown device id
     #             msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
-    #             print(msg)
+    #             logger.debug(msg)
     #             self.error_stream(msg)
     #             self.set_state(DevState.FAULT)
 
@@ -416,7 +438,7 @@ class TDKLambda_Server(Device):
             self.debug_stream(msg)
             if self.tdk.com is None:
                 msg = 'COM port is None'
-                print(msg)
+                logger.debug(msg)
                 self.info_stream(msg)
                 self.set_state(DevState.FAULT)
                 return
