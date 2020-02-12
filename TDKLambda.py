@@ -180,9 +180,8 @@ class TDKLambda():
             self.logger.setLevel(LOG_LEVEL)
             #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             #                                  datefmt='%H:%M:%S')
-            f_str = '%(asctime)s,%(msecs)d %(process)d %(thread)d %(funcName)s(%(lineno)s) ' +\
-                    '%s:%d ' % (self.port, self.addr) +\
-                    '%(levelname)-7s %(message)s'
+            f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
+                    '%(funcName)s(%(lineno)s) ' + '%s:%d ' % (self.port, self.addr) + '%(message)s'
             log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
             console_handler = logging.StreamHandler()
             console_handler.setFormatter(log_formatter)
