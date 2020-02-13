@@ -7,14 +7,6 @@ import logging
 import serial
 from threading import Thread, Lock
 
-LOG_LEVEL = logging.INFO
-EMULATE = False
-MAX_TIMEOUT = 1.5   # sec
-MIN_TIMEOUT = 0.1   # sec
-RETRIES = 3
-SUSPEND = 2.0
-SLEEP_SMALL = 0.015
-
 
 class FakeComPort():
     SN = 123456
@@ -135,12 +127,17 @@ class FakeComPort():
 
 
 class TDKLambda():
+    LOG_LEVEL = logging.INFO
+    EMULATE = False
+    max_timeout = 1.5  # sec
+    min_timeout = 0.1  # sec
+    RETRIES = 3
+    SUSPEND = 2.0
+    sleep_small = 0.015
     devices = []
     ports = []
 
     def __init__(self, port: str, addr=6, checksum=False, baudrate=9600, logger=None):
-        #print('__init__', port, addr)
-
         # input parameters
         self.port = port.upper().strip()
         self.addr = addr
@@ -158,12 +155,9 @@ class TDKLambda():
         self.suspend_flag = False
         self.retries = 0
         # timeouts
-        self.min_timeout = MIN_TIMEOUT
-        self.max_timeout = MAX_TIMEOUT
-        self.read_timeout = MIN_TIMEOUT
+        self.read_timeout = self.min_timeout
         self.timeout_cear_input = 0.5
         # sleep timings
-        self.sleep_small = SLEEP_SMALL
         self.sleep_after_write = 0.02
         self.sleep_cear_input = 0.0
         # default com port, id, and serial number
@@ -177,7 +171,7 @@ class TDKLambda():
         if self.logger is None:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
-            self.logger.setLevel(LOG_LEVEL)
+            self.logger.setLevel(self.LOG_LEVEL)
             f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
                     '%(funcName)s(%(lineno)s) ' + '%s:%d ' % (self.port, self.addr) + '%(message)s'
             log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
@@ -185,13 +179,12 @@ class TDKLambda():
             console_handler.setFormatter(log_formatter)
             if not self.logger.hasHandlers():
                 self.logger.addHandler(console_handler)
-            ##print('***', self.logger)
 
-        # check if port and addr are in use
+        # check if port and address are in use
         for d in TDKLambda.devices:
             if d.port == self.port and d.addr == self.addr:
                 self.logger.error('Address is in use')
-                self.com = None
+                self.id = "Duplicate address"
                 # suspend for a year
                 self.suspend(3.1e7)
                 msg = 'Uninitialized TDKLambda device has been added to list'
@@ -208,7 +201,11 @@ class TDKLambda():
             self.init_com_port()
         if self.com is None:
             self.suspend()
-        # set device address and check response
+            msg = 'Uninitialized TDKLambda device has been added to list'
+            self.logger.info(msg)
+            TDKLambda.devices.append(self)
+            return
+        # check device address
         if self.addr <= 0:
             self.logger.error('Wrong device address')
             self.suspend(3.1e7)
@@ -217,25 +214,29 @@ class TDKLambda():
             self.logger.info(msg)
             TDKLambda.devices.append(self)
             return
+        # set device address
         response = self.set_addr()
-        if response:
-            # read device type and serial number
-            self.id = self._send_command(b'IDN?').decode()
-            # determine max current and voltage from model name
-            n1 = self.id.find('GEN')
-            n2 = self.id.find('-')
-            if n1 >= 0 and n2 >= 0:
-                try:
-                    self.max_voltage = float(self.id[n1+3:n2])
-                    self.max_current = float(self.id[n2+1:])
-                except:
-                    pass
-            self.serial_number = self._send_command(b'SN?').decode()
-            msg = 'TDKLambda: %s has been created' % self.id
-            self.logger.info(msg)
-        else:
+        if not response:
             msg = 'Uninitialized TDKLambda device has been added to list'
             self.logger.info(msg)
+            TDKLambda.devices.append(self)
+            return
+        # read device type
+        self.id = self._send_command(b'IDN?').decode()
+        # determine max current and voltage from model name
+        n1 = self.id.find('GEN')
+        n2 = self.id.find('-')
+        if n1 >= 0 and n2 >= 0:
+            try:
+                self.max_voltage = float(self.id[n1+3:n2])
+                self.max_current = float(self.id[n2+1:])
+            except:
+                pass
+        # read device serial number
+        self.serial_number = self._send_command(b'SN?').decode()
+        msg = 'TDKLambda: %s has been created' % self.id
+        self.logger.info(msg)
+        else:
         # add device to list
         TDKLambda.devices.append(self)
 
@@ -268,21 +269,22 @@ class TDKLambda():
         # try to close port
         try:
             if self.com is not None:
-                self.com.close()
-                self.logger.debug('COM port %s closed' % self.port)
-            else:
                 for d in TDKLambda.devices:
                     if d.port == self.port:
-                        if d.com is not None:
-                            d.com.close()
-                            d.com = None
-                            self.logger.debug('COM port closed')
+                        d.port = None
+                self.com.close()
+                self.logger.debug('COM port %s closed' % self.port)
+                self.com = None
         except:
+            self.com = None
+            for d in TDKLambda.devices:
+                if d.port == self.port:
+                    d.port = None
             self.logger.debug('COM port can not be closed')
             self.logger.debug('', exc_info=True)
         # try to create port
         try:
-            if EMULATE:
+            if self.EMULATE:
                 self.com = FakeComPort(self.port, baudrate=self.baud, timeout=self.com_timeout)
             else:
                 self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
@@ -292,7 +294,7 @@ class TDKLambda():
             self.com.last_addr = -1
         except:
             self.com = None
-            self.logger.error('COM port creation error')
+            self.logger.error('COM port %s creation error' % self.port)
             self.logger.debug('', exc_info=True)
         # update com for other devices with the same port
         for d in TDKLambda.devices:
@@ -357,17 +359,18 @@ class TDKLambda():
             self._write(cmd)
             result = self.read_to_cr()
             self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time()-t0)*1000.0))
-            if result is None:
-                self.logger.warning('Writing error, repeat %s' % cmd)
-                self._write(cmd)
-                result = self.read_to_cr()
-                self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
-                if result is None:
-                    self.logger.error('Repeated writing error')
-                    self.suspend()
-                    self.last_response = b''
-                    result = b''
-            return result
+            if result is not None:
+                return result
+            self.logger.warning('Writing error, repeat %s' % cmd)
+            self._write(cmd)
+            result = self.read_to_cr()
+            self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
+            if result is not None:
+                return result
+            self.logger.error('Repeated writing error')
+            self.suspend()
+            self.last_response = b''
+            return b''
         except:
             self.logger.error('Unexpected exception')
             self.logger.debug("", exc_info=True)
@@ -439,7 +442,7 @@ class TDKLambda():
         return data
 
     def read(self):
-        if self.suspended():
+        if self.suspended_flag:
             return None
         t0 = time.time()
         data = None
@@ -501,37 +504,31 @@ class TDKLambda():
                 return False
 
     def read_to_cr(self):
-        result = b''
-        data = self.read()
-        while data is not None:
-            result += data
-            n = result.find(b'\r')
-            if n >= 0:
-                n1 = result[n+1:].find(b'\r')
-                if n1 >= 0:
-                    self.logger.warning('Second CR in response %s, %s used' % (result, result[n+1:]))
-                    result = result[n+1:]
-                    n = result.find(b'\r')
-                m = n
-                self.last_response = result[:n]
-                if self.check:
-                    m = result.find(b'$')
-                    if m < 0:
-                        self.logger.error('No checksum')
-                        return None
-                    else:
-                        cs = self.checksum(result[:m])
-                        if result[m+1:n] != cs:
-                            self.logger.error('Incorrect checksum')
-                            return None
-                        self.error_count = 0
-                        return result[:m]
+        cr = b'\r'
+        result = self.read()
+        if cr not in result:
+            self.logger.warning('Response without CR')
+            self.last_response = result
+            return None
+        rs = result.split(cr)
+        if len(rs) > 1:
+            self.logger.warning('More than one CR in response %s' % result)
+        self.last_response = result
+        result = rs[-1]
+        if self.check:
+            m = result.find(b'$')
+            if m < 0:
+                self.logger.error('No checksum')
+                return None
+            else:
+                cs = self.checksum(result[:m])
+                if result[m+1:] != cs:
+                    self.logger.error('Incorrect checksum')
+                    return None
                 self.error_count = 0
                 return result[:m]
-            data = self.read()
-        self.logger.warning('Response without CR')
-        self.last_response = result
-        return None
+        self.error_count = 0
+        return result
 
     def _set_addr(self):
         if hasattr(self.com, '_current_addr'):
@@ -551,7 +548,7 @@ class TDKLambda():
             return False
 
     def set_addr(self):
-        if self.suspended():
+        if self.suspend_flag:
             return False
         count = 0
         result = self._set_addr()
