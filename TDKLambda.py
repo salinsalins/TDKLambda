@@ -144,7 +144,7 @@ class TDKLambda():
         # input parameters
         self.port = port.upper().strip()
         self.addr = addr
-        self.check = checksum # = False
+        self.check = checksum
         self.baud = baudrate
         self.logger = logger
         self.auto_addr = True
@@ -178,8 +178,6 @@ class TDKLambda():
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
             self.logger.setLevel(LOG_LEVEL)
-            #log_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-            #                                  datefmt='%H:%M:%S')
             f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
                     '%(funcName)s(%(lineno)s) ' + '%s:%d ' % (self.port, self.addr) + '%(message)s'
             log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
@@ -196,30 +194,32 @@ class TDKLambda():
                 self.com = None
                 # suspend for a year
                 self.suspend(3.1e7)
-                msg = 'Uninitialized TDKLambda device added to list'
-                self.logger.debug(msg)
+                msg = 'Uninitialized TDKLambda device has been added to list'
+                self.logger.info(msg)
                 TDKLambda.devices.append(self)
                 return
-
         # assign com port
         for d in TDKLambda.devices:
             # if com port already created
             if d.port == self.port:
-                if d.com is not None:
-                    self.com = d.com
+                self.com = d.com
+                break
         if self.com is None:
             self.init_com_port()
         if self.com is None:
             self.suspend()
-
+        # set device address and check response
         if self.addr <= 0:
             self.logger.error('Wrong device address')
             self.suspend(3.1e7)
-
-        # set device address and check response
+            self.id = "Wrong address"
+            msg = 'Uninitialized TDKLambda device has been added to list'
+            self.logger.info(msg)
+            TDKLambda.devices.append(self)
+            return
         response = self.set_addr()
         if response:
-            # initialize device type and serial number
+            # read device type and serial number
             self.id = self._send_command(b'IDN?').decode()
             # determine max current and voltage from model name
             n1 = self.id.find('GEN')
@@ -234,7 +234,7 @@ class TDKLambda():
             msg = 'TDKLambda: %s has been created' % self.id
             self.logger.info(msg)
         else:
-            msg = 'Uninitialized TDKLambda device added to list'
+            msg = 'Uninitialized TDKLambda device has been added to list'
             self.logger.info(msg)
         # add device to list
         TDKLambda.devices.append(self)
@@ -269,7 +269,7 @@ class TDKLambda():
         try:
             if self.com is not None:
                 self.com.close()
-                self.logger.debug('COM port closed')
+                self.logger.debug('COM port %s closed' % self.port)
             else:
                 for d in TDKLambda.devices:
                     if d.port == self.port:
@@ -279,6 +279,7 @@ class TDKLambda():
                             self.logger.debug('COM port closed')
         except:
             self.logger.debug('COM port can not be closed')
+            self.logger.debug('', exc_info=True)
         # try to create port
         try:
             if EMULATE:
@@ -287,12 +288,12 @@ class TDKLambda():
                 self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
             self.com.write_timeout = 0
             self.com.writeTimeout = 0
-            self.logger.debug('COM port created')
+            self.logger.debug('COM port %s created' % self.port)
             self.com.last_addr = -1
         except:
             self.com = None
-            self.logger.error('Port creation error')
-            self.logger.log(logging.DEBUG, "Exception Info:", exc_info=True)
+            self.logger.error('COM port creation error')
+            self.logger.debug('', exc_info=True)
         # update com for other devices with the same port
         for d in TDKLambda.devices:
             if d.port == self.port:
