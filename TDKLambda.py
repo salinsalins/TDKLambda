@@ -162,11 +162,11 @@ class TDKLambda():
         self.sleep_cear_input = 0.0
         # default com port, id, and serial number
         self.com = None
+        self._current_addr = -1
         self.id = None
         self.sn = None
         self.max_voltage = float('inf')
         self.max_current = float('inf')
-
         # configure logger
         if self.logger is None:
             self.logger = logging.getLogger(str(self))
@@ -179,7 +179,6 @@ class TDKLambda():
             console_handler.setFormatter(log_formatter)
             if not self.logger.hasHandlers():
                 self.logger.addHandler(console_handler)
-
         # check if port and address are in use
         for d in TDKLambda.devices:
             if d.port == self.port and d.addr == self.addr:
@@ -234,11 +233,10 @@ class TDKLambda():
                 pass
         # read device serial number
         self.serial_number = self._send_command(b'SN?').decode()
-        msg = 'TDKLambda: %s has been created' % self.id
-        self.logger.info(msg)
-        else:
         # add device to list
         TDKLambda.devices.append(self)
+        msg = 'TDKLambda: %s has been created' % self.id
+        self.logger.info(msg)
 
     def __del__(self):
         #print(self.port, self.addr, '__del__')
@@ -247,42 +245,20 @@ class TDKLambda():
         self.close_com_port()
 
     def close_com_port(self):
-        if self.com is not None:
-            for d in TDKLambda.devices:
-                if d.port == self.port:
-                    return False
-            self.com.close()
-            return True
-        return False
-
-    def switch_off_com_port(self):
         try:
             self.com.close()
         except:
             pass
         self.com = None
+        self.suspend()
         for d in TDKLambda.devices:
             if d.port == self.port:
-                d.com = self.com
+                d.com = None
+                d.suspend()
 
     def init_com_port(self):
-        # try to close port
-        try:
-            if self.com is not None:
-                for d in TDKLambda.devices:
-                    if d.port == self.port:
-                        d.port = None
-                self.com.close()
-                self.logger.debug('COM port %s closed' % self.port)
-                self.com = None
-        except:
-            self.com = None
-            for d in TDKLambda.devices:
-                if d.port == self.port:
-                    d.port = None
-            self.logger.debug('COM port can not be closed')
-            self.logger.debug('', exc_info=True)
-        # try to create port
+        self.close_com_port()
+        # create port
         try:
             if self.EMULATE:
                 self.com = FakeComPort(self.port, baudrate=self.baud, timeout=self.com_timeout)
@@ -375,7 +351,7 @@ class TDKLambda():
             self.logger.error('Unexpected exception')
             self.logger.debug("", exc_info=True)
             self.suspend()
-            self.switch_off_com_port()
+            self.close_com_port()
             self.last_response = b''
             return b''
 
@@ -442,7 +418,7 @@ class TDKLambda():
         return data
 
     def read(self):
-        if self.suspended_flag:
+        if self.suspend_flag:
             return None
         t0 = time.time()
         data = None
@@ -457,10 +433,10 @@ class TDKLambda():
             self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
             return data
         except:
-            self.logger.error('Exception during read. Switching COM port OFF.')
+            self.logger.error('Exception during read. Closing COM port')
             self.logger.debug("", exc_info=True)
             self.suspend()
-            self.switch_off_com_port()
+            self.close_com_port()
             self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
             return None
 
