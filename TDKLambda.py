@@ -266,16 +266,17 @@ class TDKLambda():
                 self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
             self.com.write_timeout = 0
             self.com.writeTimeout = 0
-            self.logger.debug('COM port %s created' % self.port)
             self.com.last_addr = -1
+            self.logger.debug('COM port %s created' % self.port)
         except:
-            self.com = None
             self.logger.error('COM port %s creation error' % self.port)
             self.logger.debug('', exc_info=True)
+            return False
         # update com for other devices with the same port
         for d in TDKLambda.devices:
             if d.port == self.port:
                 d.com = self.com
+        return self.com is not None
 
     @staticmethod
     def checksum(cmd):
@@ -356,21 +357,20 @@ class TDKLambda():
             return b''
 
     def send_command(self, cmd):
-        if self.suspended():
+        if self.is_suspended():
             self.last_command = cmd
             self.last_response = b''
             return b''
         if self.auto_addr and self.com._current_addr != self.addr:
             result = self.set_addr()
-            if result:
-                return self._send_command(cmd)
-            else:
+            if not result:
                 return b''
+            return self._send_command(cmd)
         else:
             return self._send_command(cmd)
 
     def check_response(self, expect=b'OK', response=None):
-        if self.suspended():
+        if self.is_suspended():
             return False
         if response is None:
             response = self.last_response
@@ -441,42 +441,34 @@ class TDKLambda():
             return None
 
     def suspend(self, duration=5.0):
-        msg = 'Suspended for %5.2f sec' % duration
-        self.logger.warning(msg)
         self.suspend_to = time.time() + duration
         self.suspend_flag = True
+        msg = 'Suspended for %5.2f sec' % duration
+        self.logger.debug(msg)
+        return self.suspend_flag
 
-    def suspended(self):
-        if time.time() < self.suspend_to:
+    def unsuspend(self):
+        self.suspend_to = time.time() - 1.0
+        self.suspend_flag = False
+        self.logger.debug('Unsuspended')
+        return self.suspend_flag
+
+    def is_suspended(self):
+        if time.time() < self.suspend_to:   # if suspension does not expire
             return True
-        else:
-            if self.suspend_flag:
-                # it was suspended and suspension expires
-                if self.com is None:
+        else:                               # suspension expires
+            if self.suspend_flag:           # if it was suspended and expires
+                if self.com is None:        # com port was not initialized
                     self.init_com_port()
-                    if self.com is None:
-                        self.suspend()
+                    if self.com is None:    # initialization was not successful
+                        self.suspend()      # continue suspension
                         return True
-                    # try to set device address
-                    result = self._set_addr()
-                    if result:
-                        self.suspend_flag = False
-                        return False
-                    else:
-                        self.suspend()
-                        return True
-                else:
-                    # problem with device
-                    # try to set device address
-                    result = self._set_addr()
-                    if result:
-                        self.suspend_flag = False
-                        return False
-                    else:
-                        self.suspend()
-                        return True
-            else:
-                # it was not suspended
+                    self.suspend_flag = False  # com port created OK
+                    return False
+                else:                       # com port was initialized
+                    self.suspend_flag = False
+                    return False
+            else:                           # it was not suspended
                 return False
 
     def read_to_cr(self):
@@ -518,28 +510,21 @@ class TDKLambda():
             return True
         else:
             self.logger.error('Error set address %d -> %d' % (a0, self.addr))
-            #self.addr = -abs(self.addr)
             if self.com is not None:
                 self.com._current_addr = -1
             return False
 
     def set_addr(self):
-        if self.suspend_flag:
+        if self.com is None or self.suspend_flag:
             return False
-        count = 0
         result = self._set_addr()
-        while count < 2:
-            if result:
-                return True
-            count +=1
-            self.logger.info('Set address repeated')
-            result = self._set_addr()
         if result:
             return True
-        self.logger.error('Cannot repeatedly set address')
+        result = self._set_addr()
+        if result:
+            return True
         self.suspend()
-        if hasattr(self.com, '_current_addr'):
-            self.com._current_addr = -1
+        self.com._current_addr = -1
         return False
 
     def read_float(self, cmd):
