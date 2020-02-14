@@ -304,6 +304,8 @@ class TDKLambda():
         return n
 
     def _write(self, cmd):
+        if self.suspend_flag:
+            return False
         t0 = time.time()
         try:
             # clear input buffer
@@ -317,6 +319,7 @@ class TDKLambda():
             self.logger.error('Exception during _write')
             self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
             self.logger.debug("", exc_info=True)
+            self.suspend()
             return False
 
     def _send_command(self, cmd):
@@ -424,13 +427,18 @@ class TDKLambda():
         data = None
         try:
             data = self._read()
-            if data is None:
-                self.logger.debug('Retry reading')
-                time.sleep(self.sleep_after_write)
-                data = self._read()
-            if data is None:
-                self.logger.warning('Retry reading ERROR')
+            if data is not None:
+                self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
+                return data
+            self.logger.debug('Retry reading')
+            time.sleep(self.sleep_after_write)
+            data = self._read()
+            if data is not None:
+                self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
+                return data
+            self.logger.warning('Retry reading ERROR')
             self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
+            self.suspend()
             return data
         except:
             self.logger.error('Exception during read. Closing COM port')
