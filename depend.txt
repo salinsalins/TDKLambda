@@ -33,6 +33,7 @@
 
 10  _write(self, cmd)               +
         self.clear_input_buffer()   +
+        self.suspend()              +
 
 11  clear_input_buffer(self)        +
 
