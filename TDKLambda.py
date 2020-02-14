@@ -129,7 +129,7 @@ class FakeComPort():
 class TDKLambda():
     LOG_LEVEL = logging.INFO
     EMULATE = False
-    max_timeout = 1.5  # sec
+    max_timeout = 0.5  # sec
     min_timeout = 0.1  # sec
     RETRIES = 3
     SUSPEND = 2.0
@@ -183,7 +183,7 @@ class TDKLambda():
         for d in TDKLambda.devices:
             if d.port == self.port and d.addr == self.addr:
                 self.logger.error('Address is in use')
-                self.id = "Duplicate address"
+                self.id = None
                 # suspend for a year
                 self.suspend(3.1e7)
                 msg = 'Uninitialized TDKLambda device has been added to list'
@@ -208,7 +208,7 @@ class TDKLambda():
         if self.addr <= 0:
             self.logger.error('Wrong device address')
             self.suspend(3.1e7)
-            self.id = "Wrong address"
+            self.id = None
             msg = 'Uninitialized TDKLambda device has been added to list'
             self.logger.info(msg)
             TDKLambda.devices.append(self)
@@ -266,7 +266,9 @@ class TDKLambda():
                 self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
             self.com.write_timeout = 0
             self.com.writeTimeout = 0
-            self.com.last_addr = -1
+            self.com._current_addr = -1
+            self.unsuspend()
+            self.suspend_flag = False
             self.logger.debug('COM port %s created' % self.port)
         except:
             self.logger.error('COM port %s creation error' % self.port)
@@ -374,6 +376,7 @@ class TDKLambda():
 
     def check_response(self, expect=b'OK', response=None):
         if self.is_suspended():
+            self.logger.debug('Device is suspended')
             return False
         if response is None:
             response = self.last_response
@@ -422,7 +425,7 @@ class TDKLambda():
 
     def read(self):
         if self.suspend_flag:
-            return None
+            return b''
         t0 = time.time()
         data = None
         try:
@@ -439,7 +442,7 @@ class TDKLambda():
             self.logger.warning('Retry reading ERROR')
             self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
             self.suspend()
-            return data
+            return b''
         except:
             self.logger.error('Exception during read. Closing COM port')
             self.logger.debug("", exc_info=True)
@@ -448,7 +451,7 @@ class TDKLambda():
             self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
             return None
 
-    def suspend(self, duration=5.0):
+    def suspend(self, duration=9.0):
         self.suspend_to = time.time() + duration
         self.suspend_flag = True
         msg = 'Suspended for %5.2f sec' % duration
@@ -463,6 +466,7 @@ class TDKLambda():
 
     def is_suspended(self):
         if time.time() < self.suspend_to:   # if suspension does not expire
+            self.logger.debug('Sesupention is not expired')
             return True
         else:                               # suspension expires
             if self.suspend_flag:           # if it was suspended and expires
@@ -487,10 +491,12 @@ class TDKLambda():
             self.last_response = result
             return None
         rs = result.split(cr)
-        if len(rs) > 1:
+        #print(rs)
+        #print(len(rs))
+        if len(rs) > 2:
             self.logger.warning('More than one CR in response %s' % result)
         self.last_response = result
-        result = rs[-1]
+        result = rs[-2]
         if self.check:
             m = result.find(b'$')
             if m < 0:

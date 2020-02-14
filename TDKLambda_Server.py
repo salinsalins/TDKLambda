@@ -25,7 +25,7 @@ APPLICATION_VERSION = '2_1'
 
 # init a thread lock
 _lock = Lock()
-logger = config_logger(level=logging.DEBUG)
+logger = config_logger(level=logging.INFO)
 
 
 class TDKLambda_Server(Device):
@@ -144,9 +144,8 @@ class TDKLambda_Server(Device):
 
     def read_all(self):
         t0 = time.time()
-        # msg = '%s:%d read_all' % (self.tdk.port, self.tdk.addr)
-        # logger.debug(msg)
-        # self.debug_stream(msg)
+        msg = '%s:%d read_all entry' % (self.tdk.port, self.tdk.addr)
+        logger.debug(msg)
         try:
             values = self.tdk.read_all()
             self.values = values
@@ -156,8 +155,9 @@ class TDKLambda_Server(Device):
             logger.debug(msg)
             #self.debug_stream(msg)
         except:
-            msg = '%s:%d TDKLambda read error' % (self.tdk.port, self.tdk.addr)
+            msg = '%s:%d read_all error' % (self.tdk.port, self.tdk.addr)
             logger.info(msg)
+            logger.debug('', exc_info=True)
             self.info_stream(msg)
 
     def read_voltage(self, attr: tango.Attribute):
