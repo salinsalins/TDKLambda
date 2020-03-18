@@ -288,7 +288,7 @@ class TDKLambda_Server(Device):
     def write_output_state(self, value):
         with _lock:
             if self.tdk.com is None:
-                msg = '%s:%d Switch output for offlie device' % (self.tdk.port, self.tdk.addr)
+                msg = '%s:%d Switch output for offline device' % (self.tdk.port, self.tdk.addr)
                 self.debug_stream(msg)
                 logger.debug(msg)
                 self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
