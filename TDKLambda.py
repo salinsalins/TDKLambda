@@ -455,7 +455,7 @@ class TDKLambda():
         self.suspend_to = time.time() + duration
         self.suspend_flag = True
         msg = 'Suspended for %5.2f sec' % duration
-        self.logger.debug(msg)
+        self.logger.info(msg)
         return self.suspend_flag
 
     def unsuspend(self):
