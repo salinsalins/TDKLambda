@@ -29,7 +29,7 @@ logger = config_logger(level=logging.INFO)
 
 
 class TDKLambda_Server(Device):
-    READING_PERIOD = 0.5
+    READING_VALID_TIME = 0.7
     devices = []
 
     devicetype = attribute(label="type", dtype=str,
@@ -95,6 +95,7 @@ class TDKLambda_Server(Device):
 
     def init_device(self):
         with _lock:
+            self.error_count = 0
             self.values = [float('NaN')] * 6
             self.time = time.time() - 100.0
             self.set_state(DevState.INIT)
@@ -144,8 +145,6 @@ class TDKLambda_Server(Device):
 
     def read_all(self):
         t0 = time.time()
-        msg = '%s:%d read_all entry' % (self.tdk.port, self.tdk.addr)
-        logger.debug(msg)
         try:
             values = self.tdk.read_all()
             self.values = values
@@ -155,6 +154,7 @@ class TDKLambda_Server(Device):
             logger.debug(msg)
             #self.debug_stream(msg)
         except:
+            self.set_fault()
             msg = '%s:%d read_all error' % (self.tdk.port, self.tdk.addr)
             logger.info(msg)
             logger.debug('', exc_info=True)
@@ -162,7 +162,7 @@ class TDKLambda_Server(Device):
 
     def read_voltage(self, attr: tango.Attribute):
         with _lock:
-            if time.time() - self.time > self.READING_PERIOD:
+            if time.time() - self.time > self.READING_VALID_TIME:
                 self.read_all()
             val = self.values[0]
             attr.set_value(val)
@@ -171,13 +171,15 @@ class TDKLambda_Server(Device):
                 msg = "%s Output voltage read error" % self
                 self.info_stream(msg)
                 logger.warning(msg)
+                self.set_fault()
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
+                self.set_running()
             return val
 
     def read_current(self, attr: tango.Attribute):
         with _lock:
-            if time.time() - self.time > self.READING_PERIOD:
+            if time.time() - self.time > self.READING_VALID_TIME:
                 self.read_all()
             val = self.values[2]
             attr.set_value(val)
@@ -186,13 +188,15 @@ class TDKLambda_Server(Device):
                 msg = "%s Output current read error" % self
                 self.info_stream(msg)
                 logger.warning(msg)
+                self.set_fault()
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
+                self.set_running()
             return val
 
     def read_programmed_voltage(self, attr: tango.Attribute):
         with _lock:
-            if time.time() - self.time > self.READING_PERIOD:
+            if time.time() - self.time > self.READING_VALID_TIME:
                 self.read_all()
             val = self.values[1]
             attr.set_value(val)
@@ -201,13 +205,15 @@ class TDKLambda_Server(Device):
                 msg = "%s Programmed voltage read error" % self
                 self.info_stream(msg)
                 logger.warning(msg)
+                self.set_fault()
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
+                self.set_running()
             return val
 
     def read_programmed_current(self, attr: tango.Attribute):
         with _lock:
-            if time.time() - self.time > self.READING_PERIOD:
+            if time.time() - self.time > self.READING_VALID_TIME:
                 self.read_all()
             val = self.values[3]
             attr.set_value(val)
@@ -216,8 +222,10 @@ class TDKLambda_Server(Device):
                 msg = "%s Programmed current  read error" % self
                 self.info_stream(msg)
                 logger.warning(msg)
+                self.set_fault()
             else:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
+                self.set_running()
             return val
 
     def write_programmed_voltage(self, value):
@@ -228,18 +236,18 @@ class TDKLambda_Server(Device):
                 self.info_stream(msg)
                 logger.warning(msg)
                 result = False
+                self.set_fault()
             else:
                 result = self.tdk.write_value(b'PV', value)
             if result:
                 self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_VALID)
+                self.set_running()
             else:
                 self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
                 msg = "%s Error writing programmed voltage" % self
                 self.info_stream(msg)
                 logger.warning(msg)
-            ##print(self.tdk.port, self.tdk.addr, 'write_programmed_voltage value: ', value, result)
-            # msg = 'write_voltage: %s = %s' % (str(value), str(result))
-            # logger.debug(msg)
+                self.set_fault()
             return result
 
     def write_programmed_current(self, value):
@@ -250,15 +258,18 @@ class TDKLambda_Server(Device):
                 self.info_stream(msg)
                 logger.warning(msg)
                 result = False
+                self.set_fault()
             else:
                 result = self.tdk.write_value(b'PC', value)
             if result:
                 self.programmed_current.set_quality(tango.AttrQuality.ATTR_VALID)
+                self.set_running()
             else:
                 self.programmed_current.set_quality(tango.AttrQuality.ATTR_INVALID)
                 msg = "%s Error writing programmed current" % self
                 self.info_stream(msg)
                 logger.warning(msg)
+                self.set_fault()
             return result
 
     def read_output_state(self, attr: tango.Attribute):
@@ -267,20 +278,24 @@ class TDKLambda_Server(Device):
             if self.tdk.com is None:
                 value = False
                 qual = tango.AttrQuality.ATTR_INVALID
+                self.set_fault()
             else:
                 response = self.tdk.send_command(b'OUT?')
                 if response.upper().startswith(b'ON'):
                     qual = tango.AttrQuality.ATTR_VALID
                     value = True
+                    self.set_running()
                 elif response.upper().startswith(b'OFF'):
                     qual = tango.AttrQuality.ATTR_VALID
                     value = False
+                    self.set_running()
                 else:
                     msg = "%s Error reading output state" % self
                     self.info_stream(msg)
                     logger.warning(msg)
                     qual = tango.AttrQuality.ATTR_INVALID
                     value = False
+                    self.set_fault()
             attr.set_value(value)
             attr.set_quality(qual)
             return value
@@ -293,6 +308,7 @@ class TDKLambda_Server(Device):
                 logger.debug(msg)
                 self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
                 result = False
+                self.set_fault()
             else:
                 if value:
                     response = self.tdk.send_command(b'OUT ON')
@@ -301,47 +317,24 @@ class TDKLambda_Server(Device):
                 if response.startswith(b'OK'):
                     self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
                     result = True
+                    self.set_running()
                 else:
                     msg = '%s:%d Error switch output %s' % (self.tdk.port, self.tdk.addr, response)
                     self.error_stream(msg)
                     logger.error(msg)
                     self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
-                    # v = self.read_output_state(self.output_state)
-                    # self.output_state.set_value(v)
                     result = False
+                    self.set_fault()
             return result
 
-    # @command
-    # def Reconnect(self):
-    #     with _lock:
-    #         msg = '%s:%d Reconnect' % (self.tdk.port, self.tdk.addr)
-    #         self.info_stream(msg)
-    #         self.set_state(DevState.INIT)
-    #         # get port and address from property
-    #         port = self.get_device_property('port', 'COM1')
-    #         addr = self.get_device_property('addr', 6)
-    #         self.tdk.port = port
-    #         self.tdk.addr = addr
-    #         self.tdk.init_com_port()
-    #         # check if COM OK
-    #         if self.tdk.com is None:
-    #             msg = 'TDKLambda device creation error for %s' % self
-    #             logger.debug(msg)
-    #             self.error_stream(msg)
-    #             self.set_state(DevState.FAULT)
-    #             return
-    #         if self.tdk.id is not None and self.tdk.id != b'':
-    #             # set state to running
-    #             self.set_state(DevState.RUNNING)
-    #             msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
-    #             logger.debug(msg)
-    #             self.info_stream(msg)
-    #         else:
-    #             # unknown device id
-    #             msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
-    #             logger.debug(msg)
-    #             self.error_stream(msg)
-    #             self.set_state(DevState.FAULT)
+    def set_running(self):
+        self.error_count = 0
+        self.set_state(DevState.RUNNING)
+
+    def set_fault(self):
+        self.error_count += 1
+        if self.ettor_count > 5:
+            self.set_state(DevState.FAULT)
 
     @command
     def Reset(self):
@@ -376,70 +369,8 @@ class TDKLambda_Server(Device):
             logger.setLevel(level)
             self.tdk.logger.setLevel(level)
 
-    """
-    Declares a new tango command in a :class:`Device`.
-    To be used like a decorator in the methods you want to declare as
-    tango commands. The following example declares commands:
-
-        * `void TurnOn(void)`
-        * `void Ramp(DevDouble current)`
-        * `DevBool Pressurize(DevDouble pressure)`
-
-    ::
-
-        class PowerSupply(Device):
-
-            @command
-            def TurnOn(self):
-                self.info_stream('Turning on the power supply')
-
-            @command(dtype_in=float)
-            def Ramp(self, current):
-                self.info_stream('Ramping on %f...' % current)
-
-            @command(dtype_in=float, doc_in='the pressure to be set',
-                     dtype_out=bool, doc_out='True if it worked, False otherwise')
-            def Pressurize(self, pressure):
-                self.info_stream('Pressurizing to %f...' % pressure)
-                return True
-
-    .. note::
-        avoid using *dformat* parameter. If you need a SPECTRUM
-        attribute of say, boolean type, use instead ``dtype=(bool,)``.
-
-    :param dtype_in:
-        a :ref:`data type <pytango-hlapi-datatypes>` describing the
-        type of parameter. Default is None meaning no parameter.
-    :param dformat_in: parameter data format. Default is None.
-    :type dformat_in: AttrDataFormat
-    :param doc_in: parameter documentation
-    :type doc_in: str
-
-    :param dtype_out:
-        a :ref:`data type <pytango-hlapi-datatypes>` describing the
-        type of return value. Default is None meaning no return value.
-    :param dformat_out: return value data format. Default is None.
-    :type dformat_out: AttrDataFormat
-    :param doc_out: return value documentation
-    :type doc_out: str
-    :param display_level: display level for the command (optional)
-    :type display_level: DispLevel
-    :param polling_period: polling period in milliseconds (optional)
-    :type polling_period: int
-    :param green_mode:
-        set green mode on this specific command. Default value is None meaning
-        use the server green mode. Set it to GreenMode.Synchronous to force
-        a non green command in a green server.
-
-    .. versionadded:: 8.1.7
-        added green_mode option
-
-    .. versionadded:: 9.2.0
-        added display_level and polling_period optional argument
-    """
-
-    @command(dtype_in=str, doc_in='directly send command to the device',
-             dtype_out=str, doc_out='response from device without final CR')
+    @command(dtype_in=str, doc_in='Directly send command to the device',
+             dtype_out=str, doc_out='Response from device without final CR')
     def SendCommand(self, cmd):
         with _lock:
             rsp = self.tdk.send_command(cmd).decode()
