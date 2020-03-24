@@ -552,6 +552,8 @@ class TDKLambda():
 
     def read_all(self):
         reply = self.send_command(b'DVC?')
+        if reply == b'':
+            return [float('Nan')] * 6
         sv = reply.split(b',')
         vals = []
         for s in sv:
