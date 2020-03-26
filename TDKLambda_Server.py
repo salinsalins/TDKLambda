@@ -333,7 +333,7 @@ class TDKLambda_Server(Device):
 
     def set_fault(self):
         self.error_count += 1
-        if self.ettor_count > 5:
+        if self.error_count > 5:
             self.set_state(DevState.FAULT)
 
     @command
