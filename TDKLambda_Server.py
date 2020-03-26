@@ -32,7 +32,7 @@ class TDKLambda_Server(Device):
     READING_VALID_TIME = 0.7
     devices = []
 
-    devicetype = attribute(label="type", dtype=str,
+    device_type = attribute(label="PS Type", dtype=str,
                            display_level=DispLevel.OPERATOR,
                            access=AttrWriteType.READ,
                            unit="", format="%s",
@@ -137,7 +137,7 @@ class TDKLambda_Server(Device):
                 logger.info(msg)
                 self.info_stream(msg)
 
-    def read_devicetype(self):
+    def read_device_type(self):
         with _lock:
             if self.tdk.com is None:
                 return "Uninitialized"
