@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import time
-import os
 import logging
+import socket
+import time
+from threading import Lock
+
 import serial
-from threading import Thread, Lock
 
 
-class FakeComPort():
+class FakeComPort:
     SN = 123456
     RESPONSE = 0.035
 
     def __init__(self, port, *args, **kwargs):
-        #super().__init__(self, port, args, kwargs)
         self.last_address = -1
         self.lock = Lock()
         self.online = False
@@ -63,7 +63,7 @@ class FakeComPort():
         except:
             pass
 
-    def read(self, *args):
+    def read(self):
         if self.last_write == b'':
             return b''
         if time.time() - self.t[self.last_address] < self.RESPONSE:
@@ -85,7 +85,9 @@ class FakeComPort():
                 if self.mc[self.last_address] > 100.0:
                     self.mc[self.last_address] = 0.0
             self.last_write = b''
-            return b'%f, %f, %f, %f, 0.0, 0.0\r' % (self.mv[self.last_address], self.pv[self.last_address], self.mc[self.last_address], self.pc[self.last_address])
+            return b'%f, %f, %f, %f, 0.0, 0.0\r' % \
+                   (self.mv[self.last_address], self.pv[self.last_address],
+                    self.mc[self.last_address], self.pc[self.last_address])
         if self.last_write.startswith(b'PV?'):
             self.last_write = b''
             return str(self.pv[self.last_address]).encode() + b'\r'
@@ -126,7 +128,30 @@ class FakeComPort():
         return b'OK\r'
 
 
-class TDKLambda():
+class MoxaTCPComPort:
+    def __init__(self, host: str, port: int = 4001):
+        if ':' in host:
+            n = host.find(':')
+            self.host = host[:n].strip()
+            self.port = int(host[n+1:].strip())
+        else:
+            self.host = host
+            self.port = port
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.connect((self.host, self.port))
+
+    def close(self):
+        self.socket.close()
+        return True
+
+    def write(self, cmd):
+        self.socket.send(cmd)
+
+    def read(self, n):
+        return self.socket.recv(n)
+
+
+class TDKLambda:
     LOG_LEVEL = logging.INFO
     EMULATE = False
     max_timeout = 0.5  # sec
@@ -137,12 +162,12 @@ class TDKLambda():
     devices = []
     ports = []
 
-    def __init__(self, port: str, addr=6, checksum=False, baudrate=9600, logger=None):
+    def __init__(self, port: str, addr=6, checksum=False, baud_rate=9600, logger=None):
         # input parameters
         self.port = port.upper().strip()
         self.addr = addr
         self.check = checksum
-        self.baud = baudrate
+        self.baud = baud_rate
         self.logger = logger
         self.auto_addr = True
         self.com_timeout = 0.0
@@ -239,7 +264,6 @@ class TDKLambda():
         self.logger.info(msg)
 
     def __del__(self):
-        #print(self.port, self.addr, '__del__')
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
         self.close_com_port()
@@ -263,7 +287,10 @@ class TDKLambda():
             if self.EMULATE:
                 self.com = FakeComPort(self.port, baudrate=self.baud, timeout=self.com_timeout)
             else:
-                self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
+                if self.port.upper().startswith('COM'):
+                    self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
+                else:
+                    self.com = MoxaTCPComPort(self.port)
             self.com.write_timeout = 0
             self.com.writeTimeout = 0
             self.com._current_addr = -1
@@ -291,9 +318,9 @@ class TDKLambda():
     def clear_input_buffer(self):
         t0 = time.time()
         time.sleep(self.sleep_cear_input)
-        #self.logger.debug('1 %4.0f ms', (time.time() - t0) * 1000.0)
+        # self.logger.debug('1 %4.0f ms', (time.time() - t0) * 1000.0)
         smbl = self.com.read(10000)
-        #self.logger.debug('2 %4.0f ms', (time.time() - t0) * 1000.0)
+        # self.logger.debug('2 %4.0f ms', (time.time() - t0) * 1000.0)
         n = 0
         while len(smbl) > 0:
             if time.time() - t0 > self.timeout_cear_input:
@@ -301,7 +328,6 @@ class TDKLambda():
             time.sleep(self.sleep_cear_input)
             smbl = self.com.read(10000)
             n += 1
-            #self.logger.debug('3 %4.0f ms', (time.time() - t0) * 1000.0)
         self.logger.debug('%d %4.0f ms', n, (time.time() - t0) * 1000.0)
         return n
 
