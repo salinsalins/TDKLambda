@@ -6,7 +6,14 @@ import sys
 import serial
 from Utils import *
 
-logger = config_logger(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.propagate = False
+logger.setLevel(level=logging.DEBUG)
+f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
+log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(log_formatter)
+logger.addHandler(console_handler)
 
 
 class VirtualLambdaAtCom:
@@ -179,13 +186,6 @@ class VirtualLambdaAtCom:
                     self.write(b'C05\r')
                     return
                 self.addr = new_addr
-                #self.pv = FakeLambdaAtCom.devices[new_addr].pv
-                #self.pc = FakeLambdaAtCom.devices[new_addr].pc
-                #self.mv = FakeLambdaAtCom.devices[new_addr].mv
-                #self.mc = FakeLambdaAtCom.devices[new_addr].mc
-                #self.out = FakeLambdaAtCom.devices[new_addr].out
-                #self.serial_number = FakeLambdaAtCom.devices[new_addr].serial_number
-                #self.id = FakeLambdaAtCom.devices[new_addr].id
             self.write(b'OK\r')
         elif cmd.startswith(b'PV '):
             try:
