@@ -9,7 +9,7 @@ from Utils import *
 logger = config_logger(level=logging.DEBUG)
 
 
-class FakeLambdaAtCom:
+class VirtualLambdaAtCom:
     SERIAL_NUMBER = 56789
     devices = {}
 
@@ -32,7 +32,7 @@ class FakeLambdaAtCom:
             logger.critical('Wrong device address')
             exit(-4)
         # check if address is in use
-        if self.addr in FakeLambdaAtCom.devices:
+        if self.addr in VirtualLambdaAtCom.devices:
             logger.critical('Address is in use')
             exit(-2)
         # assign com port
@@ -40,7 +40,7 @@ class FakeLambdaAtCom:
             logger.critical('Can not create COM port')
             exit(-3)
         # device type
-        self.id = b'FAKE_TDK_LAMBDA GEN10-100'
+        self.id = b'VIRTUAL_TDK_LAMBDA GEN10-100'
         # determine max current and voltage from model name
         n1 = self.id.find(b'GEN')
         n2 = self.id.find(b'-')
@@ -51,8 +51,8 @@ class FakeLambdaAtCom:
             except:
                 pass
         # read device serial number
-        self.serial_number = str(FakeLambdaAtCom.SERIAL_NUMBER).encode()
-        FakeLambdaAtCom.SERIAL_NUMBER += 1
+        self.serial_number = str(VirtualLambdaAtCom.SERIAL_NUMBER).encode()
+        VirtualLambdaAtCom.SERIAL_NUMBER += 1
         self.check = False
         # voltage and current
         self.pv = 0.0
@@ -61,12 +61,12 @@ class FakeLambdaAtCom:
         self.mc = 0.0
         self.out = False
         # add device to dict
-        FakeLambdaAtCom.devices[self.addr] = self
+        VirtualLambdaAtCom.devices[self.addr] = self
         logger.info('TDKLambda: %s has been created at %s:%d' % (self.id, self.port, self.addr))
 
     def init_com_port(self):
-        if len(FakeLambdaAtCom.devices) > 0:
-            self.com = next(iter(FakeLambdaAtCom.devices.values())).com
+        if len(VirtualLambdaAtCom.devices) > 0:
+            self.com = next(iter(VirtualLambdaAtCom.devices.values())).com
             logger.debug('Using existing %s' % self.port)
             return True
         self.close_com_port()
@@ -125,7 +125,7 @@ class FakeLambdaAtCom:
             cmd = cmd[:m]
         else:
             self.check = False
-        cd = FakeLambdaAtCom.devices[self.addr]
+        cd = VirtualLambdaAtCom.devices[self.addr]
         if cmd.startswith(b'ADR?'):
             self.write(str(cd.addr).encode() + b'\r')
         elif cmd.startswith(b'IDN?'):
@@ -174,7 +174,7 @@ class FakeLambdaAtCom:
                 self.write(b'C03\r')
                 return
             if new_addr != self.addr:
-                if new_addr not in FakeLambdaAtCom.devices:
+                if new_addr not in VirtualLambdaAtCom.devices:
                     logger.error('Device with address %d does not exists' % new_addr)
                     self.write(b'C05\r')
                     return
@@ -265,9 +265,9 @@ if __name__ == "__main__":
     if len(addresses) <= 0:
         logger.critical('Wrong command line parameters. Use: COMxx ADR1 ADR2 ...')
         exit(-10)
-    dev1 = FakeLambdaAtCom(com_port, addresses[0])
+    dev1 = VirtualLambdaAtCom(com_port, addresses[0])
     for ad in addresses[1:]:
-        FakeLambdaAtCom(com_port, ad)
+        VirtualLambdaAtCom(com_port, ad)
     t0 = time.time()
     while True:
         dev1.read()
