@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
+
 import serial
 from Utils import *
 
@@ -30,7 +32,7 @@ class FakeLambdaAtCom:
             logger.critical('Wrong device address')
             exit(-4)
         # check if address is in use
-        for self.addr in FakeLambdaAtCom.devices:
+        if self.addr in FakeLambdaAtCom.devices:
             logger.critical('Address is in use')
             exit(-2)
         # assign com port
@@ -58,22 +60,22 @@ class FakeLambdaAtCom:
         self.mv = 0.0
         self.mc = 0.0
         self.out = False
-        # add device to list
+        # add device to dict
         FakeLambdaAtCom.devices[self.addr] = self
-        logger.info('TDKLambda: %s has been created' % self.id)
+        logger.info('TDKLambda: %s has been created at %s:%d' % (self.id, self.port, self.addr))
 
     def init_com_port(self):
         if len(FakeLambdaAtCom.devices) > 0:
             self.com = next(iter(FakeLambdaAtCom.devices.values())).com
-            logger.debug('Assigned existing COM %s' % self.port)
-            return
+            logger.debug('Using existing %s' % self.port)
+            return True
         self.close_com_port()
         try:
             self.com = serial.Serial(self.port, baudrate=self.baud, timeout=0)
             self.write_timeout = 0
             self.writeTimeout = 0
             self.com._current_addr = -1
-            logger.debug('COM port %s created' % self.port)
+            logger.debug('%s port is used' % self.port)
             return True
         except:
             logger.error('COM port %s creation error' % self.port)
@@ -123,70 +125,76 @@ class FakeLambdaAtCom:
             cmd = cmd[:m]
         else:
             self.check = False
+        cd = FakeLambdaAtCom.devices[self.addr]
         if cmd.startswith(b'ADR?'):
-            self.write(str(self.addr).encode() + b'\r')
+            self.write(str(cd.addr).encode() + b'\r')
         elif cmd.startswith(b'IDN?'):
-            self.write(self.id + b'\r')
+            self.write(cd.id + b'\r')
         elif cmd.startswith(b'SN?'):
-            self.write(self.serial_number + b'\r')
+            self.write(cd.serial_number + b'\r')
         elif cmd.startswith(b'PV?'):
-            self.write(str(self.pv).encode() + b'\r')
+            self.write(str(cd.pv).encode() + b'\r')
         elif cmd.startswith(b'PC?'):
             self.write(str(self.pc).encode() + b'\r')
         elif cmd.startswith(b'MV?'):
-            if self.out:
-                self.mv = self.pv
+            if cd.out:
+                cd.mv = cd.pv
             else:
-                self.mv = 0.0
-            self.write(str(self.mv).encode() + b'\r')
+                cd.mv = 0.0
+            self.write(str(cd.mv).encode() + b'\r')
         elif cmd.startswith(b'MC?'):
-            if self.out:
-                self.mc = self.pc
+            if cd.out:
+                cd.mc = cd.pc
             else:
-                self.mc = 0.0
-            self.write(str(self.mc).encode() + b'\r')
+                cd.mc = 0.0
+            self.write(str(cd.mc).encode() + b'\r')
         elif cmd.startswith(b'OUT?'):
-            if self.out:
-                self.write(b'ON\r')
+            if cd.out:
+                cd.write(b'ON\r')
             else:
-                self.write(b'OFF\r')
+                cd.write(b'OFF\r')
         elif cmd.startswith(b'MODE?'):
-            if self.out:
+            if cd.out:
                 self.write(b'CV\r')
             else:
                 self.write(b'OFF\r')
         elif cmd.startswith(b'DVC?'):
-            if self.out:
-                self.mc = self.pc
-                self.mv = self.pv
+            if cd.out:
+                cd.mc = cd.pc
+                cd.mv = cd.pv
             else:
-                self.mc = 0.0
-                self.mv = 0.0
-            self.write(b'%f, %f, %f, %f, 0.0, 0.0\r' % (self.mv, self.pv, self.mc, self.pc))
+                cd.mc = 0.0
+                cd.mv = 0.0
+            self.write(b'%f, %f, %f, %f, 0.0, 0.0\r' % (cd.mv, cd.pv, cd.mc, cd.pc))
         elif cmd.startswith(b'ADR '):
-            ad = int(cmd[3:])
-            if ad != self.addr:
-                if ad not in FakeLambdaAtCom.devices:
-                    logger.error('Device with address %d does not exists' % ad)
+            try:
+                new_addr = int(cmd[3:])
+            except:
+                logger.error('Illegal parameter in %s' % cmd)
+                self.write(b'C03\r')
+                return
+            if new_addr != self.addr:
+                if new_addr not in FakeLambdaAtCom.devices:
+                    logger.error('Device with address %d does not exists' % new_addr)
                     self.write(b'C05\r')
                     return
-                self.addr = ad
-                self.pv = FakeLambdaAtCom.devices[ad].pv
-                self.pc = FakeLambdaAtCom.devices[ad].pc
-                self.mv = FakeLambdaAtCom.devices[ad].mv
-                self.mc = FakeLambdaAtCom.devices[ad].mc
-                self.out = FakeLambdaAtCom.devices[ad].out
-                self.serial_number = FakeLambdaAtCom.devices[ad].serial_number
-                self.id = FakeLambdaAtCom.devices[ad].id
+                self.addr = new_addr
+                #self.pv = FakeLambdaAtCom.devices[new_addr].pv
+                #self.pc = FakeLambdaAtCom.devices[new_addr].pc
+                #self.mv = FakeLambdaAtCom.devices[new_addr].mv
+                #self.mc = FakeLambdaAtCom.devices[new_addr].mc
+                #self.out = FakeLambdaAtCom.devices[new_addr].out
+                #self.serial_number = FakeLambdaAtCom.devices[new_addr].serial_number
+                #self.id = FakeLambdaAtCom.devices[new_addr].id
             self.write(b'OK\r')
         elif cmd.startswith(b'PV '):
             try:
                 v = float(cmd[3:])
-                if v > self.max_voltage or v < 0.0:
+                if v > cd.max_voltage or v < 0.0:
                     logger.error('Out of range in %s' % cmd)
                     self.write(b'C05\r')
                 else:
-                    self.pv = v
+                    cd.pv = v
                     self.write(b'OK\r')
             except:
                 logger.error('Illegal parameter in %s' % cmd)
@@ -194,21 +202,21 @@ class FakeLambdaAtCom:
         elif cmd.startswith(b'PC '):
             try:
                 c = float(cmd[3:])
-                if c > self.max_current or c < 0.0:
+                if c > cd.max_current or c < 0.0:
                     logger.error('Out of range in %s' % cmd)
                     self.write(b'C05\r')
                 else:
-                    self.pc = c
+                    cd.pc = c
                     self.write(b'OK\r')
             except:
                 logger.error('Illegal parameter in %s' % cmd)
                 self.write(b'C03\r')
         elif cmd.startswith(b'OUT '):
             if cmd[4:] == b'ON':
-                self.out = True
+                cd.out = True
                 self.write(b'OK\r')
             elif cmd[4:] == b'OFF':
-                self.out = False
+                cd.out = False
                 self.write(b'OK\r')
             else:
                 logger.error('Illegal parameter in %s' % cmd)
@@ -241,7 +249,25 @@ class FakeLambdaAtCom:
 
 
 if __name__ == "__main__":
-    dev1 = FakeLambdaAtCom("COM3", 6)
+    if len(sys.argv) < 2:
+        com_port = 'COM3'
+    else:
+        com_port = sys.argv[1]
+    if len(sys.argv) < 3:
+        addresses = [6]
+    else:
+        addresses = []
+    for adr in sys.argv[2:]:
+        try:
+            addresses.append(int(adr))
+        except:
+            pass
+    if len(addresses) <= 0:
+        logger.critical('Wrong command line parameters. Use: COMxx ADR1 ADR2 ...')
+        exit(-10)
+    dev1 = FakeLambdaAtCom(com_port, addresses[0])
+    for ad in addresses[1:]:
+        FakeLambdaAtCom(com_port, ad)
     t0 = time.time()
     while True:
         dev1.read()
