@@ -51,6 +51,7 @@ class FakeLambdaAtCom:
         # read device serial number
         self.serial_number = str(FakeLambdaAtCom.SERIAL_NUMBER).encode()
         FakeLambdaAtCom.SERIAL_NUMBER += 1
+        self.check = False
         # voltage and current
         self.pv = 0.0
         self.pc = 0.0
@@ -69,8 +70,8 @@ class FakeLambdaAtCom:
         self.close_com_port()
         try:
             self.com = serial.Serial(self.port, baudrate=self.baud, timeout=0)
-            self.com.write_timeout = 0
-            self.com.writeTimeout = 0
+            self.write_timeout = 0
+            self.writeTimeout = 0
             self.com._current_addr = -1
             logger.debug('COM port %s created' % self.port)
             return True
@@ -109,40 +110,51 @@ class FakeLambdaAtCom:
         cmd = cmd.upper().strip(b'\n')
         logger.debug('Executing %s' % cmd)
         if len(cmd) == 0:  # empty command just CR
-            self.com.write(b'OK\r')
+            self.write(b'OK\r')
             return
+        if b'$' in cmd:
+            self.check = True
+            m = cmd.find(b'$')
+            cs = self.checksum(cmd[:m])
+            if cmd[m+1:] != cs:
+                logger.error('Incorrect checksum in %s (%s)' % (cmd, cs))
+                self.write(b'C04\r')
+                return
+            cmd = cmd[:m]
+        else:
+            self.check = False
         if cmd.startswith(b'ADR?'):
-            self.com.write(str(self.addr).encode() + b'\r')
+            self.write(str(self.addr).encode() + b'\r')
         elif cmd.startswith(b'IDN?'):
-            self.com.write(self.id + b'\r')
+            self.write(self.id + b'\r')
         elif cmd.startswith(b'SN?'):
-            self.com.write(self.serial_number + b'\r')
+            self.write(self.serial_number + b'\r')
         elif cmd.startswith(b'PV?'):
-            self.com.write(str(self.pv).encode() + b'\r')
+            self.write(str(self.pv).encode() + b'\r')
         elif cmd.startswith(b'PC?'):
-            self.com.write(str(self.pc).encode() + b'\r')
+            self.write(str(self.pc).encode() + b'\r')
         elif cmd.startswith(b'MV?'):
             if self.out:
                 self.mv = self.pv
             else:
                 self.mv = 0.0
-            self.com.write(str(self.mv).encode() + b'\r')
+            self.write(str(self.mv).encode() + b'\r')
         elif cmd.startswith(b'MC?'):
             if self.out:
                 self.mc = self.pc
             else:
                 self.mc = 0.0
-            self.com.write(str(self.mc).encode() + b'\r')
+            self.write(str(self.mc).encode() + b'\r')
         elif cmd.startswith(b'OUT?'):
             if self.out:
-                self.com.write(b'ON\r')
+                self.write(b'ON\r')
             else:
-                self.com.write(b'OFF\r')
+                self.write(b'OFF\r')
         elif cmd.startswith(b'MODE?'):
             if self.out:
-                self.com.write(b'CV\r')
+                self.write(b'CV\r')
             else:
-                self.com.write(b'OFF\r')
+                self.write(b'OFF\r')
         elif cmd.startswith(b'DVC?'):
             if self.out:
                 self.mc = self.pc
@@ -150,13 +162,13 @@ class FakeLambdaAtCom:
             else:
                 self.mc = 0.0
                 self.mv = 0.0
-            self.com.write(b'%f, %f, %f, %f, 0.0, 0.0\r' % (self.mv, self.pv, self.mc, self.pc))
+            self.write(b'%f, %f, %f, %f, 0.0, 0.0\r' % (self.mv, self.pv, self.mc, self.pc))
         elif cmd.startswith(b'ADR '):
             ad = int(cmd[3:])
             if ad != self.addr:
                 if ad not in FakeLambdaAtCom.devices:
                     logger.error('Device with address %d does not exists' % ad)
-                    self.com.write(b'C05\r')
+                    self.write(b'C05\r')
                     return
                 self.addr = ad
                 self.pv = FakeLambdaAtCom.devices[ad].pv
@@ -166,48 +178,66 @@ class FakeLambdaAtCom:
                 self.out = FakeLambdaAtCom.devices[ad].out
                 self.serial_number = FakeLambdaAtCom.devices[ad].serial_number
                 self.id = FakeLambdaAtCom.devices[ad].id
-            self.com.write(b'OK\r')
+            self.write(b'OK\r')
         elif cmd.startswith(b'PV '):
             try:
                 v = float(cmd[3:])
                 if v > self.max_voltage or v < 0.0:
                     logger.error('Out of range in %s' % cmd)
-                    self.com.write(b'C05\r')
+                    self.write(b'C05\r')
                 else:
                     self.pv = v
-                    self.com.write(b'OK\r')
+                    self.write(b'OK\r')
             except:
                 logger.error('Illegal parameter in %s' % cmd)
-                self.com.write(b'C03\r')
+                self.write(b'C03\r')
         elif cmd.startswith(b'PC '):
             try:
                 c = float(cmd[3:])
                 if c > self.max_current or c < 0.0:
                     logger.error('Out of range in %s' % cmd)
-                    self.com.write(b'C05\r')
+                    self.write(b'C05\r')
                 else:
                     self.pc = c
-                    self.com.write(b'OK\r')
+                    self.write(b'OK\r')
             except:
                 logger.error('Illegal parameter in %s' % cmd)
-                self.com.write(b'C03\r')
+                self.write(b'C03\r')
         elif cmd.startswith(b'OUT '):
             if cmd[4:] == b'ON':
                 self.out = True
-                self.com.write(b'OK\r')
+                self.write(b'OK\r')
             elif cmd[4:] == b'OFF':
                 self.out = False
-                self.com.write(b'OK\r')
+                self.write(b'OK\r')
             else:
                 logger.error('Illegal parameter in %s' % cmd)
-                self.com.write(b'C03\r')
+                self.write(b'C03\r')
         else:
             logger.warning('Unsupported command %s' % cmd)
-            self.com.write(b'C01\r')
+            self.write(b'C01\r')
+
+    def write(self, st):
+        if st.endswith(b'\r'):
+            st = st[:-1]
+        if self.check:
+            cs = self.checksum(st)
+            st = b'%s$%s\r' % (st, cs)
+        if not st.endswith(b'\r'):
+            st += b'\r'
+        self.com.write(st)
 
     def clear_input_buffer(self):
         self.com.read(10000)
         self.input = b''
+
+    @staticmethod
+    def checksum(cmd):
+        s = 0
+        for b in cmd:
+            s += int(b)
+        result = str.encode(hex(s)[-2:].upper())
+        return result
 
 
 if __name__ == "__main__":
