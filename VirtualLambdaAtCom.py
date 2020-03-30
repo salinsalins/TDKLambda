@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import logging
+import time
 
 import serial
-from Utils import *
 
 logger = logging.getLogger(__name__)
 logger.propagate = False
