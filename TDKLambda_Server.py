@@ -281,11 +281,11 @@ class TDKLambda_Server(Device):
                 self.set_fault()
             else:
                 response = self.tdk.send_command(b'OUT?')
-                if response.upper().startswith(b'ON'):
+                if response.upper().startswith(b'ON') or response.upper().startswith(b'1'):
                     qual = tango.AttrQuality.ATTR_VALID
                     value = True
                     self.set_running()
-                elif response.upper().startswith(b'OFF'):
+                elif response.upper().startswith(b'OFF') or response.upper().startswith(b'0'):
                     qual = tango.AttrQuality.ATTR_VALID
                     value = False
                     self.set_running()
@@ -311,9 +311,9 @@ class TDKLambda_Server(Device):
                 self.set_fault()
             else:
                 if value:
-                    response = self.tdk.send_command(b'OUT ON')
+                    response = self.tdk.send_command(b'OUT 1')
                 else:
-                    response = self.tdk.send_command(b'OUT OFF')
+                    response = self.tdk.send_command(b'OUT 0')
                 if response.startswith(b'OK'):
                     self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
                     result = True
