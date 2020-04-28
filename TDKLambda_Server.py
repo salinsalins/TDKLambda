@@ -152,7 +152,7 @@ class TDKLambda_Server(Device):
             msg = '%s:%d read_all %s ms %s' % \
                   (self.tdk.port, self.tdk.addr, int((self.time - t0) * 1000.0), values)
             logger.debug(msg)
-            #self.debug_stream(msg)
+            # self.debug_stream(msg)
         except:
             self.set_fault()
             msg = '%s:%d read_all error' % (self.tdk.port, self.tdk.addr)
