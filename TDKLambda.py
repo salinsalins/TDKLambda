@@ -184,7 +184,7 @@ class TDKLambda:
         self.timeout_cear_input = 0.5
         # sleep timings
         self.sleep_after_write = 0.02
-        self.sleep_cear_input = 0.0
+        self.sleep_clear_input = 0.0
         # default com port, id, and serial number
         self.com = None
         self._current_addr = -1
@@ -317,7 +317,7 @@ class TDKLambda:
 
     def clear_input_buffer(self):
         t0 = time.time()
-        time.sleep(self.sleep_cear_input)
+        time.sleep(self.sleep_clear_input)
         # self.logger.debug('1 %4.0f ms', (time.time() - t0) * 1000.0)
         smbl = self.com.read(10000)
         # self.logger.debug('2 %4.0f ms', (time.time() - t0) * 1000.0)
@@ -325,7 +325,7 @@ class TDKLambda:
         while len(smbl) > 0:
             if time.time() - t0 > self.timeout_cear_input:
                 raise IOError('Clear input buffer timeout')
-            time.sleep(self.sleep_cear_input)
+            time.sleep(self.sleep_clear_input)
             smbl = self.com.read(10000)
             n += 1
         self.logger.debug('%d %4.0f ms', n, (time.time() - t0) * 1000.0)
