@@ -181,7 +181,7 @@ class TDKLambda:
         self.retries = 0
         # timeouts
         self.read_timeout = self.min_timeout
-        self.timeout_cear_input = 0.5
+        self.timeout_clear_input = 0.5
         # sleep timings
         self.sleep_after_write = 0.02
         self.sleep_clear_input = 0.0
@@ -207,7 +207,7 @@ class TDKLambda:
         # check if port and address are in use
         for d in TDKLambda.devices:
             if d.port == self.port and d.addr == self.addr:
-                self.logger.error('Address is in use')
+                self.logger.error('Address %s:%s is in use' % (self.port, self.addr))
                 self.id = None
                 # suspend for a year
                 self.suspend(3.1e7)
@@ -323,7 +323,7 @@ class TDKLambda:
         # self.logger.debug('2 %4.0f ms', (time.time() - t0) * 1000.0)
         n = 0
         while len(smbl) > 0:
-            if time.time() - t0 > self.timeout_cear_input:
+            if time.time() - t0 > self.timeout_clear_input:
                 raise IOError('Clear input buffer timeout')
             time.sleep(self.sleep_clear_input)
             smbl = self.com.read(10000)
