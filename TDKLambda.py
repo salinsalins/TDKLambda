@@ -170,7 +170,6 @@ class TDKLambda:
         self.baud = baud_rate
         self.logger = logger
         self.auto_addr = True
-        self.com_timeout = 0.0
         # create variables
         self.last_command = b''
         self.last_response = b''
@@ -285,14 +284,14 @@ class TDKLambda:
         # create port
         try:
             if self.EMULATE:
-                self.com = FakeComPort(self.port, baudrate=self.baud, timeout=self.com_timeout)
+                self.com = FakeComPort(self.port, baudrate=self.baud, timeout=0.0, write_timeout=0.0)
             else:
                 if self.port.upper().startswith('COM'):
-                    self.com = serial.Serial(self.port, baudrate=self.baud, timeout=self.com_timeout)
+                    self.com = serial.Serial(self.port, baudrate=self.baud, timeout=0.0, write_timeout=0.0)
                 else:
                     self.com = MoxaTCPComPort(self.port)
-            self.com.write_timeout = 0
-            self.com.writeTimeout = 0
+            # self.com.write_timeout = 0
+            # self.com.writeTimeout = 0
             self.com._current_addr = -1
             self.unsuspend()
             self.suspend_flag = False
@@ -517,8 +516,6 @@ class TDKLambda:
             self.last_response = result
             return None
         rs = result.split(cr)
-        #print(rs)
-        #print(len(rs))
         if len(rs) > 2:
             self.logger.warning('More than one CR in response %s' % result)
         self.last_response = result
