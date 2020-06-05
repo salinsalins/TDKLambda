@@ -295,9 +295,9 @@ class TDKLambda:
             self.com._current_addr = -1
             self.unsuspend()
             self.suspend_flag = False
-            self.logger.debug('COM port %s created' % self.port)
+            self.logger.debug('%s port created' % self.port)
         except:
-            self.logger.error('COM port %s creation error' % self.port)
+            self.logger.error('%s port creation error' % self.port)
             self.logger.debug('', exc_info=True)
             return False
         # update com for other devices with the same port
