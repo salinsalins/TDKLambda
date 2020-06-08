@@ -205,7 +205,7 @@ class TDKLambda:
                 self.logger.addHandler(console_handler)
         # check if port and address are in use
         for d in TDKLambda.devices:
-            if d.port == self.port and d.addr == self.addr:
+            if d.port == self.port and d.addr == self.addr and d != self:
                 self.logger.error('Address %s:%s is in use' % (self.port, self.addr))
                 self.id = None
                 # suspend for a year
@@ -266,6 +266,10 @@ class TDKLambda:
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
         self.close_com_port()
+
+    def recreate_com_port(self):
+        self.__del__()
+        self.__init__(self.port, self.addr, self.check, self.baud, self.logger)
 
     def close_com_port(self):
         try:
@@ -495,13 +499,16 @@ class TDKLambda:
             return True
         else:                               # suspension expires
             if self.suspend_flag:           # if it was suspended and expires
+                self.recreate_com_port()
                 if self.com is None:        # com port was not initialized
-                    self.init_com_port()
-                    if self.com is None:    # initialization was not successful
-                        self.suspend()      # continue suspension
-                        return True
-                    self.suspend_flag = False  # com port created OK
-                    return False
+                    self.suspend()
+                    return True
+                    #self.init_com_port()
+                    #if self.com is None:    # initialization was not successful
+                    #    self.suspend()      # continue suspension
+                    #    return True
+                    #self.suspend_flag = False  # com port created OK
+                    #return False
                 else:                       # com port was initialized
                     self.suspend_flag = False
                     return False
