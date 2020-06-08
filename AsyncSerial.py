@@ -2,6 +2,15 @@ import time
 import asyncio
 import serial
 
+readTimeoutException = serial.SerialTimeoutException('Read timeout')
+
+
+class SerialTimeout(serial.Timeout):
+
+    def check(self):
+        if self.expired():
+            raise readTimeoutException
+
 
 class AsyncSerial(serial.Serial):
 
@@ -12,16 +21,14 @@ class AsyncSerial(serial.Serial):
 
     async def read(self, size=1):
         async with self.read_lock:
-            result = super().read(1)
+            timeout = SerialTimeout(self._timeout)
+            result = self.read_all()
             while len(result) < size:
-                d = super().read(1)
+                d = self.read_all()
                 if d:
                     result += d
-                if self.inter_byte_timeout is None:
-                    delay = 0
-                else:
-                    delay = self.inter_byte_timeout
-                await asyncio.sleep(delay)
+                timeout.check()
+                await asyncio.sleep(0)
         return result
 
     async def read_until(self, terminator=b'\n', size=None):
@@ -30,29 +37,21 @@ class AsyncSerial(serial.Serial):
             Read until a termination sequence is found ('\n' by default), the size
             is exceeded or until timeout occurs.
             """
-            lenterm = len(terminator)
             line = bytearray()
-            timeout = serial.Timeout(self._timeout)
-            if self.inter_byte_timeout is None:
-                delay = 0
-            else:
-                delay = self.inter_byte_timeout
+            timeout = SerialTimeout(self._timeout)
             if size is None:
                 size = 0
             while True:
-                c = super().read(1)
+                c = super().read_all()
                 if c:
                     line += c
-                    if line[-lenterm:] == terminator:
+                    if terminator in line:
                         break
                     if len(line) >= size:
                         break
-                else:
-                    break
-                if timeout.expired():
-                    break
-                await asyncio.sleep(delay)
-        return bytes(line)
+                timeout.check()
+                await asyncio.sleep(0)
+            return bytes(line)
 
 
 if __name__ == "__main__":
