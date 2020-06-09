@@ -6,7 +6,7 @@ import socket
 import time
 from threading import Lock
 
-from AsyncSerial import AsyncSerial
+from AsyncSerial import AsyncSerial, readTimeoutException
 
 
 class FakeComPort:
@@ -150,6 +150,8 @@ class MoxaTCPComPort:
     def read(self, n):
         return self.socket.recv(n)
 
+addressInUseException = Exception('Address is in use')
+wrongAddressException = Exception('Address is incorrect')
 
 class TDKLambda:
     LOG_LEVEL = logging.INFO
@@ -163,6 +165,9 @@ class TDKLambda:
     ports = []
 
     def __init__(self, port: str, addr=6, checksum=False, baud_rate=9600, logger=None):
+        # check device address
+        if addr <= 0:
+            raise wrongAddressException
         # input parameters
         self.port = port.upper().strip()
         self.addr = addr
@@ -206,33 +211,11 @@ class TDKLambda:
         # check if port and address are in use
         for d in TDKLambda.devices:
             if d.port == self.port and d.addr == self.addr and d != self:
-                self.logger.error('Address %s:%s is in use' % (self.port, self.addr))
-                self.id = None
-                # suspend for a year
-                self.suspend(3.1e7)
-                msg = 'Uninitialized TDKLambda device has been added to list'
-                self.logger.info(msg)
-                TDKLambda.devices.append(self)
-                return
-        # assign com port
-        for d in TDKLambda.devices:
-            # if com port already created
-            if d.port == self.port:
-                self.com = d.com
-                break
-        if self.com is None:
-            self.init_com_port()
+                raise addressInUseException
+        # create COM port
+        self.create_com_port()
         if self.com is None:
             self.suspend()
-            msg = 'Uninitialized TDKLambda device has been added to list'
-            self.logger.info(msg)
-            TDKLambda.devices.append(self)
-            return
-        # check device address
-        if self.addr <= 0:
-            self.logger.error('Wrong device address')
-            self.suspend(3.1e7)
-            self.id = None
             msg = 'Uninitialized TDKLambda device has been added to list'
             self.logger.info(msg)
             TDKLambda.devices.append(self)
@@ -266,7 +249,8 @@ class TDKLambda:
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
 
-    def recreate_com_port(self):
+    def reinitialize(self):
+        self.logger.debug('Initializing device')
         self.__del__()
         self.__init__(self.port, self.addr, self.check, self.baud, self.logger)
 
@@ -282,8 +266,12 @@ class TDKLambda:
                 d.com = None
                 d.suspend()
 
-    def init_com_port(self):
-        # create port
+    def create_com_port(self):
+        for d in TDKLambda.devices:
+            # if com port already exists
+            if d.port == self.port and d.com is not None:
+                self.com = d.com
+                return self.com
         try:
             if self.EMULATE:
                 self.com = FakeComPort(self.port)
@@ -298,12 +286,12 @@ class TDKLambda:
         except:
             self.logger.error('%s creation error' % self.port)
             self.logger.debug('', exc_info=True)
-            return False
+            self.com = None
         # update com for other devices with the same port
         for d in TDKLambda.devices:
             if d.port == self.port:
                 d.com = self.com
-        return self.com is not None
+        return self.com
 
     @staticmethod
     def checksum(cmd):
@@ -312,6 +300,57 @@ class TDKLambda:
             s += int(b)
         result = str.encode(hex(s)[-2:].upper())
         return result
+
+    def _read(self):
+        """
+        read one byte from com port and correct timeout
+        :return: byte
+        """
+        if self.com is None:
+            return b''
+        t0 = time.time()
+        try:
+            data = await self.com.read(1, timeout=self.read_timeout)
+        except readTimeoutException:
+            self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
+            self.logger.info('Reading timeout, increased to %5.2f s' % self.read_timeout)
+            data = b''
+        except:
+            self.logger.info('Unexpected exception', exc_info=True)
+            data = b''
+        else:
+            dt = time.time() - t0
+            self.read_timeout = max(1.5 * dt, self.min_timeout)
+        self.logger.debug('%s %4.0f ms' % (data, dt * 1000.0))
+        return data
+
+    def read(self):
+        if self.suspend_flag:
+            return b''
+        t0 = time.time()
+        data = None
+        try:
+            data = self._read()
+            if data is not None:
+                self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
+                return data
+            self.logger.debug('Retry reading')
+            time.sleep(self.sleep_after_write)
+            data = self._read()
+            if data is not None:
+                self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
+                return data
+            self.logger.warning('Retry reading ERROR')
+            self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
+            self.suspend()
+            return b''
+        except:
+            self.logger.error('Exception during read. Closing COM port')
+            self.logger.debug("", exc_info=True)
+            self.suspend()
+            self.close_com_port()
+            self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
+            return None
 
     def clear_input_buffer(self):
         t0 = time.time()
@@ -398,114 +437,40 @@ class TDKLambda:
         else:
             return self._send_command(cmd)
 
-    def check_response(self, expect=b'OK', response=None):
+    def check_response(self, expected=b'OK', response=None):
         if self.is_suspended():
-            self.logger.debug('Device is suspended')
             return False
         if response is None:
             response = self.last_response
-        if not response.startswith(expect):
-            msg = 'Unexpected response %s (not %s)' % (response, expect)
+        if not response.startswith(expected):
+            msg = 'Unexpected response %s <~> %s' % (response, expected)
             self.logger.info(msg)
             return False
         return True
-
-    def _read(self):
-        if self.com is None:
-            return None
-        t0 = time.time()
-        data = self.com.read(10000)
-        dt = time.time() - t0
-        n = 0
-        #self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
-        while len(data) <= 0:
-            if dt > self.read_timeout:
-                self.read_timeout = min(1.5 * dt, self.max_timeout)
-                msg = 'Reading timeout increased to %5.2f s' % self.read_timeout
-                self.logger.info(msg)
-                self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
-                return None
-            time.sleep(self.sleep_small)
-            data = self.com.read(10000)
-            dt = time.time() - t0
-            n += 1
-        n1 = 1
-        data1 = self.com.read(10000)
-        while len(data1) > 0:
-            data += data1
-            data1 = self.com.read(10000)
-            dt = time.time() - t0
-            if dt > self.read_timeout:
-                self.read_timeout = min(1.5 * dt, self.max_timeout)
-                msg = 'Reading timeout increased to %5.2f s' % self.read_timeout
-                self.logger.info(msg)
-                self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
-                return data
-            n1 += 1
-        dt = time.time() - t0
-        self.read_timeout = max(1.5 * dt, self.min_timeout)
-        self.logger.debug('%s %d %4.0f ms' % (data, n, (time.time() - t0) * 1000.0))
-        return data
-
-    def read(self):
-        if self.suspend_flag:
-            return b''
-        t0 = time.time()
-        data = None
-        try:
-            data = self._read()
-            if data is not None:
-                self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
-                return data
-            self.logger.debug('Retry reading')
-            time.sleep(self.sleep_after_write)
-            data = self._read()
-            if data is not None:
-                self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
-                return data
-            self.logger.warning('Retry reading ERROR')
-            self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
-            self.suspend()
-            return b''
-        except:
-            self.logger.error('Exception during read. Closing COM port')
-            self.logger.debug("", exc_info=True)
-            self.suspend()
-            self.close_com_port()
-            self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
-            return None
 
     def suspend(self, duration=9.0):
         self.suspend_to = time.time() + duration
         self.suspend_flag = True
         msg = 'Suspended for %5.2f sec' % duration
         self.logger.info(msg)
-        return self.suspend_flag
 
     def unsuspend(self):
-        self.suspend_to = time.time() - 1.0
+        self.suspend_to = 0.0
         self.suspend_flag = False
         self.logger.debug('Unsuspended')
-        return self.suspend_flag
 
     def is_suspended(self):
         if time.time() < self.suspend_to:   # if suspension does not expire
-            self.logger.debug('Sesupention is not expired')
+            self.logger.debug('Suspension is not expired')
             return True
         else:                               # suspension expires
             if self.suspend_flag:           # if it was suspended and expires
-                self.recreate_com_port()
+                self.reinitialize()
                 if self.com is None:        # com port was not initialized
                     self.suspend()
                     return True
-                    #self.init_com_port()
-                    #if self.com is None:    # initialization was not successful
-                    #    self.suspend()      # continue suspension
-                    #    return True
-                    #self.suspend_flag = False  # com port created OK
-                    #return False
                 else:                       # com port was initialized
-                    self.suspend_flag = False
+                    self.unsuspend()
                     return False
             else:                           # it was not suspended
                 return False
@@ -525,7 +490,7 @@ class TDKLambda:
         if self.check:
             m = result.find(b'$')
             if m < 0:
-                self.logger.error('No checksum')
+                self.logger.error('No checksum in response')
                 return None
             else:
                 cs = self.checksum(result[:m])
