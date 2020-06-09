@@ -6,7 +6,7 @@ import socket
 import time
 from threading import Lock
 
-import serial
+from AsyncSerial import AsyncSerial
 
 
 class FakeComPort:
@@ -265,7 +265,6 @@ class TDKLambda:
     def __del__(self):
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
-        self.close_com_port()
 
     def recreate_com_port(self):
         self.__del__()
@@ -284,24 +283,20 @@ class TDKLambda:
                 d.suspend()
 
     def init_com_port(self):
-        self.close_com_port()
         # create port
         try:
             if self.EMULATE:
-                self.com = FakeComPort(self.port, baudrate=self.baud, timeout=0.0, write_timeout=0.0)
+                self.com = FakeComPort(self.port)
             else:
                 if self.port.upper().startswith('COM'):
-                    self.com = serial.Serial(self.port, baudrate=self.baud, timeout=0.0, write_timeout=0.0)
+                    self.com = AsyncSerial(self.port, baudrate=self.baud)
                 else:
                     self.com = MoxaTCPComPort(self.port)
-            # self.com.write_timeout = 0
-            # self.com.writeTimeout = 0
             self.com._current_addr = -1
             self.unsuspend()
-            self.suspend_flag = False
-            self.logger.debug('%s port created' % self.port)
+            self.logger.debug('%s created' % self.port)
         except:
-            self.logger.error('%s port creation error' % self.port)
+            self.logger.error('%s creation error' % self.port)
             self.logger.debug('', exc_info=True)
             return False
         # update com for other devices with the same port
