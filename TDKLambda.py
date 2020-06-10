@@ -6,7 +6,7 @@ import socket
 import time
 from threading import Lock
 
-from AsyncSerial import AsyncSerial, readTimeoutException
+from AsyncSerial import *
 
 
 class FakeComPort:
@@ -153,6 +153,43 @@ class MoxaTCPComPort:
 addressInUseException = Exception('Address is in use')
 wrongAddressException = Exception('Address is incorrect')
 
+CR = b'\r'
+
+
+class Counter:
+    def __init__(self, limit=0, action=None, *args, **kwargs):
+        self.value = 0
+        self.limit = limit
+        self.action = action
+        self.args = args
+        self.kwargs = kwargs
+
+    def clear(self):
+        self.value = 0
+
+    def inc(self):
+        self.value += 1
+        self.act()
+
+    def check(self):
+        return self.value > self.limit
+
+    def act(self):
+        if self.value > self.limit:
+            self.value = 0
+            if self.action is not None:
+                return self.action(*self.args, **self.kwargs)
+            else:
+                return True
+        else:
+            return False
+
+    def __iadd__(self, other):
+        self.value += other
+        self.act()
+        return self
+
+
 class TDKLambda:
     LOG_LEVEL = logging.INFO
     EMULATE = False
@@ -178,13 +215,14 @@ class TDKLambda:
         # create variables
         self.last_command = b''
         self.last_response = b''
-        self.error_count = 0
+        self.error_count = Counter(3, self.suspend)
         self.time = time.time()
         self.suspend_to = time.time()
         self.suspend_flag = False
         self.retries = 0
         # timeouts
         self.read_timeout = self.min_timeout
+        self.read_timeout_count = Counter(3, self.suspend)
         self.timeout_clear_input = 0.5
         # sleep timings
         self.sleep_after_write = 0.02
@@ -301,114 +339,168 @@ class TDKLambda:
         result = str.encode(hex(s)[-2:].upper())
         return result
 
-    def _read(self):
+    def suspend(self, duration=9.0):
+        self.suspend_to = time.time() + duration
+        self.suspend_flag = True
+        msg = 'Suspended for %5.2f sec' % duration
+        self.logger.info(msg)
+
+    def unsuspend(self):
+        self.suspend_to = 0.0
+        self.suspend_flag = False
+        self.logger.debug('Unsuspended')
+
+    def is_suspended(self):
+        if time.time() < self.suspend_to:   # if suspension does not expire
+            self.logger.debug(' - Suspended')
+            return True
+        else:                               # suspension expires
+            if self.suspend_flag:           # if it was suspended and expires
+                self.reinitialize()
+                if self.com is None:        # if initialization was not successful
+                    # suspend again
+                    self.suspend(True)
+                    return True
+                else:                       # initialization was successful
+                    self.unsuspend()
+                    return False
+            else:                           # it was not suspended
+                return False
+
+    def read(self, size=1, timeout=None):
         """
-        read one byte from com port and correct timeout
+        read size byte from com port and correct timeout
         :return: byte
         """
-        if self.com is None:
-            return b''
+        result = b''
+        if self.is_suspended():
+            return result
+        if timeout is None:
+            timeout = self.read_timeout
         t0 = time.time()
         try:
-            data = await self.com.read(1, timeout=self.read_timeout)
-        except readTimeoutException:
+            result = await self.com.read(size, timeout=timeout)
+        except SerialTimeoutException:
             self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
-            self.logger.info('Reading timeout, increased to %5.2f s' % self.read_timeout)
-            data = b''
+            self.logger.info('Reading timeout, corrected to %5.2f s' % self.read_timeout)
+            self.read_timeout_count.inc()
         except:
             self.logger.info('Unexpected exception', exc_info=True)
-            data = b''
+            self.suspend()
         else:
+            self.read_timeout_count.clear()
             dt = time.time() - t0
-            self.read_timeout = max(1.5 * dt, self.min_timeout)
-        self.logger.debug('%s %4.0f ms' % (data, dt * 1000.0))
-        return data
+            self.read_timeout = max(2.0 * dt, self.min_timeout)
+        return result
 
-    def read(self):
-        if self.suspend_flag:
-            return b''
+    def read_until(self, terminator=b'\r', size=None, timeout=None):
+        result = b''
+        if self.is_suspended():
+            return result
         t0 = time.time()
-        data = None
+        if timeout is None:
+            timeout = self.read_timeout
         try:
-            data = self._read()
-            if data is not None:
-                self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
-                return data
-            self.logger.debug('Retry reading')
-            time.sleep(self.sleep_after_write)
-            data = self._read()
-            if data is not None:
-                self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
-                return data
-            self.logger.warning('Retry reading ERROR')
-            self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
-            self.suspend()
-            return b''
+            result = await self.com.read_until(terminator, size, timeout)
+        except SerialTimeoutException:
+            self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
+            self.logger.info('Reading timeout, increased to %5.2f s' % self.read_timeout)
+            self.read_timeout_count.inc()
         except:
-            self.logger.error('Exception during read. Closing COM port')
-            self.logger.debug("", exc_info=True)
+            self.logger.info('Unexpected exception', exc_info=True)
             self.suspend()
-            self.close_com_port()
-            self.logger.debug('%s %4.0f ms' % (data, (time.time() - t0) * 1000.0))
-            return None
+        else:
+            self.read_timeout_count.clear()
+            dt = time.time() - t0
+            self.read_timeout = max(2.0 * dt, self.min_timeout)
+        return result
+
+    def read_response(self):
+        result = self.read_until()
+        self.last_response = result
+        if CR not in result:
+            self.logger.error('Response without CR')
+            self.error_count.inc()
+            return result
+        if self.check:
+            m = result.find(b'$')
+            if m < 0:
+                self.logger.error('No expected checksum in response')
+                self.error_count.inc()
+                return result
+            else:
+                cs = self.checksum(result[:m])
+                if result[m+1:] != cs:
+                    self.logger.error('Incorrect checksum')
+                    self.error_count.inc()
+                    return result
+                self.error_count.clear()
+                return result[:m]
+        self.error_count.clear()
+        return result
+
+    def check_response(self, expected=b'OK', response=None):
+        if self.is_suspended():
+            return False
+        if response is None:
+            response = self.last_response
+        if not response.startswith(expected):
+            msg = 'Unexpected response %s (not %s)' % (response, expected)
+            self.logger.info(msg)
+            return False
+        return True
 
     def clear_input_buffer(self):
-        t0 = time.time()
-        time.sleep(self.sleep_clear_input)
-        # self.logger.debug('1 %4.0f ms', (time.time() - t0) * 1000.0)
-        smbl = self.com.read(10000)
-        # self.logger.debug('2 %4.0f ms', (time.time() - t0) * 1000.0)
-        n = 0
-        while len(smbl) > 0:
-            if time.time() - t0 > self.timeout_clear_input:
-                raise IOError('Clear input buffer timeout')
-            time.sleep(self.sleep_clear_input)
-            smbl = self.com.read(10000)
-            n += 1
-        self.logger.debug('%d %4.0f ms', n, (time.time() - t0) * 1000.0)
-        return n
+        await self.com.reset_input_buffer(self.read_timeout)
 
-    def _write(self, cmd):
-        if self.suspend_flag:
+    def write(self, cmd):
+        if self.is_suspended():
             return False
         t0 = time.time()
         try:
             # clear input buffer
             self.clear_input_buffer()
             # write command
-            self.com.write(cmd)
-            time.sleep(self.sleep_after_write)
+            await self.com.write(cmd, timeout=self.read_timeout)
+            await asyncio.sleep(self.sleep_after_write)
             self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
             return True
+        except SerialTimeoutException:
+            self.logger.error('Writing timeout')
+            self.suspend()
+            return False
         except:
-            self.logger.error('Exception during _write')
-            self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
+            self.logger.error('Unexpected exception')
             self.logger.debug("", exc_info=True)
+            self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
             self.suspend()
             return False
 
     def _send_command(self, cmd):
         try:
             cmd = cmd.upper().strip()
+            # convert str to bytes
             if isinstance(cmd, str):
                 cmd = str.encode(cmd)
+            # add CR if missing
             if cmd[-1] != b'\r'[0]:
                 cmd += b'\r'
-            # if operations with checksum
+            # add checksum
             if self.check:
                 cs = self.checksum(cmd[:-1])
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
             self.last_command = cmd
             t0 = time.time()
             # write command
-            self._write(cmd)
-            result = self.read_to_cr()
+            self.write(cmd)
+            # read response (to CR by default)
+            result = self.read_response()
             self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time()-t0)*1000.0))
-            if result is not None:
+            if len(result) > 0:
                 return result
             self.logger.warning('Writing error, repeat %s' % cmd)
-            self._write(cmd)
-            result = self.read_to_cr()
+            self.write(cmd)
+            result = self.read_until()
             self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
             if result is not None:
                 return result
@@ -420,7 +512,6 @@ class TDKLambda:
             self.logger.error('Unexpected exception')
             self.logger.debug("", exc_info=True)
             self.suspend()
-            self.close_com_port()
             self.last_response = b''
             return b''
 
@@ -436,71 +527,6 @@ class TDKLambda:
             return self._send_command(cmd)
         else:
             return self._send_command(cmd)
-
-    def check_response(self, expected=b'OK', response=None):
-        if self.is_suspended():
-            return False
-        if response is None:
-            response = self.last_response
-        if not response.startswith(expected):
-            msg = 'Unexpected response %s <~> %s' % (response, expected)
-            self.logger.info(msg)
-            return False
-        return True
-
-    def suspend(self, duration=9.0):
-        self.suspend_to = time.time() + duration
-        self.suspend_flag = True
-        msg = 'Suspended for %5.2f sec' % duration
-        self.logger.info(msg)
-
-    def unsuspend(self):
-        self.suspend_to = 0.0
-        self.suspend_flag = False
-        self.logger.debug('Unsuspended')
-
-    def is_suspended(self):
-        if time.time() < self.suspend_to:   # if suspension does not expire
-            self.logger.debug('Suspension is not expired')
-            return True
-        else:                               # suspension expires
-            if self.suspend_flag:           # if it was suspended and expires
-                self.reinitialize()
-                if self.com is None:        # com port was not initialized
-                    self.suspend()
-                    return True
-                else:                       # com port was initialized
-                    self.unsuspend()
-                    return False
-            else:                           # it was not suspended
-                return False
-
-    def read_to_cr(self):
-        cr = b'\r'
-        result = self.read()
-        if cr not in result:
-            self.logger.warning('Response without CR')
-            self.last_response = result
-            return None
-        rs = result.split(cr)
-        if len(rs) > 2:
-            self.logger.warning('More than one CR in response %s' % result)
-        self.last_response = result
-        result = rs[-2]
-        if self.check:
-            m = result.find(b'$')
-            if m < 0:
-                self.logger.error('No checksum in response')
-                return None
-            else:
-                cs = self.checksum(result[:m])
-                if result[m+1:] != cs:
-                    self.logger.error('Incorrect checksum')
-                    return None
-                self.error_count = 0
-                return result[:m]
-        self.error_count = 0
-        return result
 
     def _set_addr(self):
         if hasattr(self.com, '_current_addr'):

@@ -1,9 +1,10 @@
 import time
 import asyncio
 import serial
+from serial import SerialTimeoutException
 
-readTimeoutException = serial.SerialTimeoutException('Read timeout')
-writeTimeoutException = serial.SerialTimeoutException('Write timeout')
+readTimeoutException = SerialTimeoutException('Read timeout')
+writeTimeoutException = SerialTimeoutException('Write timeout')
 
 
 class AsyncSerial(serial.Serial):
@@ -17,23 +18,36 @@ class AsyncSerial(serial.Serial):
         self.write_lock = asyncio.Lock()
 
     async def read(self, size=1, timeout=None):
+        result = bytes()
+        if size == 0:
+            return result
         async with self.read_lock:
+            if size < 0:
+                size = self.in_waiting
+            if size == 0:
+                return result
             to = serial.Timeout(timeout)
-            result = super().read(1)
             while len(result) < size:
                 d = super().read(1)
                 if d:
                     result += d
+                    to.restart()
                 if to.expired():
                     raise readTimeoutException
                 await asyncio.sleep(0)
         return result
 
-    async def read_until(self, terminator=b'\n', size=None, timeout=None):
+    async def read_all(self):
         async with self.read_lock:
-            """\
-            Read until a termination sequence is found ('\n' by default), the size
-            is exceeded or until timeout occurs.
+            result = super().read_all()
+            await asyncio.sleep(0)
+        return result
+
+    async def read_until(self, terminator=b'\r', size=None, timeout=None):
+        async with self.read_lock:
+            """
+            Read until a termination sequence is found ('\n' by default), 
+            the size is exceeded or timeout occurs.
             """
             line = bytearray()
             to = serial.Timeout(timeout)
@@ -45,6 +59,7 @@ class AsyncSerial(serial.Serial):
                         break
                     if size is not None and len(line) >= size:
                         break
+                    to.restart()
                 if to.expired():
                     raise readTimeoutException
                 await asyncio.sleep(0)
@@ -59,6 +74,7 @@ class AsyncSerial(serial.Serial):
                 if to.expired():
                     raise writeTimeoutException
                 await asyncio.sleep(0)
+            return result
 
     async def flush(self, timeout=None):
         """\
@@ -69,10 +85,19 @@ class AsyncSerial(serial.Serial):
         while self.out_waiting:
             if to.expired():
                 raise writeTimeoutException
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0)
         # XXX could also use WaitCommEvent with mask EV_TXEMPTY, but it would
         # require overlapped IO and it's also only possible to set a single mask
         # on the port---
+
+    async def reset_input_buffer(self, timeout=None):
+        """Clear input buffer, discarding all that is in the buffer."""
+        to = serial.Timeout(timeout)
+        while self.in_waiting > 0:
+            super().reset_input_buffer()
+            if to.expired():
+                raise SerialTimeoutException('Read buffer reset timeout')
+            await asyncio.sleep(0)
 
 
 if __name__ == "__main__":
