@@ -480,6 +480,24 @@ class TDKLambda:
             return False
 
     def _send_command(self, cmd):
+        self.last_command = cmd
+        self.last_response = b''
+        if self.is_suspended():
+            return False
+        t0 = time.time()
+        # write command
+        if not self.write(cmd):
+            return False
+        # read response (to CR by default)
+        result = self.read_response()
+        self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.last_response, result, (time.time()-t0)*1000.0))
+        return result
+
+    def send_command(self, cmd):
+        if self.is_suspended():
+            self.last_command = cmd
+            self.last_response = b''
+            return False
         try:
             # unify command
             cmd = cmd.upper().strip()
@@ -493,30 +511,25 @@ class TDKLambda:
             if self.check:
                 cs = self.checksum(cmd[:-1])
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
-            self.last_command = cmd
-            t0 = time.time()
             # lock access to com port
             with self.com.async_lock:
-                # write command
-                self.write(cmd)
-                # read response (to CR by default)
-                result = self.read_response()
-                self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time()-t0)*1000.0))
-                if len(result) > 0:
-                    return result
-
-
-
-                self.logger.warning('Writing error, repeat %s' % cmd)
-                self.write(cmd)
-                result = self.read_response()
-                self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
-                if len(result) > 0:
-                    return result
-                self.logger.error('Repeated writing error')
+                if self.auto_addr and self.com._current_addr != self.addr:
+                    result = self.set_addr()
+                    if not result:
+                        self.suspend()
+                        self.last_response = b''
+                        return False
+                result = self._send_command(cmd)
+                if result:
+                    return True
+                self.logger.warning('Repeat command %s' % cmd)
+                result = self._send_command(cmd)
+                if result:
+                    return True
+                self.logger.error('Repeated command %s error' % cmd)
                 self.suspend()
                 self.last_response = b''
-                return b''
+                return False
         except:
             self.logger.error('Unexpected exception')
             self.logger.debug("", exc_info=True)
@@ -524,28 +537,15 @@ class TDKLambda:
             self.last_response = b''
             return b''
 
-    def send_command(self, cmd):
-        if self.is_suspended():
-            self.last_command = cmd
-            self.last_response = b''
-            return b''
-        if self.auto_addr and self.com._current_addr != self.addr:
-            result = self.set_addr()
-            if not result:
-                return b''
-            return self._send_command(cmd)
-        else:
-            return self._send_command(cmd)
-
-    def _set_addr(self):
+    def set_addr(self):
         if hasattr(self.com, '_current_addr'):
             a0 = self.com._current_addr
         else:
             a0 = -1
-        self._send_command(b'ADR %d' % abs(self.addr))
-        if self.check_response():
+        result = self._send_command(b'ADR %d' % self.addr)
+        if result and self.check_response(b'OK'):
             self.com._current_addr = self.addr
-            self.logger.debug('Set address %d -> %d' % (a0, self.addr))
+            self.logger.debug('Address %d -> %d' % (a0, self.addr))
             return True
         else:
             self.logger.error('Error set address %d -> %d' % (a0, self.addr))
@@ -553,31 +553,21 @@ class TDKLambda:
                 self.com._current_addr = -1
             return False
 
-    def set_addr(self):
-        if self.com is None or self.suspend_flag:
-            return False
-        result = self._set_addr()
-        if result:
-            return True
-        result = self._set_addr()
-        if result:
-            return True
-        self.suspend()
-        self.com._current_addr = -1
-        return False
-
     def read_float(self, cmd):
-        reply = self.send_command(cmd)
         try:
-            v = float(reply)
+            if not self.send_command(cmd):
+                return float('Nan')
+            if not self.check_response():
+                return float('Nan')
+            v = float(self.last_response)
         except:
-            self.logger.debug('%s is not a float' % reply)
+            self.logger.debug('%s is not a float' % self.last_response)
             v = float('Nan')
         return v
 
     def read_all(self):
         reply = self.send_command(b'DVC?')
-        if reply == b'':
+        if not reply:
             return [float('Nan')] * 6
         sv = reply.split(b',')
         vals = []
@@ -588,17 +578,12 @@ class TDKLambda:
                 self.logger.debug('%s is not a float' % reply)
                 v = float('Nan')
             vals.append(v)
-        if len(vals) == 6:
-            return vals
-        elif len(vals) > 6:
-            vals = [float('Nan')] * 6
+        if len(vals) <= 6:
             return vals
         else:
-            vals += [float('Nan')] * (6 - len(vals))
-            return vals
+            return vals[:6]
 
     def read_value(self, cmd, vtype=str):
-        #t0 = time.time()
         reply = b''
         try:
             reply = self.send_command(cmd)
@@ -606,8 +591,6 @@ class TDKLambda:
         except:
             self.check_response(response=b'Wrong format:'+reply)
             v = None
-        #dt = time.time() - t0
-        #print('read_value', dt)
         return v
 
     def read_bool(self, cmd):
