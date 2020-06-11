@@ -150,6 +150,7 @@ class MoxaTCPComPort:
     def read(self, n):
         return self.socket.recv(n)
 
+
 addressInUseException = Exception('Address is in use')
 wrongAddressException = Exception('Address is incorrect')
 
@@ -411,37 +412,39 @@ class TDKLambda:
             self.suspend()
         else:
             self.read_timeout_count.clear()
-            dt = time.time() - t0
-            self.read_timeout = max(2.0 * dt, self.min_timeout)
+            self.read_timeout = max(2.0 * (time.time() - t0), self.min_timeout)
         return result
 
     def read_response(self):
-        result = self.read_until()
+        if self.is_suspended():
+            result = b''
+            self.last_response = result
+            return False
+        result = self.read_until(terminator=b'\r')
         self.last_response = result
         if CR not in result:
             self.logger.error('Response without CR')
             self.error_count.inc()
-            return result
+            return False
         if self.check:
             m = result.find(b'$')
             if m < 0:
                 self.logger.error('No expected checksum in response')
                 self.error_count.inc()
-                return result
+                return False
             else:
                 cs = self.checksum(result[:m])
                 if result[m+1:] != cs:
                     self.logger.error('Incorrect checksum')
                     self.error_count.inc()
-                    return result
+                    return False
                 self.error_count.clear()
-                return result[:m]
+                self.last_response = result[:m]
+                return True
         self.error_count.clear()
-        return result
+        return True
 
     def check_response(self, expected=b'OK', response=None):
-        if self.is_suspended():
-            return False
         if response is None:
             response = self.last_response
         if not response.startswith(expected):
@@ -478,11 +481,12 @@ class TDKLambda:
 
     def _send_command(self, cmd):
         try:
+            # unify command
             cmd = cmd.upper().strip()
             # convert str to bytes
             if isinstance(cmd, str):
                 cmd = str.encode(cmd)
-            # add CR if missing
+            # add CR terminator if missing
             if cmd[-1] != b'\r'[0]:
                 cmd += b'\r'
             # add checksum
@@ -491,23 +495,28 @@ class TDKLambda:
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
             self.last_command = cmd
             t0 = time.time()
-            # write command
-            self.write(cmd)
-            # read response (to CR by default)
-            result = self.read_response()
-            self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time()-t0)*1000.0))
-            if len(result) > 0:
-                return result
-            self.logger.warning('Writing error, repeat %s' % cmd)
-            self.write(cmd)
-            result = self.read_response()
-            self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
-            if len(result) > 0:
-                return result
-            self.logger.error('Repeated writing error')
-            self.suspend()
-            self.last_response = b''
-            return b''
+            # lock access to com port
+            with self.com.async_lock:
+                # write command
+                self.write(cmd)
+                # read response (to CR by default)
+                result = self.read_response()
+                self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time()-t0)*1000.0))
+                if len(result) > 0:
+                    return result
+
+
+
+                self.logger.warning('Writing error, repeat %s' % cmd)
+                self.write(cmd)
+                result = self.read_response()
+                self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
+                if len(result) > 0:
+                    return result
+                self.logger.error('Repeated writing error')
+                self.suspend()
+                self.last_response = b''
+                return b''
         except:
             self.logger.error('Unexpected exception')
             self.logger.debug("", exc_info=True)
@@ -624,32 +633,32 @@ if __name__ == "__main__":
     pd1 = TDKLambda("COM4", 6)
     pd2 = TDKLambda("COM4", 7)
     for i in range(5):
-        t0 = time.time()
+        t_0 = time.time()
         v1 = pd1.read_float("PC?")
-        dt1 = int((time.time()-t0)*1000.0)    #ms
+        dt1 = int((time.time() - t_0) * 1000.0)    # ms
         print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-        t0 = time.time()
+        t_0 = time.time()
         v1 = pd1.read_float("MV?")
-        dt1 = int((time.time()-t0)*1000.0)    #ms
+        dt1 = int((time.time() - t_0) * 1000.0)    # ms
         print('1: ', '%4d ms ' % dt1,'MV?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-        t0 = time.time()
+        t_0 = time.time()
         v1 = pd1.send_command("PV 1.0")
-        dt1 = int((time.time()-t0)*1000.0)    #ms
+        dt1 = int((time.time() - t_0) * 1000.0)    # ms
         print('1: ', '%4d ms ' % dt1,'PV 1.0', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-        t0 = time.time()
+        t_0 = time.time()
         v1 = pd1.read_float("PV?")
-        dt1 = int((time.time()-t0)*1000.0)    #ms
+        dt1 = int((time.time() - t_0) * 1000.0)    # ms
         print('1: ', '%4d ms ' % dt1,'PV?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-        t0 = time.time()
+        t_0 = time.time()
         v3 = pd1.read_all()
-        dt1 = int((time.time()-t0)*1000.0)    #ms
+        dt1 = int((time.time() - t_0) * 1000.0)    # ms
         print('1: ', '%4d ms ' % dt1,'DVC?=', v3, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-        t0 = time.time()
+        t_0 = time.time()
         v2 = pd2.read_float("PC?")
-        dt2 = int((time.time()-t0)*1000.0)    #ms
+        dt2 = int((time.time() - t_0) * 1000.0)    # ms
         print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
-        t0 = time.time()
+        t_0 = time.time()
         v4 = pd2.read_all()
-        dt1 = int((time.time()-t0)*1000.0)    #ms
+        dt1 = int((time.time() - t_0) * 1000.0)    # ms
         print('2: ', '%4d ms ' % dt1,'DVC?=', v4, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
         time.sleep(0.1)
