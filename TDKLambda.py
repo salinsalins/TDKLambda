@@ -500,9 +500,9 @@ class TDKLambda:
                 return result
             self.logger.warning('Writing error, repeat %s' % cmd)
             self.write(cmd)
-            result = self.read_until()
+            result = self.read_response()
             self.logger.debug('%s -> %s %4.0f ms' % (cmd, result, (time.time() - t0) * 1000.0))
-            if result is not None:
+            if len(result) > 0:
                 return result
             self.logger.error('Repeated writing error')
             self.suspend()
