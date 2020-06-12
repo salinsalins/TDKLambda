@@ -69,11 +69,10 @@ class TDKLambda_Server(Device):
                     qual = tango.AttrQuality.ATTR_INVALID
                     value = False
                     self.set_fault()
-            self.output_state.set_value(value)
             self.output_state.set_quality(qual)
             return value
 
-    @output_state.write
+    @output_state.setter
     async def output_state(self, value):
         with _lock:
             if self.tdk.com is None:
