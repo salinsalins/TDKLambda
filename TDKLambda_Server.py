@@ -2,29 +2,27 @@
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
 
-
-from TDKLambda import TDKLambda
-
 import logging
 import time
 from threading import Thread, Lock
 from math import isnan
+import asyncio
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
 from tango.server import Device, attribute, command
 
+from TDKLambda import TDKLambda
 from Utils import *
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'TDKLambda_Server'
 APPLICATION_NAME_SHORT = 'TDKLambda_Server'
-APPLICATION_VERSION = '2_2'
-# CONFIG_FILE = APPLICATION_NAME_SHORT + '.json'
-# UI_FILE = APPLICATION_NAME_SHORT + '.ui'
+APPLICATION_VERSION = '3_0'  # asyncio from ver. 3
 
 # init a thread lock
 _lock = Lock()
+# config logger
 logger = config_logger(level=logging.INFO)
 
 
@@ -32,17 +30,76 @@ class TDKLambda_Server(Device):
     READING_VALID_TIME = 0.7
     devices = []
 
-    device_type = attribute(label="PS Type", dtype=str,
-                           display_level=DispLevel.OPERATOR,
-                           access=AttrWriteType.READ,
-                           unit="", format="%s",
-                           doc="TDKLambda device type")
+    @attribute(label="PS Type", dtype=str,
+               display_level=DispLevel.OPERATOR,
+               access=AttrWriteType.READ,
+               unit="", format="%s",
+               doc="TDKLambda device type")
+    async def device_type(self):
+        with _lock:
+            if self.tdk.com is None:
+                return "Uninitialized"
+            return self.tdk.id
 
-    output_state = attribute(label="Output", dtype=bool,
-                             display_level=DispLevel.OPERATOR,
-                             access=AttrWriteType.READ_WRITE,
-                             unit="", format="",
-                             doc="Output on/off state")
+    @attribute(label="Output", dtype=bool,
+               display_level=DispLevel.OPERATOR,
+               access=AttrWriteType.READ_WRITE,
+               unit="", format="",
+               doc="Output on/off state")
+    async def output_state(self):
+        with _lock:
+            if self.tdk.com is None:
+                value = False
+                qual = tango.AttrQuality.ATTR_INVALID
+                self.set_fault()
+            else:
+                response = self.tdk.send_command(b'OUT?')
+                if response.upper().startswith(b'ON') or response.upper().startswith(b'1'):
+                    qual = tango.AttrQuality.ATTR_VALID
+                    value = True
+                    self.set_running()
+                elif response.upper().startswith(b'OFF') or response.upper().startswith(b'0'):
+                    qual = tango.AttrQuality.ATTR_VALID
+                    value = False
+                    self.set_running()
+                else:
+                    msg = "%s Error reading output state" % self
+                    self.info_stream(msg)
+                    logger.warning(msg)
+                    qual = tango.AttrQuality.ATTR_INVALID
+                    value = False
+                    self.set_fault()
+            self.output_state.set_value(value)
+            self.output_state.set_quality(qual)
+            return value
+
+    @output_state.write
+    async def output_state(self, value):
+        with _lock:
+            if self.tdk.com is None:
+                msg = '%s:%d Switch output for offline device' % (self.tdk.port, self.tdk.addr)
+                self.debug_stream(msg)
+                logger.debug(msg)
+                self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
+                result = False
+                self.set_fault()
+            else:
+                if value:
+                    response = self.tdk.send_command(b'OUT 1')
+                else:
+                    response = self.tdk.send_command(b'OUT 0')
+                if response.startswith(b'OK'):
+                    self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
+                    result = True
+                    self.set_running()
+                else:
+                    msg = '%s:%d Error switch output %s' % (self.tdk.port, self.tdk.addr, response)
+                    self.error_stream(msg)
+                    logger.error(msg)
+                    self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
+                    result = False
+                    self.set_fault()
+            return result
 
     voltage = attribute(label="Voltage", dtype=float,
                         display_level=DispLevel.OPERATOR,
@@ -136,12 +193,6 @@ class TDKLambda_Server(Device):
                 msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
                 logger.info(msg)
                 self.info_stream(msg)
-
-    def read_device_type(self):
-        with _lock:
-            if self.tdk.com is None:
-                return "Uninitialized"
-            return self.tdk.id
 
     def read_all(self):
         t0 = time.time()
@@ -270,61 +321,6 @@ class TDKLambda_Server(Device):
                 self.info_stream(msg)
                 logger.warning(msg)
                 self.set_fault()
-            return result
-
-    def read_output_state(self, attr: tango.Attribute):
-        with _lock:
-            qual = tango.AttrQuality.ATTR_INVALID
-            if self.tdk.com is None:
-                value = False
-                qual = tango.AttrQuality.ATTR_INVALID
-                self.set_fault()
-            else:
-                response = self.tdk.send_command(b'OUT?')
-                if response.upper().startswith(b'ON') or response.upper().startswith(b'1'):
-                    qual = tango.AttrQuality.ATTR_VALID
-                    value = True
-                    self.set_running()
-                elif response.upper().startswith(b'OFF') or response.upper().startswith(b'0'):
-                    qual = tango.AttrQuality.ATTR_VALID
-                    value = False
-                    self.set_running()
-                else:
-                    msg = "%s Error reading output state" % self
-                    self.info_stream(msg)
-                    logger.warning(msg)
-                    qual = tango.AttrQuality.ATTR_INVALID
-                    value = False
-                    self.set_fault()
-            attr.set_value(value)
-            attr.set_quality(qual)
-            return value
-
-    def write_output_state(self, value):
-        with _lock:
-            if self.tdk.com is None:
-                msg = '%s:%d Switch output for offline device' % (self.tdk.port, self.tdk.addr)
-                self.debug_stream(msg)
-                logger.debug(msg)
-                self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
-                result = False
-                self.set_fault()
-            else:
-                if value:
-                    response = self.tdk.send_command(b'OUT 1')
-                else:
-                    response = self.tdk.send_command(b'OUT 0')
-                if response.startswith(b'OK'):
-                    self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
-                    result = True
-                    self.set_running()
-                else:
-                    msg = '%s:%d Error switch output %s' % (self.tdk.port, self.tdk.addr, response)
-                    self.error_stream(msg)
-                    logger.error(msg)
-                    self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
-                    result = False
-                    self.set_fault()
             return result
 
     def set_running(self):

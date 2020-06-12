@@ -193,7 +193,7 @@ class Counter:
 
 class TDKLambda:
     LOG_LEVEL = logging.INFO
-    EMULATE = False
+    EMULATE = True
     max_timeout = 0.5  # sec
     min_timeout = 0.1  # sec
     RETRIES = 3
