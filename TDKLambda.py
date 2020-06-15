@@ -603,18 +603,21 @@ class TDKLambda:
         else:
             return vals[:6]
 
-    def read_value(self, cmd, vtype=str):
-        reply = b''
+    def read_value(self, cmd, v_type=type(str)):
         try:
-            reply = self.send_command(cmd)
-            v = vtype(reply)
+            if self.send_command(cmd):
+                v = v_type(self.last_response)
+            else:
+                v = None
         except:
-            self.check_response(response=b'Wrong format:'+reply)
+            self.logger.info('Can not convert %s to %s' % (self.last_response, v_type))
             v = None
         return v
 
     def read_bool(self, cmd):
-        response = self.send_command(cmd)
+        if not self.send_command(cmd):
+            return None
+        response = self.last_response
         if response.upper() in (b'ON', b'1'):
             return True
         if response.upper() in (b'OFF', b'0'):
@@ -624,8 +627,46 @@ class TDKLambda:
 
     def write_value(self, cmd: bytes, value, expect=b'OK'):
         cmd = cmd.upper().strip() + b' ' + str.encode(str(value))[:10] + b'\r'
-        self.send_command(cmd)
-        return self.check_response(expect)
+        if self.send_command(cmd):
+            return self.check_response(expect)
+        else:
+            return False
+
+    def read_output(self):
+        if not self.send_command(b'OUT?'):
+            return None
+        response = self.last_response.upper()
+        if response.startswith((b'ON', b'1')):
+            return True
+        if response.startswith((b'OFF', b'0')):
+            return False
+        self.logger.info('Unexpected response %s' % response)
+        return None
+
+    def write_output(self, value):
+        if value:
+            t_value = 'ON'
+        else:
+            t_value = 'OFF'
+        return self.write_value(b'OUT', t_value)
+
+    def write_voltage(self, value):
+        return self.write_value(b'PV', value)
+
+    def write_current(self, value):
+        return self.write_value(b'PC', value)
+
+    def read_current(self):
+        return self.read_value(b'MC?', v_type=float)
+
+    def read_programmed_current(self):
+        return self.read_value(b'PC?', v_type=float)
+
+    def read_voltage(self):
+        return self.read_value(b'MV?', v_type=float)
+
+    def read_programmed_voltage(self):
+        return self.read_value(b'PV?', v_type=float)
 
     def reset(self):
         self.__del__()

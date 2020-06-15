@@ -23,7 +23,7 @@ APPLICATION_VERSION = '3_0'  # asyncio from ver. 3
 # init a thread lock
 _lock = Lock()
 # config logger
-logger = config_logger(level=logging.INFO)
+logger = config_logger(level=logging.DEBUG)
 
 
 class TDKLambda_Server(Device):
@@ -53,14 +53,9 @@ class TDKLambda_Server(Device):
                 qual = tango.AttrQuality.ATTR_INVALID
                 self.set_fault()
             else:
-                response = self.tdk.send_command(b'OUT?')
-                if response.upper().startswith(b'ON') or response.upper().startswith(b'1'):
+                value = self.tdk.read_output()
+                if value is not None:
                     qual = tango.AttrQuality.ATTR_VALID
-                    value = True
-                    self.set_running()
-                elif response.upper().startswith(b'OFF') or response.upper().startswith(b'0'):
-                    qual = tango.AttrQuality.ATTR_VALID
-                    value = False
                     self.set_running()
                 else:
                     msg = "%s Error reading output state" % self
@@ -83,16 +78,12 @@ class TDKLambda_Server(Device):
                 result = False
                 self.set_fault()
             else:
-                if value:
-                    response = self.tdk.send_command(b'OUT 1')
-                else:
-                    response = self.tdk.send_command(b'OUT 0')
-                if response.startswith(b'OK'):
+                if self.tdk.write_output(value):
                     self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
                     result = True
                     self.set_running()
                 else:
-                    msg = '%s:%d Error switch output %s' % (self.tdk.port, self.tdk.addr, response)
+                    msg = '%s:%d Error switch output' % (self.tdk.port, self.tdk.addr)
                     self.error_stream(msg)
                     logger.error(msg)
                     self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
