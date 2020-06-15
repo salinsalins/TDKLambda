@@ -35,7 +35,7 @@ class TDKLambda_Server(Device):
                access=AttrWriteType.READ,
                unit="", format="%s",
                doc="TDKLambda device type")
-    async def device_type(self):
+    def device_type(self):
         with _lock:
             if self.tdk.com is None:
                 return "Uninitialized"
@@ -46,7 +46,7 @@ class TDKLambda_Server(Device):
                access=AttrWriteType.READ_WRITE,
                unit="", format="",
                doc="Output on/off state")
-    async def output_state(self):
+    def output_state(self):
         with _lock:
             if self.tdk.com is None:
                 value = False
@@ -73,7 +73,7 @@ class TDKLambda_Server(Device):
             return value
 
     @output_state.setter
-    async def output_state(self, value):
+    def output_state(self, value):
         with _lock:
             if self.tdk.com is None:
                 msg = '%s:%d Switch output for offline device' % (self.tdk.port, self.tdk.addr)

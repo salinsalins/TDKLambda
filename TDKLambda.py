@@ -27,13 +27,15 @@ class FakeComPort:
         FakeComPort.SN += 1
         self.id = {self.last_address: b'FAKELAMBDA GEN10-100'}
         self.t = {self.last_address: time.time()}
+        self.async_lock = Lock()
+        # self.logger = logging.getLogger()
 
     def close(self):
         self.last_write = b''
         self.online = False
         return True
 
-    def write(self, cmd):
+    def write(self, cmd, timeout=None):
         self.last_write = cmd
         try:
             if self.last_write.startswith(b'ADR '):
@@ -63,7 +65,7 @@ class FakeComPort:
         except:
             pass
 
-    def read(self):
+    def read(self, size=1, timeout=None):
         if self.last_write == b'':
             return b''
         if time.time() - self.t[self.last_address] < self.RESPONSE:
@@ -127,6 +129,27 @@ class FakeComPort:
         self.last_write = b''
         return b'OK\r'
 
+    def reset_input_buffer(self, timeout=None):
+        return True
+
+    def read_until(self, terminator=b'\r', size=None, timeout=None):
+        # t0 = time.time()
+        result = bytearray()
+        to = serial.Timeout(timeout)
+        while True:
+            c = self.read(1)
+            if c:
+                result += c
+                if terminator in result:
+                    break
+                if size is not None and len(result) >= size:
+                    break
+                to.restart()
+            if to.expired():
+                raise readTimeoutException
+        # print('%s %4.0f ms' % (terminator, (time.time()-t0)*1000.0))
+        return bytes(result)
+
 
 class MoxaTCPComPort:
     def __init__(self, host: str, port: int = 4001):
@@ -175,11 +198,13 @@ class Counter:
     def check(self):
         return self.value > self.limit
 
-    def act(self):
-        if self.value > self.limit:
+    def act(self, action=None):
+        if action is None:
+            action = self.action
+        if self.check():
             self.value = 0
-            if self.action is not None:
-                return self.action(*self.args, **self.kwargs)
+            if action is not None:
+                return action(*self.args, **self.kwargs)
             else:
                 return True
         else:
@@ -192,7 +217,7 @@ class Counter:
 
 
 class TDKLambda:
-    LOG_LEVEL = logging.INFO
+    LOG_LEVEL = logging.DEBUG
     EMULATE = True
     max_timeout = 0.5  # sec
     min_timeout = 0.1  # sec
@@ -231,8 +256,8 @@ class TDKLambda:
         # default com port, id, and serial number
         self.com = None
         self._current_addr = -1
-        self.id = None
-        self.sn = None
+        self.id = 'Unknown Device'
+        self.sn = 'Not initialized'
         self.max_voltage = float('inf')
         self.max_current = float('inf')
         # configure logger
@@ -267,18 +292,20 @@ class TDKLambda:
             TDKLambda.devices.append(self)
             return
         # read device type
-        self.id = self._send_command(b'IDN?').decode()
-        # determine max current and voltage from model name
-        n1 = self.id.find('GEN')
-        n2 = self.id.find('-')
-        if n1 >= 0 and n2 >= 0:
-            try:
-                self.max_voltage = float(self.id[n1+3:n2])
-                self.max_current = float(self.id[n2+1:])
-            except:
-                pass
+        if self._send_command(b'IDN?'):
+            self.id = self.last_response.decode()
+            # determine max current and voltage from model name
+            n1 = self.id.find('GEN')
+            n2 = self.id.find('-')
+            if n1 >= 0 and n2 >= 0:
+                try:
+                    self.max_voltage = float(self.id[n1+3:n2])
+                    self.max_current = float(self.id[n2+1:])
+                except:
+                    pass
         # read device serial number
-        self.serial_number = self._send_command(b'SN?').decode()
+        if self._send_command(b'SN?'):
+            self.serial_number = self.last_response.decode()
         # add device to list
         TDKLambda.devices.append(self)
         msg = 'TDKLambda: %s has been created' % self.id
@@ -287,11 +314,6 @@ class TDKLambda:
     def __del__(self):
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
-
-    def reinitialize(self):
-        self.logger.debug('Initializing device')
-        self.__del__()
-        self.__init__(self.port, self.addr, self.check, self.baud, self.logger)
 
     def close_com_port(self):
         try:
@@ -357,7 +379,7 @@ class TDKLambda:
             return True
         else:                               # suspension expires
             if self.suspend_flag:           # if it was suspended and expires
-                self.reinitialize()
+                self.reset()
                 if self.com is None:        # if initialization was not successful
                     # suspend again
                     self.suspend(True)
@@ -380,7 +402,7 @@ class TDKLambda:
             timeout = self.read_timeout
         t0 = time.time()
         try:
-            result = await self.com.read(size, timeout=timeout)
+            result = self.com.read(size, timeout=timeout)
         except SerialTimeoutException:
             self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
             self.logger.info('Reading timeout, corrected to %5.2f s' % self.read_timeout)
@@ -402,7 +424,7 @@ class TDKLambda:
         if timeout is None:
             timeout = self.read_timeout
         try:
-            result = await self.com.read_until(terminator, size, timeout)
+            result = self.com.read_until(terminator, size, timeout)
         except SerialTimeoutException:
             self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
             self.logger.info('Reading timeout, increased to %5.2f s' % self.read_timeout)
@@ -454,7 +476,7 @@ class TDKLambda:
         return True
 
     def clear_input_buffer(self):
-        await self.com.reset_input_buffer(self.read_timeout)
+        self.com.reset_input_buffer(self.read_timeout)
 
     def write(self, cmd):
         if self.is_suspended():
@@ -464,8 +486,8 @@ class TDKLambda:
             # clear input buffer
             self.clear_input_buffer()
             # write command
-            await self.com.write(cmd, timeout=self.read_timeout)
-            await asyncio.sleep(self.sleep_after_write)
+            self.com.write(cmd, timeout=self.read_timeout)
+            # await asyncio.sleep(self.sleep_after_write)
             self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
             return True
         except SerialTimeoutException:
@@ -557,8 +579,6 @@ class TDKLambda:
         try:
             if not self.send_command(cmd):
                 return float('Nan')
-            if not self.check_response():
-                return float('Nan')
             v = float(self.last_response)
         except:
             self.logger.debug('%s is not a float' % self.last_response)
@@ -566,9 +586,9 @@ class TDKLambda:
         return v
 
     def read_all(self):
-        reply = self.send_command(b'DVC?')
-        if not reply:
+        if not self.send_command(b'DVC?'):
             return [float('Nan')] * 6
+        reply = self.last_response
         sv = reply.split(b',')
         vals = []
         for s in sv:
