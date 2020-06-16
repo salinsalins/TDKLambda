@@ -441,7 +441,7 @@ class TDKLambda:
         if self.is_suspended():
             self.last_response = b''
             return False
-        result = self.read_until(terminator=b'\r')
+        result = self.read_until(terminator=CR)
         self.last_response = result[:-1]
         if CR not in result:
             self.logger.error('Response without CR')
