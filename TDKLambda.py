@@ -155,6 +155,10 @@ class FakeAsyncComPort(FakeComPort):
     SN = 9876543
     RESPONSE_TIME = 0.035
 
+    def __init__(self, port, *args, **kwargs):
+        super().__init__(port, *args, **kwargs)
+        self.async_lock = asyncio.Lock()
+
     async def reset_input_buffer(self, timeout=None):
         return True
 
@@ -913,7 +917,7 @@ class AsyncTDKLambda(TDKLambda):
                 cs = self.checksum(cmd[:-1])
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
             # lock access to com port
-            with self.com.async_lock:
+            async with self.com.async_lock:
                 if self.auto_addr and self.com._current_addr != self.addr:
                     result = await self.set_addr()
                     if not result:
@@ -1064,15 +1068,22 @@ async def main():
     await pd1.init()
     pd2 = AsyncTDKLambda("COM5", 7)
     await pd2.init()
-    task1 = asyncio.create_task(pd1.read_float("PC?"))
-    task2 = asyncio.create_task(pd2.read_float("PC?"))
+    task1 = asyncio.create_task(pd1.read_float("MC?"))
+    task2 = asyncio.create_task(pd2.read_float("MC?"))
+    task3 = asyncio.create_task(pd1.read_float("MC?"))
+    task4 = asyncio.create_task(pd2.read_float("MC?"))
     t_0 = time.time()
-    await task0
+    await asyncio.wait({task1})
     dt = int((time.time() - t_0) * 1000.0)    # ms
     v1 = task1.result()
     v2 = task2.result()
+    v3 = task3.result()
+    v4 = task4.result()
     print('1: ', '%4d ms ' % dt,'PC?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
     print('2: ', '%4d ms ' % dt,'PC?=', v2, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
+    print('3: ', '%4d ms ' % dt,'PC?=', v3, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
+    print('3: ', '%4d ms ' % dt,'PC?=', v4, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
+    print('Elapsed: %4d ms ' % dt)
 
 if __name__ == "__main__":
     # pd1 = TDKLambda("COM4", 6)
