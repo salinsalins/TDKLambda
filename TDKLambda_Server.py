@@ -153,6 +153,7 @@ class TDKLambda_Server(Device):
             addr = self.get_device_property('addr', 6)
             # create TDKLambda device
             self.tdk = TDKLambda(port, addr)
+            self.tdk.init()
             # check if device OK
             if self.tdk.com is None:
                 msg = '%s TDKLambda device creation error' % self
