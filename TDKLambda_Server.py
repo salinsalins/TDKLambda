@@ -10,6 +10,7 @@ import asyncio
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
+from tango import DevState, GreenMode
 from tango.server import Device, attribute, command
 
 from TDKLambda import TDKLambda
@@ -393,48 +394,32 @@ class TDKLambda_Server(Device):
 
 
 class AsyncTDKLambda_Server(TDKLambda_Server):
-    READING_VALID_TIME = 0.7
-    devices = []
+    green_mode = GreenMode.Asyncio
 
-    @attribute(label="PS Type", dtype=str,
-               display_level=DispLevel.OPERATOR,
-               access=AttrWriteType.READ,
-               unit="", format="%s",
-               doc="TDKLambda device type")
-    def device_type(self):
-        with _lock:
-            if self.tdk.com is None:
-                return "Uninitialized"
-            return self.tdk.id
+    def read_device_type(self):
+        return self.tdk.id
 
-    @attribute(label="Output", dtype=bool,
-               display_level=DispLevel.OPERATOR,
-               access=AttrWriteType.READ_WRITE,
-               unit="", format="",
-               doc="Output on/off state")
-    def output_state(self):
-        with _lock:
-            if self.tdk.com is None:
-                value = False
-                qual = tango.AttrQuality.ATTR_INVALID
-                self.set_fault()
+    def read_output_state(self):
+        if self.tdk.com is None:
+            value = False
+            qual = tango.AttrQuality.ATTR_INVALID
+            self.set_fault()
+        else:
+            value = self.tdk.read_output()
+            if value is not None:
+                qual = tango.AttrQuality.ATTR_VALID
+                self.set_running()
             else:
-                value = self.tdk.read_output()
-                if value is not None:
-                    qual = tango.AttrQuality.ATTR_VALID
-                    self.set_running()
-                else:
-                    msg = "%s Error reading output state" % self
-                    self.info_stream(msg)
-                    logger.warning(msg)
-                    qual = tango.AttrQuality.ATTR_INVALID
-                    value = False
-                    self.set_fault()
-            self.output_state.set_quality(qual)
-            return value
+                msg = "%s Error reading output state" % self
+                self.info_stream(msg)
+                logger.warning(msg)
+                qual = tango.AttrQuality.ATTR_INVALID
+                value = False
+                self.set_fault()
+        self.output_state.set_quality(qual)
+        return value
 
-    @output_state.setter
-    def output_state(self, value):
+    def write_output_state(self, value):
         with _lock:
             if self.tdk.com is None:
                 msg = '%s:%d Switch output for offline device' % (self.tdk.port, self.tdk.addr)
@@ -456,55 +441,6 @@ class AsyncTDKLambda_Server(TDKLambda_Server):
                     result = False
                     self.set_fault()
             return result
-
-    voltage = attribute(label="Voltage", dtype=float,
-                        display_level=DispLevel.OPERATOR,
-                        access=AttrWriteType.READ,
-                        unit="V", format="%6.2f",
-                        min_value=0.0,
-                        doc="Measured voltage")
-
-    programmed_voltage = attribute(label="Programmed Voltage", dtype=float,
-                                   display_level=DispLevel.OPERATOR,
-                                   access=AttrWriteType.READ_WRITE,
-                                   unit="V", format="%6.2f",
-                                   min_value=0.0,
-                                   doc="Programmed voltage")
-
-    current = attribute(label="Current", dtype=float,
-                        display_level=DispLevel.OPERATOR,
-                        access=AttrWriteType.READ,
-                        unit="A", format="%6.2f",
-                        min_value=0.0,
-                        doc="Measured current")
-
-    programmed_current = attribute(label="Programmed Current", dtype=float,
-                                   display_level=DispLevel.OPERATOR,
-                                   access=AttrWriteType.READ_WRITE,
-                                   unit="A", format="%6.2f",
-                                   min_value=0.0,
-                                   doc="Programmed current")
-
-    def get_device_property(self, prop: str, default=None):
-        name = self.get_name()
-        if not hasattr(self, 'dp'):
-            # device proxy
-            self.dp = tango.DeviceProxy(name)
-        # read property
-        pr = self.dp.get_property(prop)[prop]
-        result = None
-        if len(pr) > 0:
-            result = pr[0]
-        if default is None:
-            return result
-        try:
-            if result is None or result == '':
-                result = default
-            else:
-                result = type(default)(result)
-            return result
-        except:
-            return default
 
     def init_device(self):
         with _lock:
