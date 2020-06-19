@@ -144,6 +144,7 @@ class TDKLambda:
             self.logger.info(msg)
             TDKLambda.devices.append(self)
             return
+        self.init()
 
     def __del__(self):
         if self in TDKLambda.devices:
