@@ -10,6 +10,7 @@ class AsyncioDevice(Device):
 
     async def init_device(self):
         await super().init_device()
+        self.value = 0.0
         self.set_state(DevState.ON)
 
     @command
@@ -25,13 +26,18 @@ class AsyncioDevice(Device):
 
     async def coroutine_target(self):
         self.set_state(DevState.INSERT)
-        await asyncio.sleep(15)
+        await asyncio.sleep(3)
         self.set_state(DevState.EXTRACT)
 
     @attribute
     async def test_attribute(self):
-        await asyncio.sleep(2)
-        return 42
+        await asyncio.sleep(1)
+        return self.value
+
+    @test_attribute.setter
+    async def write_test_attribute(self, value):
+        self.value = value
+        await asyncio.sleep(0.1)
 
 
 if __name__ == '__main__':
