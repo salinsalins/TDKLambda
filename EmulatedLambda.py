@@ -30,7 +30,7 @@ class FakeComPort:
         self.online = False
         return True
 
-    def write(self, cmd):
+    def write(self, cmd, timeout=None):
         self.last_write = cmd
         try:
             if self.last_write.startswith(b'ADR '):
@@ -44,23 +44,21 @@ class FakeComPort:
                     self.sn[self.last_address] = str(FakeComPort.SN).encode()
                     FakeComPort.SN += 1
                     self.id[self.last_address] = self.id[-1]
-                    self.t[self.last_address] = time.time()
-            if self.last_write.startswith(b'PV '):
+            elif self.last_write.startswith(b'PV '):
                 self.pv[self.last_address] = float(cmd[3:])
-                self.t[self.last_address] = time.time()
-            if self.last_write.startswith(b'PC '):
+            elif self.last_write.startswith(b'PC '):
                 self.pc[self.last_address] = float(cmd[3:])
-                self.t[self.last_address] = time.time()
-            if self.last_write.startswith(b'OUT ON'):
+            elif self.last_write.startswith(b'OUT ON') or self.last_write.startswith(b'OUT 1'):
                 self.out[self.last_address] = True
-                self.t[self.last_address] = time.time()
-            if self.last_write.startswith(b'OUT OF'):
+            elif self.last_write.startswith(b'OUT OF') or self.last_write.startswith(b'OUT 0'):
                 self.out[self.last_address] = False
-                self.t[self.last_address] = time.time()
+            else:
+                print('Unsupported command', self.last_write)
         except:
-            pass
+            print('Exception in write')
+        self.t[self.last_address] = time.time()
 
-    def read(self):
+    def read(self, size=1, timeout=None):
         if self.last_write == b'':
             return b''
         if time.time() - self.t[self.last_address] < self.RESPONSE_DELAY:

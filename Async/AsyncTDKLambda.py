@@ -597,7 +597,7 @@ class AsyncTDKLambda(TDKLambda):
                 if self.port.upper().startswith('COM'):
                     self.com = AsyncSerial(self.port, baudrate=self.baud)
                 else:
-                    self.com = AsyncMoxaTCPComPort(self.port)
+                    self.com = MoxaTCPComPort(self.port)
             self.com._current_addr = -1
             self.unsuspend()
             self.logger.debug('%s created' % self.port)
