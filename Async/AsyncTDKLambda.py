@@ -21,35 +21,31 @@ class FakeAsyncComPort(FakeComPort):
         return True
 
     async def close(self):
-        self.last_write = b''
-        self.online = False
+        super().close()
         return True
 
     async def write(self, cmd, timeout=None):
-        return super().write(cmd, timeout)
+        async with self.async_lock:
+            return super().write(cmd, timeout)
 
     async def read(self, size=1, timeout=None):
         return super().read(size, timeout)
 
-    async def reset_input_buffer(self, timeout=None):
-        return True
-
     async def read_until(self, terminator=b'\r', size=None, timeout=None):
-        # t0 = time.time()
         result = bytearray()
         to = serial.Timeout(timeout)
-        while True:
-            c = await self.read(1)
-            if c:
-                result += c
-                if terminator in result:
-                    break
-                if size is not None and len(result) >= size:
-                    break
-                to.restart()
-            if to.expired():
-                raise readTimeoutException
-        # print('%s %4.0f ms' % (terminator, (time.time()-t0)*1000.0))
+        async with self.async_lock:
+            while True:
+                c = await self.read(1)
+                if c:
+                    result += c
+                    if terminator in result:
+                        break
+                    if size is not None and len(result) >= size:
+                        break
+                    to.restart()
+                if to.expired():
+                    raise readTimeoutException
         return bytes(result)
 
 
@@ -605,7 +601,7 @@ class AsyncTDKLambda(TDKLambda):
             self.logger.error('%s creation error' % self.port)
             self.logger.debug('', exc_info=True)
             self.com = None
-        # update com for other devices with the same port
+        # Update com for other devices with the same port
         for d in TDKLambda.devices:
             if d.port == self.port:
                 d.com = self.com
@@ -928,8 +924,10 @@ async def main():
     await pd2.init()
     task1 = asyncio.create_task(pd1.read_float("MC?"))
     task2 = asyncio.create_task(pd2.read_float("MC?"))
-    task3 = asyncio.create_task(pd1.read_float("MC?"))
-    task4 = asyncio.create_task(pd2.read_float("MC?"))
+    task5 = asyncio.create_task(pd1.write_current(2.0))
+    task3 = asyncio.create_task(pd1.read_float("PC?"))
+    task6 = asyncio.create_task(pd2.write_current(3.0))
+    task4 = asyncio.create_task(pd2.read_float("PC?"))
     t_0 = time.time()
     await asyncio.wait({task1})
     dt = int((time.time() - t_0) * 1000.0)    # ms
@@ -937,10 +935,10 @@ async def main():
     v2 = task2.result()
     v3 = task3.result()
     v4 = task4.result()
-    print('1: ', '%4d ms ' % dt,'PC?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-    print('2: ', '%4d ms ' % dt,'PC?=', v2, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
-    print('3: ', '%4d ms ' % dt,'PC?=', v3, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-    print('3: ', '%4d ms ' % dt,'PC?=', v4, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
+    print('1: ', '%4d ms ' % dt, 'MC?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
+    print('2: ', '%4d ms ' % dt, 'MC?=', v2, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
+    print('3: ', '%4d ms ' % dt, 'PC?=', v3, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
+    print('3: ', '%4d ms ' % dt, 'PC?=', v4, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
     print('Elapsed: %4d ms ' % dt)
 
 if __name__ == "__main__":

@@ -10,13 +10,14 @@ writeTimeoutException = SerialTimeoutException('Write timeout')
 class AsyncSerial(serial.Serial):
 
     def __init__(self, *args, **kwargs):
-        # should not block read or write
+        # Should not block read or write
         kwargs['timeout'] = 0.0
         kwargs['write_timeout'] = 0.0
         super().__init__(*args, **kwargs)
         self.async_lock = asyncio.Lock()
 
     async def read(self, size=1, timeout=None):
+        # Non locking operation. Use read_until() to prevent concurrent reading form the port.
         result = bytes()
         if size < 0:
             size = self.in_waiting
@@ -40,65 +41,54 @@ class AsyncSerial(serial.Serial):
         """
         result = bytearray()
         to = serial.Timeout(timeout)
-        while True:
-            c = super().read(1)
-            if c:
-                result += c
-                if terminator in result:
-                    break
-                if size is not None and len(result) >= size:
-                    break
-                to.restart()
-            if to.expired():
-                raise readTimeoutException
-            await asyncio.sleep(0)
+        async with self.async_lock:
+            while True:
+                c = super().read(1)
+                if c:
+                    result += c
+                    if terminator in result:
+                        break
+                    if size is not None and len(result) >= size:
+                        break
+                    to.restart()
+                if to.expired():
+                    raise readTimeoutException
+                await asyncio.sleep(0)
         return bytes(result)
 
     async def write(self, data, timeout=None):
         to = serial.Timeout(timeout)
         result = 0
-        for d in data:
-            n = super().write(d)
-            if n <= 0:
-                raise SerialTimeoutException('Write error')
-            result += n
-            if to.expired():
-                raise writeTimeoutException
-            await asyncio.sleep(0)
+        async with self.async_lock:
+            for d in data:
+                n = super().write(d)
+                if n <= 0:
+                    raise SerialTimeoutException('Write error')
+                result += n
+                if to.expired():
+                    raise writeTimeoutException
+                await asyncio.sleep(0)
         return result
 
     async def flush(self, timeout=None):
-        """\
-        Flush of file like objects. In this case, wait until all data
-        is written.
-        """
         to = serial.Timeout(timeout)
-        while self.in_waiting > 0:
-            if to.expired():
-                raise writeTimeoutException
-            await asyncio.sleep(0)
-        # XXX could also use WaitCommEvent with mask EV_TXEMPTY, but it would
-        # require overlapped IO and it's also only possible to set a single mask
-        # on the port---
+        async with self.async_lock:
+            while self.in_waiting > 0:
+                if to.expired():
+                    raise writeTimeoutException
+                await asyncio.sleep(0)
 
     async def reset_input_buffer(self, timeout=None):
         """Clear input buffer, discarding all that is in the buffer."""
         to = serial.Timeout(timeout)
-        while self.in_waiting > 0:
-            super().reset_input_buffer()
-            if to.expired():
-                raise SerialTimeoutException('Read buffer reset timeout')
-            await asyncio.sleep(0)
+        async with self.async_lock:
+            while self.in_waiting > 0:
+                super().reset_input_buffer()
+                if to.expired():
+                    raise SerialTimeoutException('Read buffer reset timeout')
+                await asyncio.sleep(0)
 
     # async def reset_output_buffer(self, timeout=None):
     #     """Clear output buffer, discarding all that is in the buffer."""
     #     super().reset_output_buffer()
     #     await asyncio.sleep(0)
-
-
-if __name__ == "__main__":
-    for i in range(5):
-        t0 = time.time()
-        dt = time.time()-t0
-        dtms = int((time.time()-t0)*1000.0)    # ms
-        print('dt', dt)
