@@ -5,7 +5,7 @@ import logging
 import socket
 from threading import Lock
 
-from .AsyncSerial import *
+from Async.AsyncSerial import *
 from EmulatedLambda import FakeComPort
 
 

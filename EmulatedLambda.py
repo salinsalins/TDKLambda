@@ -52,8 +52,6 @@ class FakeComPort:
                 self.out[self.last_address] = True
             elif self.last_write.startswith(b'OUT OF') or self.last_write.startswith(b'OUT 0'):
                 self.out[self.last_address] = False
-            else:
-                print('Unsupported command', self.last_write)
         except:
             print('Exception in write')
         self.t[self.last_address] = time.time()
