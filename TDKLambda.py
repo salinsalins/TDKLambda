@@ -78,7 +78,7 @@ class Counter:
 
 class TDKLambda:
     LOG_LEVEL = logging.DEBUG
-    EMULATE = True
+    EMULATE = False
     max_timeout = 0.5  # sec
     min_timeout = 0.1  # sec
     RETRIES = 3
@@ -203,7 +203,7 @@ class TDKLambda:
                 self.com = FakeComPort(self.port)
             else:
                 if self.port.upper().startswith('COM'):
-                    self.com = serial.Serial(self.port, baudrate=self.baud)
+                    self.com = serial.Serial(self.port, baudrate=self.baud, timeout=0.0, write_timeout=0.0)
                 else:
                     self.com = MoxaTCPComPort(self.port)
             self.com._current_addr = -1
@@ -267,7 +267,7 @@ class TDKLambda:
             timeout = self.read_timeout
         t0 = time.time()
         try:
-            result = self.com.read(size, timeout=timeout)
+            result = self.com.read(size)
         except SerialTimeoutException:
             self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
             self.logger.info('Reading timeout, corrected to %5.2f s' % self.read_timeout)
@@ -289,7 +289,7 @@ class TDKLambda:
         if timeout is None:
             timeout = self.read_timeout
         try:
-            result = self.com.read_until(terminator, size, timeout)
+            result = self.com.read_until(terminator, size)
         except SerialTimeoutException:
             self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
             self.logger.info('Reading timeout, increased to %5.2f s' % self.read_timeout)
@@ -340,7 +340,7 @@ class TDKLambda:
         return True
 
     def clear_input_buffer(self):
-        self.com.reset_input_buffer(self.read_timeout)
+        self.com.reset_input_buffer()
 
     def write(self, cmd):
         if self.is_suspended():
@@ -350,8 +350,8 @@ class TDKLambda:
             # clear input buffer
             self.clear_input_buffer()
             # write command
-            self.com.write(cmd, timeout=self.read_timeout)
-            # await asyncio.sleep(self.sleep_after_write)
+            self.com.write(cmd)
+            time.sleep(self.sleep_after_write)
             self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
             return True
         except SerialTimeoutException:

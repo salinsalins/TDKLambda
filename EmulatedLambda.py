@@ -119,3 +119,6 @@ class FakeComPort:
                 return b'OFF\r'
         self.last_write = b''
         return b'OK\r'
+
+    def reset_input_buffer(self, timeout=None):
+        return True

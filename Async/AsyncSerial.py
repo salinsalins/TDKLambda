@@ -23,6 +23,14 @@ class AsyncTimeout(serial.Timeout):
             return self.expired_action(*self.args, **self.kwargs)
         raise ValueError
 
+    # with protocol
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            return True
+        return False
 
 class AsyncSerial(serial.Serial):
 
@@ -114,3 +122,11 @@ class AsyncSerial(serial.Serial):
                 if to.expired():
                     raise SerialTimeoutException('Write buffer reset timeout')
                 await asyncio.sleep(0)
+
+def timeout_expires(text):
+    print(text)
+# timeout test
+with AsyncTimeout(0.2, timeout_expires, 'aa') as to:
+    while True:
+        print('qq')
+print('pp')
