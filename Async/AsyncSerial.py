@@ -7,6 +7,23 @@ readTimeoutException = SerialTimeoutException('Read timeout')
 writeTimeoutException = SerialTimeoutException('Write timeout')
 
 
+class AsyncTimeout(serial.Timeout):
+    def __init__(self, duration, expired_action=None, *args, **kwargs):
+        super().__init__(duration)
+        self.expired_action = expired_action
+        self.args = args
+        self.kwargs = kwargs
+
+    def expired(self):
+        if self.expired_action is None:
+            return self.target_time is not None and self.time_left() <= 0
+        if isinstance(self.expired_action, Exception):
+            raise self.expired_action
+        if callable(self.expired_action):
+            return self.expired_action(*self.args, **self.kwargs)
+        raise ValueError
+
+
 class AsyncSerial(serial.Serial):
 
     def __init__(self, *args, **kwargs):
@@ -76,7 +93,7 @@ class AsyncSerial(serial.Serial):
             while self.in_waiting > 0:
                 if to.expired():
                     raise writeTimeoutException
-                await asyncio.sleep(0)
+                await asyncio.sleep(0.01)
 
     async def reset_input_buffer(self, timeout=None):
         """Clear input buffer, discarding all that is in the buffer."""
@@ -88,7 +105,12 @@ class AsyncSerial(serial.Serial):
                     raise SerialTimeoutException('Read buffer reset timeout')
                 await asyncio.sleep(0)
 
-    # async def reset_output_buffer(self, timeout=None):
-    #     """Clear output buffer, discarding all that is in the buffer."""
-    #     super().reset_output_buffer()
-    #     await asyncio.sleep(0)
+    async def reset_output_buffer(self, timeout=None):
+        """Clear output buffer, discarding all that is in the buffer."""
+        to = serial.Timeout(timeout)
+        async with self.async_lock:
+            while self.out_waiting > 0:
+                super().reset_output_buffer()
+                if to.expired():
+                    raise SerialTimeoutException('Write buffer reset timeout')
+                await asyncio.sleep(0)
