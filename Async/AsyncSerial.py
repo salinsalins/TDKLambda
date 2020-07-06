@@ -1,7 +1,10 @@
 import time
+import threading
 import asyncio
 import serial
 from serial import SerialTimeoutException
+
+# from PyQt5.QtCore import QTimer
 
 readTimeoutException = SerialTimeoutException('Read timeout')
 writeTimeoutException = SerialTimeoutException('Write timeout')
@@ -10,9 +13,16 @@ writeTimeoutException = SerialTimeoutException('Write timeout')
 class AsyncTimeout(serial.Timeout):
     def __init__(self, duration, expired_action=None, *args, **kwargs):
         super().__init__(duration)
-        self.expired_action = expired_action
+        self.expired_action = None
         self.args = args
         self.kwargs = kwargs
+        if isinstance(self.expired_action, Exception) or callable(self.expired_action):
+            self.expired_action = expired_action
+        else:
+            raise TypeError('Unsupported timeout action')
+
+    def check_expired(self):
+        return self.expired()
 
     def expired(self):
         if self.expired_action is None:
@@ -21,16 +31,22 @@ class AsyncTimeout(serial.Timeout):
             raise self.expired_action
         if callable(self.expired_action):
             return self.expired_action(*self.args, **self.kwargs)
-        raise ValueError
+        raise TypeError('Unsupported timeout action')
 
-    # with protocol
-    def __enter__(self):
-        return self
+    # # with protocol
+    # def __enter__(self):
+    #     return self
+    #
+    # def __exit__(self, exc_type, exc_val, exc_tb):
+    #     if exc_type is None:
+    #         return True
+    #     return False
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None:
-            return True
-        return False
+    def restart(self, duration=None):
+        if duration is not None:
+            self.duration = duration
+        self.target_time = self.TIME() + self.duration
+
 
 class AsyncSerial(serial.Serial):
 
@@ -48,14 +64,13 @@ class AsyncSerial(serial.Serial):
             size = self.in_waiting
         if size == 0:
             return result
-        to = serial.Timeout(timeout)
+        to = AsyncTimeout(timeout, readTimeoutException)
         while len(result) < size:
             d = super().read(1)
             if d:
                 result += d
                 to.restart()
-            if to.expired():
-                raise readTimeoutException
+            to.check_expired()
             await asyncio.sleep(0)
         return result
 
@@ -65,7 +80,7 @@ class AsyncSerial(serial.Serial):
         the size is exceeded or timeout occurs.
         """
         result = bytearray()
-        to = serial.Timeout(timeout)
+        to = AsyncTimeout(timeout, readTimeoutException)
         async with self.async_lock:
             while True:
                 c = super().read(1)
@@ -76,8 +91,7 @@ class AsyncSerial(serial.Serial):
                     if size is not None and len(result) >= size:
                         break
                     to.restart()
-                if to.expired():
-                    raise readTimeoutException
+                to.check_expired()
                 await asyncio.sleep(0)
         return bytes(result)
 
@@ -126,7 +140,12 @@ class AsyncSerial(serial.Serial):
 def timeout_expires(text):
     print(text)
 # timeout test
-with AsyncTimeout(0.2, timeout_expires, 'aa') as to:
-    while True:
-        print('qq')
+with AsyncTimeout(1.0, Exception('aa')) as to:
+    t0 = time.time()
+    a=0
+    while time.time() - t0 < 2.1:
+        #print('qq')
+        a += 1
+        pass
+
 print('pp')
