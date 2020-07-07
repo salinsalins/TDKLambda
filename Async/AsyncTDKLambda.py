@@ -100,7 +100,7 @@ class Counter:
         if action is None:
             action = self.action
         if self.check():
-            self.value = 0
+            self.clear()
             if action is not None:
                 return action(*self.args, **self.kwargs)
             else:
@@ -797,10 +797,9 @@ class AsyncTDKLambda(TDKLambda):
             return b''
 
     async def set_addr(self):
-        if hasattr(self.com, '_current_addr'):
-            a0 = self.com._current_addr
-        else:
-            a0 = -1
+        if not hasattr(self.com, '_current_addr'):
+            self.com._current_addr = -1
+        a0 = self.com._current_addr
         result = await self._send_command(b'ADR %d' % self.addr)
         if result and self.check_response(b'OK'):
             self.com._current_addr = self.addr

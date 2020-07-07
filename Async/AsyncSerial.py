@@ -1,36 +1,36 @@
 import time
-import threading
+
 import asyncio
+
 import serial
 from serial import SerialTimeoutException
 
-# from PyQt5.QtCore import QTimer
 
-readTimeoutException = SerialTimeoutException('Read timeout')
-writeTimeoutException = SerialTimeoutException('Write timeout')
-
-
-class AsyncTimeout(serial.Timeout):
+class Timeout(serial.Timeout):
     def __init__(self, duration, expired_action=None, *args, **kwargs):
         super().__init__(duration)
         self.expired_action = None
         self.args = args
         self.kwargs = kwargs
-        if isinstance(self.expired_action, Exception) or callable(self.expired_action):
+        if isinstance(expired_action, Exception) or callable(expired_action):
             self.expired_action = expired_action
         else:
             raise TypeError('Unsupported timeout action')
 
-    def check_expired(self):
+    def check(self):
         return self.expired()
 
     def expired(self):
         if self.expired_action is None:
             return self.target_time is not None and self.time_left() <= 0
+        if callable(self.expired_action):
+            result = self.expired_action(*self.args, **self.kwargs)
+            if isinstance(result, Exception):
+                raise result
+            else:
+                return result
         if isinstance(self.expired_action, Exception):
             raise self.expired_action
-        if callable(self.expired_action):
-            return self.expired_action(*self.args, **self.kwargs)
         raise TypeError('Unsupported timeout action')
 
     # # with protocol
@@ -51,26 +51,28 @@ class AsyncTimeout(serial.Timeout):
 class AsyncSerial(serial.Serial):
 
     def __init__(self, *args, **kwargs):
-        # Should not block read or write
+        # COM read or write operations should not block
         kwargs['timeout'] = 0.0
         kwargs['write_timeout'] = 0.0
         super().__init__(*args, **kwargs)
         self.async_lock = asyncio.Lock()
 
     async def read(self, size=1, timeout=None):
-        # Non locking operation. Use read_until() to prevent concurrent reading form the port.
+        # Non locking access to COM port operation. Use read_until() to prevent concurrent reading form the port.
         result = bytes()
         if size < 0:
             size = self.in_waiting
         if size == 0:
+            await asyncio.sleep(0)
             return result
-        to = AsyncTimeout(timeout, readTimeoutException)
+        to = Timeout(timeout, SerialTimeoutException('Read timeout'))
         while len(result) < size:
             d = super().read(1)
             if d:
                 result += d
                 to.restart()
-            to.check_expired()
+            # SerialTimeoutException('Read timeout') when timeout
+            to.check()
             await asyncio.sleep(0)
         return result
 
@@ -80,7 +82,7 @@ class AsyncSerial(serial.Serial):
         the size is exceeded or timeout occurs.
         """
         result = bytearray()
-        to = AsyncTimeout(timeout, readTimeoutException)
+        to = Timeout(timeout, SerialTimeoutException('Read timeout'))
         async with self.async_lock:
             while True:
                 c = super().read(1)
@@ -91,12 +93,12 @@ class AsyncSerial(serial.Serial):
                     if size is not None and len(result) >= size:
                         break
                     to.restart()
-                to.check_expired()
+                to.check()
                 await asyncio.sleep(0)
         return bytes(result)
 
     async def write(self, data, timeout=None):
-        to = serial.Timeout(timeout)
+        to = Timeout(timeout)
         result = 0
         async with self.async_lock:
             for d in data:
@@ -136,16 +138,3 @@ class AsyncSerial(serial.Serial):
                 if to.expired():
                     raise SerialTimeoutException('Write buffer reset timeout')
                 await asyncio.sleep(0)
-
-def timeout_expires(text):
-    print(text)
-# timeout test
-with AsyncTimeout(1.0, Exception('aa')) as to:
-    t0 = time.time()
-    a=0
-    while time.time() - t0 < 2.1:
-        #print('qq')
-        a += 1
-        pass
-
-print('pp')
