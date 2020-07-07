@@ -1,5 +1,3 @@
-import time
-
 import asyncio
 
 import serial
@@ -33,19 +31,10 @@ class Timeout(serial.Timeout):
             raise self.expired_action
         raise TypeError('Unsupported timeout action')
 
-    # # with protocol
-    # def __enter__(self):
-    #     return self
-    #
-    # def __exit__(self, exc_type, exc_val, exc_tb):
-    #     if exc_type is None:
-    #         return True
-    #     return False
-
     def restart(self, duration=None):
-        if duration is not None:
-            self.duration = duration
-        self.target_time = self.TIME() + self.duration
+        if duration is None:
+            duration = self.duration
+        super().restart(duration)
 
 
 class AsyncSerial(serial.Serial):
@@ -107,7 +96,7 @@ class AsyncSerial(serial.Serial):
                     raise SerialTimeoutException('Write error')
                 result += n
                 if to.expired():
-                    raise writeTimeoutException
+                    raise SerialTimeoutException('Write timeout')
                 await asyncio.sleep(0)
         return result
 
@@ -116,7 +105,7 @@ class AsyncSerial(serial.Serial):
         async with self.async_lock:
             while self.in_waiting > 0:
                 if to.expired():
-                    raise writeTimeoutException
+                    raise SerialTimeoutException('Flush timeout')
                 await asyncio.sleep(0.01)
 
     async def reset_input_buffer(self, timeout=None):
