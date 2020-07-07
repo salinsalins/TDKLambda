@@ -4,9 +4,11 @@
 import logging
 import socket
 from threading import Lock
+import time
 
 from Async.AsyncSerial import *
 from EmulatedLambda import FakeComPort
+from serial import SerialTimeoutException
 
 
 class FakeAsyncComPort(FakeComPort):
@@ -45,7 +47,7 @@ class FakeAsyncComPort(FakeComPort):
                         break
                     to.restart()
                 if to.expired():
-                    raise readTimeoutException
+                    raise SerialTimeoutException('Read timeout')
         return bytes(result)
 
 
@@ -910,17 +912,12 @@ class AsyncTDKLambda(TDKLambda):
         await self.init()
 
 
-async def say_after(delay, what):
-    await asyncio.sleep(delay)
-    print(what)
-
-
 async def main():
-    task0 = asyncio.create_task(say_after(1, "Completed"))
     pd1 = AsyncTDKLambda("COM4", 6)
     await pd1.init()
     pd2 = AsyncTDKLambda("COM5", 7)
     await pd2.init()
+    print(await pd1.read_float("MC?"))
     task1 = asyncio.create_task(pd1.read_float("MC?"))
     task2 = asyncio.create_task(pd2.read_float("MC?"))
     task5 = asyncio.create_task(pd1.write_current(2.0))
