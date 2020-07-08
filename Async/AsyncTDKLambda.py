@@ -28,7 +28,6 @@ class FakeAsyncComPort(FakeComPort):
 
     async def write(self, cmd, timeout=None):
         async with self.async_lock:
-            print('Wwrite', cmd)
             return super().write(cmd, timeout)
 
     async def read(self, size=1, timeout=None):
@@ -726,14 +725,11 @@ class AsyncTDKLambda(TDKLambda):
             # clear input buffer
             await self.clear_input_buffer()
             # write command
-            print('write', cmd)
             await self.com.write(cmd, timeout=self.read_timeout)
             # await asyncio.sleep(self.sleep_after_write)
             self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
-            print('write2', cmd)
             return True
         except SerialTimeoutException:
-            print('write3', cmd)
             self.logger.error('Writing timeout')
             self.suspend()
             return False
@@ -753,14 +749,12 @@ class AsyncTDKLambda(TDKLambda):
         # write command
         if not await self.write(cmd):
             return False
-        print('_send_command_2', cmd)
         # read response (to CR by default)
         result = await self.read_response()
         self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.last_response, result, (time.time()-t0)*1000.0))
         return result
 
     async def send_command(self, cmd):
-        print('send_command', cmd)
         if self.is_suspended():
             self.last_command = cmd
             self.last_response = b''
@@ -785,9 +779,7 @@ class AsyncTDKLambda(TDKLambda):
                     self.suspend()
                     self.last_response = b''
                     return False
-            print('send_command_1', cmd)
             result = await self._send_command(cmd)
-            print('send_command_2', result)
             if result:
                 return True
             self.logger.warning('Repeat command %s' % cmd)
@@ -822,11 +814,9 @@ class AsyncTDKLambda(TDKLambda):
 
     async def read_float(self, cmd):
         try:
-            print('read_float', cmd)
             if not await self.send_command(cmd):
                 return float('Nan')
             v = float(self.last_response)
-            print('read_float', v)
         except:
             self.logger.debug('%s is not a float' % self.last_response)
             v = float('Nan')
@@ -926,7 +916,6 @@ async def main():
     await pd1.init()
     pd2 = AsyncTDKLambda("COM5", 7)
     await pd2.init()
-    print(await pd1.read_float("MC?"))
     task1 = asyncio.create_task(pd1.read_float("MC?"))
     task2 = asyncio.create_task(pd2.read_float("MC?"))
     task5 = asyncio.create_task(pd1.write_current(2.0))

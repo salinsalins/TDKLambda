@@ -60,7 +60,6 @@ class AsyncSerial(serial.Serial):
             if d:
                 result += d
                 to.restart()
-            # SerialTimeoutException('Read timeout') when timeout
             to.check()
             await asyncio.sleep(0)
         return result
