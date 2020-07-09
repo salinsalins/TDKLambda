@@ -10,10 +10,11 @@ class Timeout(serial.Timeout):
         self.expired_action = None
         self.args = args
         self.kwargs = kwargs
-        if isinstance(expired_action, Exception) or callable(expired_action):
-            self.expired_action = expired_action
-        else:
-            raise TypeError('Unsupported timeout action')
+        if expired_action is not None:
+            if isinstance(expired_action, Exception) or callable(expired_action):
+                self.expired_action = expired_action
+            else:
+                raise TypeError('Unsupported timeout action')
 
     def check(self):
         return self.expired()
@@ -90,7 +91,7 @@ class AsyncSerial(serial.Serial):
         result = 0
         async with self.async_lock:
             for d in data:
-                n = super().write(d)
+                n = super().write(d.to_bytes(1, 'big'))
                 if n <= 0:
                     raise SerialTimeoutException('Write error')
                 result += n

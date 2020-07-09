@@ -21,12 +21,13 @@ class VirtualLambdaAtCom:
     SERIAL_NUMBER = 56789
     devices = {}
 
-    def __init__(self, port, addr, checksum=False, baud_rate=9600):
+    def __init__(self, port, addr, checksum=False, baud_rate=9600, delay=0.035):
         # input parameters
         self.port = port.upper().strip()
         self.addr = addr
         self.check = checksum
         self.baud = baud_rate
+        self.delay = delay
         # create variables
         self.input = b''
         # default com port, id, and serial number
@@ -100,7 +101,7 @@ class VirtualLambdaAtCom:
         data = self.com.read(10000)
         while len(data) <= 0:
             return
-        logger.debug('%s received' % data)
+        logger.debug('%s Received' % data)
         self.input += data
         # check for CR
         if b'\r' in self.input:
@@ -111,13 +112,14 @@ class VirtualLambdaAtCom:
             return
         # interpret command
         commands = self.input.split(b'\r')
+        # logger.debug('Commands %s' % commands)
         for cmd in commands[:-1]:
             self.execute_command(cmd)
             self.input = self.input[len(cmd)+1:]
         return
 
     def execute_command(self, cmd):
-        cmd = cmd.upper().strip(b'\n')
+        cmd = cmd.upper().replace(b'\n', b'').replace(b'\r', b'')
         logger.debug('Executing %s' % cmd)
         if len(cmd) == 0:  # empty command just CR
             self.write(b'OK\r')
@@ -227,6 +229,7 @@ class VirtualLambdaAtCom:
             self.write(b'C01\r')
 
     def write(self, st):
+        logger.debug('Write: get %s' % st)
         if st.endswith(b'\r'):
             st = st[:-1]
         if self.check:
@@ -234,6 +237,8 @@ class VirtualLambdaAtCom:
             st = b'%s$%s\r' % (st, cs)
         if not st.endswith(b'\r'):
             st += b'\r'
+        time.sleep(self.delay)
+        logger.debug('Writing    %s after %s' % (st, self.delay))
         self.com.write(st)
 
     def clear_input_buffer(self):
@@ -251,11 +256,11 @@ class VirtualLambdaAtCom:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        com_port = 'COM3'
+        com_port = 'COM5'
     else:
         com_port = sys.argv[1]
     if len(sys.argv) < 3:
-        addresses = [6]
+        addresses = [6, 7]
     else:
         addresses = []
     for adr in sys.argv[2:]:

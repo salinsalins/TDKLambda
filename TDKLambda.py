@@ -256,18 +256,22 @@ class TDKLambda:
                 return False
 
     def read(self, size=1, timeout=None):
-        """
-        read size byte from com port and correct timeout
-        :return: byte
-        """
         result = b''
         if self.is_suspended():
             return result
         if timeout is None:
             timeout = self.read_timeout
+        to = Timeout(timeout)
         t0 = time.time()
         try:
-            result = self.com.read(size)
+            while len(result) < size:
+                r = self.com.read(1)
+                if len(r) > 0:
+                    result += r
+                    to.restart(timeout)
+                else:
+                    if to.expired():
+                        raise SerialTimeoutException('Read timeout')
         except SerialTimeoutException:
             self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
             self.logger.info('Reading timeout, corrected to %5.2f s' % self.read_timeout)
@@ -288,12 +292,23 @@ class TDKLambda:
         t0 = time.time()
         if timeout is None:
             timeout = self.read_timeout
+        to = Timeout(timeout)
         try:
-            result = self.com.read_until(terminator, size)
+            while terminator not in result:
+                r = self.com.read(1)
+                if len(r) > 0:
+                    result += r
+                    to.restart(timeout)
+                    if size is not None and len(result) >= size:
+                        break
+                else:
+                    if to.expired():
+                        raise SerialTimeoutException('Read_until timeout')
         except SerialTimeoutException:
-            self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
-            self.logger.info('Reading timeout, increased to %5.2f s' % self.read_timeout)
-            self.read_timeout_count.inc()
+            self.logger.info('Reading_until %s timeout' % terminator)
+            # self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
+            # self.logger.info('Reading timeout, increased to %5.2f s' % self.read_timeout)
+            # self.read_timeout_count.inc()
         except:
             self.logger.info('Unexpected exception', exc_info=True)
             self.suspend()
@@ -309,7 +324,7 @@ class TDKLambda:
         result = self.read_until(terminator=CR)
         self.last_response = result[:-1]
         if CR not in result:
-            self.logger.error('Response without CR')
+            self.logger.error('Response %s without CR' % self.last_response)
             self.error_count.inc()
             return False
         if self.check:
@@ -350,10 +365,15 @@ class TDKLambda:
             # clear input buffer
             self.clear_input_buffer()
             # write command
-            self.com.write(cmd)
-            time.sleep(self.sleep_after_write)
-            self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
-            return True
+            #self.logger.debug('clear_input_buffer %4.0f ms' % ((time.time() - t0) * 1000.0))
+            length = self.com.write(cmd)
+            #time.sleep(self.sleep_after_write)
+            if len(cmd) == length:
+                result = True
+            else:
+                result = False
+            self.logger.debug('%s %4.0f ms %s' % (cmd, (time.time() - t0) * 1000.0, result))
+            return result
         except SerialTimeoutException:
             self.logger.error('Writing timeout')
             self.suspend()
@@ -370,6 +390,8 @@ class TDKLambda:
         self.last_response = b''
         if self.is_suspended():
             return False
+        if not cmd.endswith(b'\r'):
+            cmd += b'\r'
         t0 = time.time()
         # write command
         if not self.write(cmd):
@@ -390,9 +412,6 @@ class TDKLambda:
             # convert str to bytes
             if isinstance(cmd, str):
                 cmd = str.encode(cmd)
-            # add CR terminator if missing
-            if cmd[-1] != b'\r'[0]:
-                cmd += b'\r'
             # add checksum
             if self.check:
                 cs = self.checksum(cmd[:-1])
@@ -538,8 +557,8 @@ class TDKLambda:
 
 
 if __name__ == "__main__":
-    pd1 = TDKLambda("COM4", 6)
-    pd2 = TDKLambda("COM4", 7)
+    pd1 = TDKLambda("COM6", 6)
+    pd2 = TDKLambda("COM6", 7)
     for i in range(5):
         t_0 = time.time()
         v1 = pd1.read_float("PC?")

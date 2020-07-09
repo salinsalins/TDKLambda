@@ -118,7 +118,7 @@ class Counter:
 
 class TDKLambda:
     LOG_LEVEL = logging.DEBUG
-    EMULATE = True
+    EMULATE = False
     max_timeout = 0.5  # sec
     min_timeout = 0.1  # sec
     RETRIES = 3
@@ -413,6 +413,8 @@ class TDKLambda:
         self.last_response = b''
         if self.is_suspended():
             return False
+        if not cmd.endswith(b'\r'):
+            cmd += b'\r'
         t0 = time.time()
         # write command
         if not self.write(cmd):
@@ -745,6 +747,8 @@ class AsyncTDKLambda(TDKLambda):
         self.last_response = b''
         if self.is_suspended():
             return False
+        if not cmd.endswith(b'\r'):
+            cmd += b'\r'
         t0 = time.time()
         # write command
         if not await self.write(cmd):
@@ -912,9 +916,9 @@ class AsyncTDKLambda(TDKLambda):
 
 
 async def main():
-    pd1 = AsyncTDKLambda("COM4", 6)
+    pd1 = AsyncTDKLambda("COM6", 6)
     await pd1.init()
-    pd2 = AsyncTDKLambda("COM5", 7)
+    pd2 = AsyncTDKLambda("COM6", 7)
     await pd2.init()
     task1 = asyncio.create_task(pd1.read_float("MC?"))
     task2 = asyncio.create_task(pd2.read_float("MC?"))
