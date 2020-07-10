@@ -144,7 +144,7 @@ class TDKLambda:
             self.logger.info(msg)
             TDKLambda.devices.append(self)
             return
-        ####self.init()
+        self.init()
 
     def __del__(self):
         if self in TDKLambda.devices:
@@ -561,9 +561,9 @@ class TDKLambda:
 
 if __name__ == "__main__":
     pd1 = TDKLambda("COM6", 6)
-    pd1.init()
+    ###pd1.init()
     pd2 = TDKLambda("COM6", 7)
-    pd2.init()
+    ####pd2.init()
     for i in range(5):
         t_0 = time.time()
         v1 = pd1.read_float("PC?")

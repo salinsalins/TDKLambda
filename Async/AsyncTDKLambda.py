@@ -8,7 +8,7 @@ import time
 
 from Async.AsyncSerial import *
 from EmulatedLambda import FakeComPort
-from serial import SerialTimeoutException
+from serial import Timeout
 
 from TDKLambda import *
 
@@ -37,7 +37,7 @@ class FakeAsyncComPort(FakeComPort):
 
     async def read_until(self, terminator=b'\r', size=None, timeout=None):
         result = bytearray()
-        to = serial.Timeout(timeout)
+        to = Timeout(timeout)
         async with self.async_lock:
             while True:
                 c = await self.read(1)
@@ -54,7 +54,338 @@ class FakeAsyncComPort(FakeComPort):
 
 
 class AsyncTDKLambda(TDKLambda):
-    pass
+
+    def suspend(self, duration=9.0):
+        self.suspend_to = time.time() + duration
+        self.suspend_flag = True
+        msg = 'Suspended for %5.2f sec' % duration
+        self.logger.info(msg)
+
+    def unsuspend(self):
+        self.suspend_to = 0.0
+        self.suspend_flag = False
+        self.logger.debug('Unsuspended')
+
+    def is_suspended(self):
+        if time.time() < self.suspend_to:   # if suspension does not expire
+            self.logger.debug(' - Suspended')
+            return True
+        else:                               # suspension expires
+            if self.suspend_flag:           # if it was suspended and expires
+                self.reset()
+                if self.com is None:        # if initialization was not successful
+                    # suspend again
+                    self.suspend(True)
+                    return True
+                else:                       # initialization was successful
+                    self.unsuspend()
+                    return False
+            else:                           # it was not suspended
+                return False
+
+    def read(self, size=1, timeout=None):
+        result = b''
+        if self.is_suspended():
+            return result
+        if timeout is None:
+            timeout = self.read_timeout
+        to = Timeout(timeout)
+        t0 = time.time()
+        while len(result) < size:
+            try:
+                r = self.com.read(1)
+                if len(r) > 0:
+                    result += r
+                    to.restart(timeout)
+                    self.read_timeout_count.clear()
+                    dt = time.time() - t0
+                    self.read_timeout = max(2.0 * dt, self.min_timeout)
+                else:
+                    if to.expired():
+                        raise SerialTimeoutException('Read timeout')
+            except SerialTimeoutException:
+                self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
+                timeout = self.read_timeout
+                to.restart(timeout)
+                self.logger.info('Reading timeout, corrected to %5.2f s' % self.read_timeout)
+                self.read_timeout_count.inc()
+            except:
+                self.logger.info('Unexpected exception', exc_info=True)
+                self.suspend()
+            if self.is_suspended():
+                raise SerialTimeoutException('Read timeout')
+        #self.logger.debug('%s in %4.0f ms' % (result, (time.time() - t0) * 1000.0))
+        return result
+
+    def read_until(self, terminator=b'\r', size=None, timeout=None):
+        result = b''
+        if self.is_suspended():
+            return result
+        t0 = time.time()
+        if timeout is None:
+            timeout = self.read_timeout
+        to = Timeout(timeout)
+        try:
+            while terminator not in result:
+                r = self.read(1)
+                if len(r) > 0:
+                    result += r
+                    to.restart(timeout)
+                    if size is not None and len(result) >= size:
+                        break
+                else:
+                    if to.expired():
+                        raise SerialTimeoutException('Read_until timeout')
+        except SerialTimeoutException:
+            self.logger.info('Reading_until %s timeout' % terminator)
+            # self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
+            # self.logger.info('Reading timeout, increased to %5.2f s' % self.read_timeout)
+            # self.read_timeout_count.inc()
+        except:
+            self.logger.info('Unexpected exception', exc_info=True)
+            self.suspend()
+        else:
+            self.read_timeout_count.clear()
+            self.read_timeout = max(2.0 * (time.time() - t0), self.min_timeout)
+        self.logger.debug('%s %s bytes in %4.0f ms' % (result, len(result)+1, (time.time() - t0) * 1000.0))
+        return result
+
+    def read_response(self):
+        if self.is_suspended():
+            self.last_response = b''
+            return False
+        result = self.read_until(terminator=CR)
+        self.last_response = result[:-1]
+        if CR not in result:
+            self.logger.error('Response %s without CR' % self.last_response)
+            self.error_count.inc()
+            return False
+        if self.check:
+            m = result.find(b'$')
+            if m < 0:
+                self.logger.error('No expected checksum in response')
+                self.error_count.inc()
+                return False
+            else:
+                cs = self.checksum(result[:m])
+                if result[m+1:] != cs:
+                    self.logger.error('Incorrect checksum')
+                    self.error_count.inc()
+                    return False
+                self.error_count.clear()
+                self.last_response = result[:m]
+                return True
+        self.error_count.clear()
+        return True
+
+    def check_response(self, expected=b'OK', response=None):
+        if response is None:
+            response = self.last_response
+        if not response.startswith(expected):
+            msg = 'Unexpected response %s (not %s)' % (response, expected)
+            self.logger.info(msg)
+            return False
+        return True
+
+    def clear_input_buffer(self):
+        self.com.reset_input_buffer()
+
+    def write(self, cmd):
+        if self.is_suspended():
+            return False
+        t0 = time.time()
+        try:
+            # clear input buffer
+            self.clear_input_buffer()
+            # write command
+            #self.logger.debug('clear_input_buffer %4.0f ms' % ((time.time() - t0) * 1000.0))
+            length = self.com.write(cmd)
+            #time.sleep(self.sleep_after_write)
+            if len(cmd) == length:
+                result = True
+            else:
+                result = False
+            self.logger.debug('%s %s bytes in %4.0f ms %s' % (cmd, length, (time.time() - t0) * 1000.0, result))
+            return result
+        except SerialTimeoutException:
+            self.logger.error('Writing timeout')
+            self.suspend()
+            return False
+        except:
+            self.logger.error('Unexpected exception')
+            self.logger.debug("", exc_info=True)
+            self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
+            self.suspend()
+            return False
+
+    def _send_command(self, cmd):
+        self.last_command = cmd
+        self.last_response = b''
+        if self.is_suspended():
+            return False
+        if not cmd.endswith(b'\r'):
+            cmd += b'\r'
+        t0 = time.time()
+        # write command
+        if not self.write(cmd):
+            return False
+        # read response (to CR by default)
+        result = self.read_response()
+        self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.last_response, result, (time.time()-t0)*1000.0))
+        return result
+
+    def send_command(self, cmd):
+        if self.is_suspended():
+            self.last_command = cmd
+            self.last_response = b''
+            return False
+        try:
+            # unify command
+            cmd = cmd.upper().strip()
+            # convert str to bytes
+            if isinstance(cmd, str):
+                cmd = str.encode(cmd)
+            # add checksum
+            if self.check:
+                cs = self.checksum(cmd[:-1])
+                cmd = b'%s$%s\r' % (cmd[:-1], cs)
+            if self.auto_addr and self.com._current_addr != self.addr:
+                result = self.set_addr()
+                if not result:
+                    self.suspend()
+                    self.last_response = b''
+                    return False
+            result = self._send_command(cmd)
+            if result:
+                return True
+            self.logger.warning('Repeat command %s' % cmd)
+            result = self._send_command(cmd)
+            if result:
+                return True
+            self.logger.error('Repeated command %s error' % cmd)
+            self.suspend()
+            self.last_response = b''
+            return False
+        except:
+            self.logger.error('Unexpected exception')
+            self.logger.debug("", exc_info=True)
+            self.suspend()
+            self.last_response = b''
+            return b''
+
+    def set_addr(self):
+        if hasattr(self.com, '_current_addr'):
+            a0 = self.com._current_addr
+        else:
+            a0 = -1
+        result = self._send_command(b'ADR %d' % self.addr)
+        if result and self.check_response(b'OK'):
+            self.com._current_addr = self.addr
+            self.logger.debug('Address %d -> %d' % (a0, self.addr))
+            return True
+        else:
+            self.logger.error('Error set address %d -> %d' % (a0, self.addr))
+            if self.com is not None:
+                self.com._current_addr = -1
+            return False
+
+    def read_float(self, cmd):
+        try:
+            if not self.send_command(cmd):
+                return float('Nan')
+            v = float(self.last_response)
+        except:
+            self.logger.debug('%s is not a float' % self.last_response)
+            v = float('Nan')
+        return v
+
+    def read_all(self):
+        if not self.send_command(b'DVC?'):
+            return [float('Nan')] * 6
+        reply = self.last_response
+        sv = reply.split(b',')
+        vals = []
+        for s in sv:
+            try:
+                v = float(s)
+            except:
+                self.logger.debug('%s is not a float' % reply)
+                v = float('Nan')
+            vals.append(v)
+        if len(vals) <= 6:
+            return vals
+        else:
+            return vals[:6]
+
+    def read_value(self, cmd, v_type=type(str)):
+        try:
+            if self.send_command(cmd):
+                v = v_type(self.last_response)
+            else:
+                v = None
+        except:
+            self.logger.info('Can not convert %s to %s' % (self.last_response, v_type))
+            v = None
+        return v
+
+    def read_bool(self, cmd):
+        if not self.send_command(cmd):
+            return None
+        response = self.last_response
+        if response.upper() in (b'ON', b'1'):
+            return True
+        if response.upper() in (b'OFF', b'0'):
+            return False
+        self.check_response(response=b'Not boolean:' + response)
+        return False
+
+    def write_value(self, cmd: bytes, value, expect=b'OK'):
+        cmd = cmd.upper().strip() + b' ' + str.encode(str(value))[:10] + b'\r'
+        if self.send_command(cmd):
+            return self.check_response(expect)
+        else:
+            return False
+
+    def read_output(self):
+        if not self.send_command(b'OUT?'):
+            return None
+        response = self.last_response.upper()
+        if response.startswith((b'ON', b'1')):
+            return True
+        if response.startswith((b'OFF', b'0')):
+            return False
+        self.logger.info('Unexpected response %s' % response)
+        return None
+
+    def write_output(self, value):
+        if value:
+            t_value = 'ON'
+        else:
+            t_value = 'OFF'
+        return self.write_value(b'OUT', t_value)
+
+    def write_voltage(self, value):
+        return self.write_value(b'PV', value)
+
+    def write_current(self, value):
+        return self.write_value(b'PC', value)
+
+    def read_current(self):
+        return self.read_value(b'MC?', v_type=float)
+
+    def read_programmed_current(self):
+        return self.read_value(b'PC?', v_type=float)
+
+    def read_voltage(self):
+        return self.read_value(b'MV?', v_type=float)
+
+    def read_programmed_voltage(self):
+        return self.read_value(b'PV?', v_type=float)
+
+    def reset(self):
+        self.__del__()
+        self.__init__(self.port, self.addr, self.check, self.baud, self.logger)
+
 
 
 async def main():
