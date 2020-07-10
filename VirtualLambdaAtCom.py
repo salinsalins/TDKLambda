@@ -238,8 +238,9 @@ class VirtualLambdaAtCom:
         if not st.endswith(b'\r'):
             st += b'\r'
         time.sleep(self.delay)
-        logger.debug('Writing    %s after %s' % (st, self.delay))
-        self.com.write(st)
+        logger.debug('pause %s s' % self.delay)
+        n = self.com.write(st)
+        logger.debug('Writing    %s -> %s' % (st, n))
 
     def clear_input_buffer(self):
         self.com.read(10000)

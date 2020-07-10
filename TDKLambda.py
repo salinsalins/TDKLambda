@@ -79,8 +79,8 @@ class Counter:
 class TDKLambda:
     LOG_LEVEL = logging.DEBUG
     EMULATE = False
-    max_timeout = 0.5  # sec
-    min_timeout = 0.1  # sec
+    max_timeout = 0.8  # sec
+    min_timeout = 0.15  # sec
     RETRIES = 3
     SUSPEND = 2.0
     sleep_small = 0.015
@@ -144,7 +144,7 @@ class TDKLambda:
             self.logger.info(msg)
             TDKLambda.devices.append(self)
             return
-        self.init()
+        ####self.init()
 
     def __del__(self):
         if self in TDKLambda.devices:
@@ -263,26 +263,30 @@ class TDKLambda:
             timeout = self.read_timeout
         to = Timeout(timeout)
         t0 = time.time()
-        try:
-            while len(result) < size:
+        while len(result) < size:
+            try:
                 r = self.com.read(1)
                 if len(r) > 0:
                     result += r
                     to.restart(timeout)
+                    self.read_timeout_count.clear()
+                    dt = time.time() - t0
+                    self.read_timeout = max(2.0 * dt, self.min_timeout)
                 else:
                     if to.expired():
                         raise SerialTimeoutException('Read timeout')
-        except SerialTimeoutException:
-            self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
-            self.logger.info('Reading timeout, corrected to %5.2f s' % self.read_timeout)
-            self.read_timeout_count.inc()
-        except:
-            self.logger.info('Unexpected exception', exc_info=True)
-            self.suspend()
-        else:
-            self.read_timeout_count.clear()
-            dt = time.time() - t0
-            self.read_timeout = max(2.0 * dt, self.min_timeout)
+            except SerialTimeoutException:
+                self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
+                timeout = self.read_timeout
+                to.restart(timeout)
+                self.logger.info('Reading timeout, corrected to %5.2f s' % self.read_timeout)
+                self.read_timeout_count.inc()
+            except:
+                self.logger.info('Unexpected exception', exc_info=True)
+                self.suspend()
+            if self.is_suspended():
+                raise SerialTimeoutException('Read timeout')
+        #self.logger.debug('%s in %4.0f ms' % (result, (time.time() - t0) * 1000.0))
         return result
 
     def read_until(self, terminator=b'\r', size=None, timeout=None):
@@ -295,7 +299,7 @@ class TDKLambda:
         to = Timeout(timeout)
         try:
             while terminator not in result:
-                r = self.com.read(1)
+                r = self.read(1)
                 if len(r) > 0:
                     result += r
                     to.restart(timeout)
@@ -315,6 +319,7 @@ class TDKLambda:
         else:
             self.read_timeout_count.clear()
             self.read_timeout = max(2.0 * (time.time() - t0), self.min_timeout)
+        self.logger.debug('%s %s bytes in %4.0f ms' % (result, len(result)+1, (time.time() - t0) * 1000.0))
         return result
 
     def read_response(self):
@@ -372,7 +377,7 @@ class TDKLambda:
                 result = True
             else:
                 result = False
-            self.logger.debug('%s %4.0f ms %s' % (cmd, (time.time() - t0) * 1000.0, result))
+            self.logger.debug('%s %s bytes in %4.0f ms %s' % (cmd, length, (time.time() - t0) * 1000.0, result))
             return result
         except SerialTimeoutException:
             self.logger.error('Writing timeout')
@@ -416,25 +421,23 @@ class TDKLambda:
             if self.check:
                 cs = self.checksum(cmd[:-1])
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
-            # lock access to com port
-            with self.com.async_lock:
-                if self.auto_addr and self.com._current_addr != self.addr:
-                    result = self.set_addr()
-                    if not result:
-                        self.suspend()
-                        self.last_response = b''
-                        return False
-                result = self._send_command(cmd)
-                if result:
-                    return True
-                self.logger.warning('Repeat command %s' % cmd)
-                result = self._send_command(cmd)
-                if result:
-                    return True
-                self.logger.error('Repeated command %s error' % cmd)
-                self.suspend()
-                self.last_response = b''
-                return False
+            if self.auto_addr and self.com._current_addr != self.addr:
+                result = self.set_addr()
+                if not result:
+                    self.suspend()
+                    self.last_response = b''
+                    return False
+            result = self._send_command(cmd)
+            if result:
+                return True
+            self.logger.warning('Repeat command %s' % cmd)
+            result = self._send_command(cmd)
+            if result:
+                return True
+            self.logger.error('Repeated command %s error' % cmd)
+            self.suspend()
+            self.last_response = b''
+            return False
         except:
             self.logger.error('Unexpected exception')
             self.logger.debug("", exc_info=True)
@@ -558,7 +561,9 @@ class TDKLambda:
 
 if __name__ == "__main__":
     pd1 = TDKLambda("COM6", 6)
+    pd1.init()
     pd2 = TDKLambda("COM6", 7)
+    pd2.init()
     for i in range(5):
         t_0 = time.time()
         v1 = pd1.read_float("PC?")
