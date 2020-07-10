@@ -594,3 +594,5 @@ if __name__ == "__main__":
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
         print('2: ', '%4d ms ' % dt1,'DVC?=', v4, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
         time.sleep(0.1)
+        pd1.reset()
+        pd2.reset()
