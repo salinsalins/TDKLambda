@@ -58,17 +58,17 @@ class AsyncTDKLambda(TDKLambda):
     def suspend(self, duration=9.0):
         self.suspend_to = time.time() + duration
         self.suspend_flag = True
-        msg = 'Suspended for %5.2f sec' % duration
-        self.logger.info(msg)
+        msg = '%s is suspended for %5.2f sec' % (self, duration)
+        self.logger.debug(msg)
 
     def unsuspend(self):
         self.suspend_to = 0.0
         self.suspend_flag = False
-        self.logger.debug('Unsuspended')
+        self.logger.debug('%s is unsuspended' % self)
 
     def is_suspended(self):
         if time.time() < self.suspend_to:   # if suspension does not expire
-            self.logger.debug(' - Suspended')
+            self.logger.debug('%s suspended' % self)
             return True
         else:                               # suspension expires
             if self.suspend_flag:           # if it was suspended and expires
@@ -81,6 +81,7 @@ class AsyncTDKLambda(TDKLambda):
                     self.unsuspend()
                     return False
             else:                           # it was not suspended
+                self.logger.debug('%s not suspended' % self)
                 return False
 
     def read(self, size=1, timeout=None):
@@ -383,8 +384,9 @@ class AsyncTDKLambda(TDKLambda):
         return self.read_value(b'PV?', v_type=float)
 
     def reset(self):
+        self.logger.debug('Resetting %s' % self)
         self.__del__()
-        self.__init__(self.port, self.addr, self.check, self.baud, self.logger)
+        self.__init__(self.port, self.addr, self.check, self.baud, self.logger, self.auto_addr)
 
 
 

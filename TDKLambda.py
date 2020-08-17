@@ -87,7 +87,7 @@ class TDKLambda:
     devices = []
     ports = []
 
-    def __init__(self, port: str, addr=6, checksum=False, baud_rate=9600, logger=None):
+    def __init__(self, port: str, addr=6, checksum=False, baud_rate=9600, logger=None, auto_addr=True):
         # check device address
         if addr <= 0:
             raise wrongAddressException
@@ -97,7 +97,7 @@ class TDKLambda:
         self.check = checksum
         self.baud = baud_rate
         self.logger = logger
-        self.auto_addr = True
+        self.auto_addr = auto_addr
         # create variables
         self.last_command = b''
         self.last_response = b''
@@ -555,6 +555,7 @@ class TDKLambda:
         return self.read_value(b'PV?', v_type=float)
 
     def reset(self):
+        self.logger.debug('Resetting %s' % self)
         self.__del__()
         self.__init__(self.port, self.addr, self.check, self.baud, self.logger)
 
