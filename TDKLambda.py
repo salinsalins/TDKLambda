@@ -11,6 +11,7 @@ from serial import *
 from EmulatedLambda import FakeComPort
 
 from Counter import Counter
+from TDKLambdaExceptions import *
 
 
 class MoxaTCPComPort:
@@ -35,10 +36,6 @@ class MoxaTCPComPort:
     def read(self, n):
         return self.socket.recv(n)
 
-
-addressInUseException = Exception('Address is in use')
-wrongAddressException = Exception('Wrong address')
-portCreationError = Exception('COM port creation error')
 
 CR = b'\r'
 
