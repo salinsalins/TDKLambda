@@ -129,7 +129,7 @@ class TDKLambda:
             return
         # read device type
         if self._send_command(b'IDN?'):
-            self.id = self.response.decode()
+            self.id = self.response[:-1].decode()
             # determine max current and voltage from model name
             n1 = self.id.find('GEN')
             n2 = self.id.find('-')
@@ -541,10 +541,11 @@ if __name__ == "__main__":
         t_0 = time.time()
         v1 = pd1.read_float("PC?")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
+        print(pd1.port, pd1.addr, 'PC? =', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v1 = pd1.read_float("MV?")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
+        print(pd1.port, pd1.addr, 'MV? =', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         print('1: ', '%4d ms ' % dt1,'MV?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
         t_0 = time.time()
         v1 = pd1.send_command("PV 1.0")

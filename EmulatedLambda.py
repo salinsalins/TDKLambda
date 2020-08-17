@@ -52,9 +52,12 @@ class FakeComPort:
                 self.out[self.last_address] = True
             elif self.last_write.startswith(b'OUT OF') or self.last_write.startswith(b'OUT 0'):
                 self.out[self.last_address] = False
+            self.t[self.last_address] = time.time()
+            return len(cmd)
         except:
-            pass
-        self.t[self.last_address] = time.time()
+            self.t[self.last_address] = time.time()
+            return 0
+
 
     def read(self, size=1, timeout=None):
         if self.last_write == b'':
