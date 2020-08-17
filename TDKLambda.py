@@ -10,6 +10,8 @@ import serial
 from serial import *
 from EmulatedLambda import FakeComPort
 
+from Counter import Counter
+
 
 class MoxaTCPComPort:
     def __init__(self, host: str, port: int = 4001):
@@ -86,6 +88,28 @@ class TDKLambda:
         self.max_voltage = float('inf')
         self.max_current = float('inf')
         # configure logger
+        self.configure_logger()
+        # check if port and address are in use
+        for d in TDKLambda.devices:
+            if d.port == self.port and d.addr == self.addr and d != self:
+                raise addressInUseException
+        # create COM port
+        self.create_com_port()
+        #
+        if self.com is None:
+            self.suspend()
+            msg = 'Uninitialized TDKLambda device has been added to list'
+            self.logger.info(msg)
+            TDKLambda.devices.append(self)
+            return
+        #
+        self.init()
+
+    def __del__(self):
+        if self in TDKLambda.devices:
+            TDKLambda.devices.remove(self)
+
+    def configure_logger(self):
         if self.logger is None:
             self.logger = logging.getLogger(str(self))
             self.logger.propagate = False
@@ -97,23 +121,6 @@ class TDKLambda:
             console_handler.setFormatter(log_formatter)
             if not self.logger.hasHandlers():
                 self.logger.addHandler(console_handler)
-        # check if port and address are in use
-        for d in TDKLambda.devices:
-            if d.port == self.port and d.addr == self.addr and d != self:
-                raise addressInUseException
-        # create COM port
-        self.create_com_port()
-        if self.com is None:
-            self.suspend()
-            msg = 'Uninitialized TDKLambda device has been added to list'
-            self.logger.info(msg)
-            TDKLambda.devices.append(self)
-            return
-        self.init()
-
-    def __del__(self):
-        if self in TDKLambda.devices:
-            TDKLambda.devices.remove(self)
 
     def init(self):
         if self.com is None:
