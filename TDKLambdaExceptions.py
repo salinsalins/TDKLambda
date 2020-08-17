@@ -2,15 +2,11 @@
 
 
 class TDKLambdaException(Exception):
-    def __init__(self, text):
-        super(text)
-
+    pass
 
 class AddressInUseException(TDKLambdaException):
-    def __init__(self):
-        super('Address is in use')
-
+    pass
 
 addressInUseException = TDKLambdaException('Address is in use')
 wrongAddressException = TDKLambdaException('Wrong address')
-portCreationError = TDKLambdaException('COM port creation error')
+portCreationException = TDKLambdaException('COM port creation error')

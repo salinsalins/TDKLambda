@@ -274,22 +274,6 @@ class AsyncTDKLambda(TDKLambda):
             self.last_response = b''
             return b''
 
-    def set_addr(self):
-        if hasattr(self.com, '_current_addr'):
-            a0 = self.com._current_addr
-        else:
-            a0 = -1
-        result = self._send_command(b'ADR %d' % self.addr)
-        if result and self.check_response(b'OK'):
-            self.com._current_addr = self.addr
-            self.logger.debug('Address %d -> %d' % (a0, self.addr))
-            return True
-        else:
-            self.logger.error('Error set address %d -> %d' % (a0, self.addr))
-            if self.com is not None:
-                self.com._current_addr = -1
-            return False
-
     def read_float(self, cmd):
         try:
             if not self.send_command(cmd):

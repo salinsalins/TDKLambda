@@ -63,8 +63,8 @@ class TDKLambda:
         self.logger = logger
         self.auto_addr = auto_addr
         # create variables
-        self.last_command = b''
-        self.last_response = b''
+        self.command = b''
+        self.response = b''
         self.error_count = Counter(3, self.suspend)
         self.time = time.time()
         self.suspend_to = time.time()
@@ -79,7 +79,6 @@ class TDKLambda:
         self.sleep_clear_input = 0.0
         # default com port, id, and serial number
         self.com = None
-        self._current_addr = -1
         self.id = 'Unknown Device'
         self.sn = 'Not initialized'
         self.max_voltage = float('inf')
@@ -94,8 +93,7 @@ class TDKLambda:
         self.create_com_port()
         #
         if self.com is None:
-            self.suspend()
-            msg = 'Uninitialized TDKLambda device has been added to list'
+            msg = 'TDKLambda device with uninitialized port has been added to list'
             self.logger.info(msg)
             TDKLambda.devices.append(self)
             return
@@ -131,7 +129,7 @@ class TDKLambda:
             return
         # read device type
         if self._send_command(b'IDN?'):
-            self.id = self.last_response.decode()
+            self.id = self.response.decode()
             # determine max current and voltage from model name
             n1 = self.id.find('GEN')
             n2 = self.id.find('-')
@@ -143,7 +141,7 @@ class TDKLambda:
                     pass
         # read device serial number
         if self._send_command(b'SN?'):
-            self.serial_number = self.last_response.decode()
+            self.serial_number = self.response.decode()
         # add device to list
         TDKLambda.devices.append(self)
         msg = 'TDKLambda: %s has been created' % self.id
@@ -162,11 +160,12 @@ class TDKLambda:
                 d.suspend()
 
     def create_com_port(self):
+        # if com port already exists
         for d in TDKLambda.devices:
-            # if com port already exists
             if d.port == self.port and d.com is not None:
                 self.com = d.com
                 return self.com
+        # create new port
         try:
             if self.EMULATE:
                 self.com = FakeComPort(self.port)
@@ -176,7 +175,7 @@ class TDKLambda:
                 else:
                     self.com = MoxaTCPComPort(self.port)
             self.com._current_addr = -1
-            self.unsuspend()
+            self.com._lock = Lock()
             self.logger.debug('%s created' % self.port)
         except:
             self.logger.error('%s creation error' % self.port)
@@ -186,6 +185,8 @@ class TDKLambda:
         for d in TDKLambda.devices:
             if d.port == self.port:
                 d.com = self.com
+                if self.com is None:
+                    d.suspend()
         return self.com
 
     @staticmethod
@@ -293,35 +294,36 @@ class TDKLambda:
 
     def read_response(self):
         if self.is_suspended():
-            self.last_response = b''
+            self.response = b''
             return False
         result = self.read_until(terminator=CR)
-        self.last_response = result[:-1]
+        self.response = result
         if CR not in result:
-            self.logger.error('Response %s without CR' % self.last_response)
+            self.logger.error('Response %s without CR' % self.response)
             self.error_count.inc()
             return False
-        if self.check:
-            m = result.find(b'$')
-            if m < 0:
-                self.logger.error('No expected checksum in response')
+        if not self.check:
+            self.error_count.clear()
+            return True
+        # checksum calculation and check
+        m = result.find(b'$')
+        if m < 0:
+            self.logger.error('No expected checksum in response')
+            self.error_count.inc()
+            return False
+        else:
+            cs = self.checksum(result[:m])
+            if result[m+1:] != cs:
+                self.logger.error('Incorrect checksum')
                 self.error_count.inc()
                 return False
-            else:
-                cs = self.checksum(result[:m])
-                if result[m+1:] != cs:
-                    self.logger.error('Incorrect checksum')
-                    self.error_count.inc()
-                    return False
-                self.error_count.clear()
-                self.last_response = result[:m]
-                return True
-        self.error_count.clear()
-        return True
+            self.error_count.clear()
+            self.response = result[:m]
+            return True
 
     def check_response(self, expected=b'OK', response=None):
         if response is None:
-            response = self.last_response
+            response = self.response
         if not response.startswith(expected):
             msg = 'Unexpected response %s (not %s)' % (response, expected)
             self.logger.info(msg)
@@ -360,8 +362,8 @@ class TDKLambda:
             return False
 
     def _send_command(self, cmd):
-        self.last_command = cmd
-        self.last_response = b''
+        self.command = cmd
+        self.response = b''
         if self.is_suspended():
             return False
         if not cmd.endswith(b'\r'):
@@ -372,13 +374,14 @@ class TDKLambda:
             return False
         # read response (to CR by default)
         result = self.read_response()
-        self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.last_response, result, (time.time()-t0)*1000.0))
+        dt = (time.time()-t0)*1000.0
+        self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
         return result
 
     def send_command(self, cmd):
         if self.is_suspended():
-            self.last_command = cmd
-            self.last_response = b''
+            self.command = cmd
+            self.response = b''
             return False
         try:
             # unify command
@@ -394,7 +397,7 @@ class TDKLambda:
                 result = self.set_addr()
                 if not result:
                     self.suspend()
-                    self.last_response = b''
+                    self.response = b''
                     return False
             result = self._send_command(cmd)
             if result:
@@ -405,13 +408,13 @@ class TDKLambda:
                 return True
             self.logger.error('Repeated command %s error' % cmd)
             self.suspend()
-            self.last_response = b''
+            self.response = b''
             return False
         except:
             self.logger.error('Unexpected exception')
             self.logger.debug("", exc_info=True)
             self.suspend()
-            self.last_response = b''
+            self.response = b''
             return b''
 
     def set_addr(self):
@@ -434,16 +437,16 @@ class TDKLambda:
         try:
             if not self.send_command(cmd):
                 return float('Nan')
-            v = float(self.last_response)
+            v = float(self.response)
         except:
-            self.logger.debug('%s is not a float' % self.last_response)
+            self.logger.debug('%s is not a float' % self.response)
             v = float('Nan')
         return v
 
     def read_all(self):
         if not self.send_command(b'DVC?'):
             return [float('Nan')] * 6
-        reply = self.last_response
+        reply = self.response
         sv = reply.split(b',')
         vals = []
         for s in sv:
@@ -461,18 +464,18 @@ class TDKLambda:
     def read_value(self, cmd, v_type=type(str)):
         try:
             if self.send_command(cmd):
-                v = v_type(self.last_response)
+                v = v_type(self.response)
             else:
                 v = None
         except:
-            self.logger.info('Can not convert %s to %s' % (self.last_response, v_type))
+            self.logger.info('Can not convert %s to %s' % (self.response, v_type))
             v = None
         return v
 
     def read_bool(self, cmd):
         if not self.send_command(cmd):
             return None
-        response = self.last_response
+        response = self.response
         if response.upper() in (b'ON', b'1'):
             return True
         if response.upper() in (b'OFF', b'0'):
@@ -490,7 +493,7 @@ class TDKLambda:
     def read_output(self):
         if not self.send_command(b'OUT?'):
             return None
-        response = self.last_response.upper()
+        response = self.response.upper()
         if response.startswith((b'ON', b'1')):
             return True
         if response.startswith((b'OFF', b'0')):
