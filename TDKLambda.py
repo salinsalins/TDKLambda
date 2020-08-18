@@ -541,32 +541,31 @@ if __name__ == "__main__":
         t_0 = time.time()
         v1 = pd1.read_float("PC?")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print(pd1.port, pd1.addr, 'PC? =', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
+        print(pd1.port, pd1.addr, 'PC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v1 = pd1.read_float("MV?")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print(pd1.port, pd1.addr, 'MV? =', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
-        print('1: ', '%4d ms ' % dt1,'MV?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
+        print(pd1.port, pd1.addr, 'MV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v1 = pd1.send_command("PV 1.0")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print('1: ', '%4d ms ' % dt1,'PV 1.0', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
+        print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v1 = pd1.read_float("PV?")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print('1: ', '%4d ms ' % dt1,'PV?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
+        print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v3 = pd1.read_all()
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print('1: ', '%4d ms ' % dt1,'DVC?=', v3, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
+        print(pd1.port, pd1.addr, 'DVC? ->', v3, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v2 = pd2.read_float("PC?")
         dt2 = int((time.time() - t_0) * 1000.0)    # ms
-        print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
+        print(pd2.port, pd2.addr, 'PC? ->', v2, '%4d ms ' % dt2, 'to=', '%5.3f' % pd2.read_timeout)
         t_0 = time.time()
         v4 = pd2.read_all()
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print('2: ', '%4d ms ' % dt1,'DVC?=', v4, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
-        time.sleep(0.1)
-        pd1.reset()
-        pd2.reset()
+        print(pd2.port, pd2.addr, 'DVC? ->', v4, '%4d ms ' % dt2, 'to=', '%5.3f' % pd2.read_timeout)
+        #time.sleep(0.1)
+        #pd1.reset()
+        #pd2.reset()
