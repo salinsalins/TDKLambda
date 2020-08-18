@@ -293,9 +293,6 @@ class TDKLambda:
         return result
 
     def read_response(self):
-        if self.is_suspended():
-            self.response = b''
-            return False
         result = self.read_until(terminator=CR)
         self.response = result
         if CR not in result:
@@ -334,8 +331,6 @@ class TDKLambda:
         self.com.reset_input_buffer()
 
     def write(self, cmd):
-        if self.is_suspended():
-            return False
         t0 = time.time()
         try:
             # clear input buffer
@@ -352,13 +347,10 @@ class TDKLambda:
             return result
         except SerialTimeoutException:
             self.logger.error('Writing timeout')
-            self.suspend()
             return False
         except:
             self.logger.error('Unexpected exception')
             self.logger.debug("", exc_info=True)
-            self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
-            self.suspend()
             return False
 
     def _send_command(self, cmd: bytes):
@@ -553,17 +545,17 @@ if __name__ == "__main__":
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
         print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
-        v3 = pd1.read_all()
+        v1 = pd1.read_all()
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print(pd1.port, pd1.addr, 'DVC? ->', v3, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
+        print(pd1.port, pd1.addr, 'DVC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
-        v2 = pd2.read_float("PC?")
-        dt2 = int((time.time() - t_0) * 1000.0)    # ms
-        print(pd2.port, pd2.addr, 'PC? ->', v2, '%4d ms ' % dt2, 'to=', '%5.3f' % pd2.read_timeout)
-        t_0 = time.time()
-        v4 = pd2.read_all()
+        v1 = pd2.read_float("PC?")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print(pd2.port, pd2.addr, 'DVC? ->', v4, '%4d ms ' % dt2, 'to=', '%5.3f' % pd2.read_timeout)
+        print(pd2.port, pd2.addr, 'PC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd2.read_timeout)
+        t_0 = time.time()
+        v1 = pd2.read_all()
+        dt1 = int((time.time() - t_0) * 1000.0)    # ms
+        print(pd2.port, pd2.addr, 'DVC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd2.read_timeout)
         #time.sleep(0.1)
         #pd1.reset()
         #pd2.reset()
