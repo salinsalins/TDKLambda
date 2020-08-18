@@ -185,8 +185,6 @@ class TDKLambda:
         for d in TDKLambda.devices:
             if d.port == self.port:
                 d.com = self.com
-                if self.com is None:
-                    d.suspend()
         return self.com
 
     @staticmethod
@@ -206,11 +204,10 @@ class TDKLambda:
     def unsuspend(self):
         self.suspend_to = 0.0
         self.suspend_flag = False
-        self.logger.debug('Unsuspended')
+        self.logger.debug('Unsuspend')
 
     def is_suspended(self):
         if time.time() < self.suspend_to:   # if suspension does not expire
-            self.logger.debug(' - Suspended')
             return True
         else:                               # suspension expires
             if self.suspend_flag:           # if it was suspended and expires
