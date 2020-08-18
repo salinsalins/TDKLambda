@@ -361,11 +361,9 @@ class TDKLambda:
             self.suspend()
             return False
 
-    def _send_command(self, cmd):
+    def _send_command(self, cmd: bytes):
         self.command = cmd
         self.response = b''
-        if self.is_suspended():
-            return False
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
         t0 = time.time()
