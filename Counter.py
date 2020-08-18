@@ -12,6 +12,9 @@ class Counter:
     def clear(self):
         self.value = 0
 
+    def reset(self):
+        self.value = 0
+
     def inc(self):
         self.value += 1
         self.act()

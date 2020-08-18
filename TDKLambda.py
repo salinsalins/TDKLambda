@@ -40,6 +40,22 @@ class MoxaTCPComPort:
 CR = b'\r'
 
 
+class TimeOut(Timeout):
+    def __init__(self, interval, count=1, action=None):
+        super.__init__(interval)
+        self.counter = Counter(count, action)
+
+    def expired(self):
+        if super().expired():
+            self.counter.inc()
+            return True
+        return False
+
+    def restart(self, duration=None):
+        if duration is None:
+            duration = self.duration
+        super().restart(duration)
+
 class TDKLambda:
     LOG_LEVEL = logging.DEBUG
     EMULATE = True
@@ -72,7 +88,6 @@ class TDKLambda:
         self.retries = 0
         # timeouts
         self.read_timeout = self.min_timeout
-        self.read_timeout_count = Counter(3, self.suspend)
         self.timeout_clear_input = 0.5
         # sleep timings
         self.sleep_after_write = 0.02
@@ -214,7 +229,7 @@ class TDKLambda:
                 self.reset()
                 if self.com is None:        # if initialization was not successful
                     # suspend again
-                    self.suspend(True)
+                    self.suspend()
                     return True
                 else:                       # initialization was successful
                     self.unsuspend()
@@ -228,16 +243,16 @@ class TDKLambda:
             return result
         if timeout is None:
             timeout = self.read_timeout
-        to = Timeout(timeout)
-        t0 = time.time()
+        to = TimeOut(timeout, 3, self.suspend)
+        time0 = time.time()
         while len(result) < size:
             try:
                 r = self.com.read(1)
                 if len(r) > 0:
                     result += r
-                    to.restart(timeout)
-                    self.read_timeout_count.clear()
-                    dt = time.time() - t0
+                    to.restart()
+                    to.counter.clear()
+                    dt = time.time() - time0
                     self.read_timeout = max(2.0 * dt, self.min_timeout)
                 else:
                     if to.expired():
@@ -247,13 +262,11 @@ class TDKLambda:
                 timeout = self.read_timeout
                 to.restart(timeout)
                 self.logger.info('Reading timeout, corrected to %5.2f s' % self.read_timeout)
-                self.read_timeout_count.inc()
             except:
                 self.logger.info('Unexpected exception', exc_info=True)
                 self.suspend()
             if self.is_suspended():
-                raise SerialTimeoutException('Read timeout')
-        #self.logger.debug('%s in %4.0f ms' % (result, (time.time() - t0) * 1000.0))
+                break
         return result
 
     def read_until(self, terminator=b'\r', size=None, timeout=None):
