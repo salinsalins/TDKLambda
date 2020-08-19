@@ -31,13 +31,13 @@ class AsyncioDevice(Device):
 
     @attribute
     async def test_attribute(self):
-        await asyncio.sleep(1)
+        #await asyncio.sleep(1)
         return self.value
 
     @test_attribute.setter
     async def write_test_attribute(self, value):
         self.value = value
-        await asyncio.sleep(0.1)
+        #await asyncio.sleep(0.1)
 
 
 if __name__ == '__main__':

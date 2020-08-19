@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
 
@@ -19,8 +18,6 @@ ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'TDKLambda_Server'
 APPLICATION_NAME_SHORT = 'TDKLambda_Server'
 APPLICATION_VERSION = '2_2'
-# CONFIG_FILE = APPLICATION_NAME_SHORT + '.json'
-# UI_FILE = APPLICATION_NAME_SHORT + '.ui'
 
 # init a thread lock
 _lock = Lock()

@@ -80,7 +80,7 @@ class TDKLambda:
         # default com port, id, and serial number
         self.com = None
         self.id = 'Unknown Device'
-        self.sn = 'Not initialized'
+        self.sn = 0
         self.max_voltage = float('inf')
         self.max_current = float('inf')
         # configure logger
@@ -157,24 +157,43 @@ class TDKLambda:
             TDKLambda.devices.append(self)
             return
         # read device type
-        if self._send_command(b'IDN?'):
-            self.id = self.response[:-1].decode()
+        self.id = self.read_device_id()
+        if self.id.find('LAMBDA') >= 0:
             # determine max current and voltage from model name
             n1 = self.id.find('GEN')
             n2 = self.id.find('-')
-            if n1 >= 0 and n2 >= 0:
+            if n1 >= 0 and n2 > n1:
                 try:
                     self.max_voltage = float(self.id[n1+3:n2])
                     self.max_current = float(self.id[n2+1:])
                 except:
                     pass
         # read device serial number
-        if self._send_command(b'SN?'):
-            self.serial_number = self.response.decode()
+        self.sn = self.read_serial_number()
         # add device to list
         TDKLambda.devices.append(self)
         msg = 'TDKLambda: %s has been created' % self.id
         self.logger.info(msg)
+
+    def read_device_id(self):
+        try:
+            if self._send_command(b'IDN?'):
+                id = int(self.response[:-1].decode())
+                return id
+            else:
+                return 'Unknown Device'
+        except:
+            return 'Unknown Device'
+
+    def read_serial_number(self):
+        try:
+            if self._send_command(b'SN?'):
+                serial_number = int(self.response[:-1].decode())
+                return serial_number
+            else:
+                return -1
+        except:
+            return -1
 
     def close_com_port(self):
         try:
