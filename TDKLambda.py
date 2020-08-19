@@ -12,7 +12,7 @@ from EmulatedLambda import FakeComPort
 
 from Counter import Counter
 from TDKLambdaExceptions import *
-
+from Async.AsyncSerial import Timeout
 
 class MoxaTCPComPort:
     def __init__(self, host: str, port: int = 4001):
@@ -40,14 +40,6 @@ class MoxaTCPComPort:
 CR = b'\r'
 
 
-class TimeOut(Timeout):
-    def __init__(self, interval):
-        super().__init__(interval)
-
-    def restart(self, duration=None):
-        if duration is None:
-            duration = self.duration
-        super().restart(duration)
 
 class TDKLambda:
     LOG_LEVEL = logging.DEBUG
@@ -106,7 +98,8 @@ class TDKLambda:
             TDKLambda.devices.append(self)
             return
         #
-        self.init()
+        if self.__class__ == TDKLambda:
+            self.init()
 
     def __del__(self):
         if self in TDKLambda.devices:
@@ -124,6 +117,34 @@ class TDKLambda:
             console_handler.setFormatter(log_formatter)
             if not self.logger.hasHandlers():
                 self.logger.addHandler(console_handler)
+
+    def create_com_port(self):
+        # if com port already exists
+        for d in TDKLambda.devices:
+            if d.port == self.port and d.com is not None:
+                self.com = d.com
+                return self.com
+        # create new port
+        try:
+            if self.EMULATE:
+                self.com = FakeComPort(self.port)
+            else:
+                if self.port.upper().startswith('COM'):
+                    self.com = serial.Serial(self.port, baudrate=self.baud, timeout=0.0, write_timeout=0.0)
+                else:
+                    self.com = MoxaTCPComPort(self.port)
+            self.com._current_addr = -1
+            self.com._lock = Lock()
+            self.logger.debug('%s created' % self.port)
+        except:
+            self.logger.error('%s creation error' % self.port)
+            self.logger.debug('', exc_info=True)
+            self.com = None
+        # update com for other devices with the same port
+        for d in TDKLambda.devices:
+            if d.port == self.port:
+                d.com = self.com
+        return self.com
 
     def init(self):
         if self.com is None:
@@ -167,34 +188,6 @@ class TDKLambda:
                 d.com = None
                 d.suspend()
 
-    def create_com_port(self):
-        # if com port already exists
-        for d in TDKLambda.devices:
-            if d.port == self.port and d.com is not None:
-                self.com = d.com
-                return self.com
-        # create new port
-        try:
-            if self.EMULATE:
-                self.com = FakeComPort(self.port)
-            else:
-                if self.port.upper().startswith('COM'):
-                    self.com = serial.Serial(self.port, baudrate=self.baud, timeout=0.0, write_timeout=0.0)
-                else:
-                    self.com = MoxaTCPComPort(self.port)
-            self.com._current_addr = -1
-            self.com._lock = Lock()
-            self.logger.debug('%s created' % self.port)
-        except:
-            self.logger.error('%s creation error' % self.port)
-            self.logger.debug('', exc_info=True)
-            self.com = None
-        # update com for other devices with the same port
-        for d in TDKLambda.devices:
-            if d.port == self.port:
-                d.com = self.com
-        return self.com
-
     @staticmethod
     def checksum(cmd):
         s = 0
@@ -232,7 +225,7 @@ class TDKLambda:
 
     def _read(self, size=1, timeout=None):
         result = b''
-        to = TimeOut(timeout)
+        to = Timeout(timeout)
         while len(result) < size:
             r = self.com.read(1)
             if len(r) > 0:

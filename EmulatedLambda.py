@@ -58,7 +58,6 @@ class FakeComPort:
             self.t[self.last_address] = time.time()
             return 0
 
-
     def read(self, size=1, timeout=None):
         if self.last_write == b'':
             return b''

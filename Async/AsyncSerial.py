@@ -1,7 +1,5 @@
 import asyncio
-
 import serial
-from serial import SerialTimeoutException
 
 
 class Timeout(serial.Timeout):
@@ -55,7 +53,7 @@ class AsyncSerial(serial.Serial):
         if size == 0:
             await asyncio.sleep(0)
             return result
-        to = Timeout(timeout, SerialTimeoutException('Read timeout'))
+        to = Timeout(timeout, serial.SerialTimeoutException('Read timeout'))
         while len(result) < size:
             d = super().read(1)
             if d:
@@ -71,7 +69,7 @@ class AsyncSerial(serial.Serial):
         the size is exceeded or timeout occurs.
         """
         result = bytearray()
-        to = Timeout(timeout, SerialTimeoutException('Read timeout'))
+        to = Timeout(timeout, serial.SerialTimeoutException('Read timeout'))
         async with self.async_lock:
             while True:
                 c = super().read(1)
@@ -93,10 +91,10 @@ class AsyncSerial(serial.Serial):
             for d in data:
                 n = super().write(d.to_bytes(1, 'big'))
                 if n <= 0:
-                    raise SerialTimeoutException('Write error')
+                    raise serial.SerialTimeoutException('Write error')
                 result += n
                 if to.expired():
-                    raise SerialTimeoutException('Write timeout')
+                    raise serial.SerialTimeoutException('Write timeout')
                 await asyncio.sleep(0)
         return result
 
@@ -105,7 +103,7 @@ class AsyncSerial(serial.Serial):
         async with self.async_lock:
             while self.in_waiting > 0:
                 if to.expired():
-                    raise SerialTimeoutException('Flush timeout')
+                    raise serial.SerialTimeoutException('Flush timeout')
                 await asyncio.sleep(0.01)
 
     async def reset_input_buffer(self, timeout=None):
@@ -115,7 +113,7 @@ class AsyncSerial(serial.Serial):
             while self.in_waiting > 0:
                 super().reset_input_buffer()
                 if to.expired():
-                    raise SerialTimeoutException('Read buffer reset timeout')
+                    raise serial.SerialTimeoutException('Read buffer reset timeout')
                 await asyncio.sleep(0)
 
     async def reset_output_buffer(self, timeout=None):
@@ -125,5 +123,5 @@ class AsyncSerial(serial.Serial):
             while self.out_waiting > 0:
                 super().reset_output_buffer()
                 if to.expired():
-                    raise SerialTimeoutException('Write buffer reset timeout')
+                    raise serial.SerialTimeoutException('Write buffer reset timeout')
                 await asyncio.sleep(0)

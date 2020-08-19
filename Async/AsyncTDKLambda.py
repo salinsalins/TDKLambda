@@ -55,190 +55,99 @@ class FakeAsyncComPort(FakeComPort):
 
 class AsyncTDKLambda(TDKLambda):
 
-    def suspend(self, duration=9.0):
-        self.suspend_to = time.time() + duration
-        self.suspend_flag = True
-        msg = '%s is suspended for %5.2f sec' % (self, duration)
-        self.logger.debug(msg)
-
-    def unsuspend(self):
-        self.suspend_to = 0.0
-        self.suspend_flag = False
-        self.logger.debug('%s is unsuspended' % self)
-
-    def is_suspended(self):
-        if time.time() < self.suspend_to:   # if suspension does not expire
-            self.logger.debug('%s suspended' % self)
-            return True
-        else:                               # suspension expires
-            if self.suspend_flag:           # if it was suspended and expires
-                self.reset()
-                if self.com is None:        # if initialization was not successful
-                    # suspend again
-                    self.suspend(True)
-                    return True
-                else:                       # initialization was successful
-                    self.unsuspend()
-                    return False
-            else:                           # it was not suspended
-                self.logger.debug('%s not suspended' % self)
-                return False
-
-    def read(self, size=1, timeout=None):
-        result = b''
-        if self.is_suspended():
-            return result
-        if timeout is None:
-            timeout = self.read_timeout
-        to = Timeout(timeout)
-        t0 = time.time()
-        while len(result) < size:
-            try:
-                r = self.com.read(1)
-                if len(r) > 0:
-                    result += r
-                    to.restart(timeout)
-                    self.read_timeout_count.clear()
-                    dt = time.time() - t0
-                    self.read_timeout = max(2.0 * dt, self.min_timeout)
-                else:
-                    if to.expired():
-                        raise SerialTimeoutException('Read timeout')
-            except SerialTimeoutException:
-                self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
-                timeout = self.read_timeout
-                to.restart(timeout)
-                self.logger.info('Reading timeout, corrected to %5.2f s' % self.read_timeout)
-                self.read_timeout_count.inc()
-            except:
-                self.logger.info('Unexpected exception', exc_info=True)
-                self.suspend()
-            if self.is_suspended():
-                raise SerialTimeoutException('Read timeout')
-        #self.logger.debug('%s in %4.0f ms' % (result, (time.time() - t0) * 1000.0))
-        return result
-
-    def read_until(self, terminator=b'\r', size=None, timeout=None):
-        result = b''
-        if self.is_suspended():
-            return result
-        t0 = time.time()
-        if timeout is None:
-            timeout = self.read_timeout
-        to = Timeout(timeout)
+    def create_com_port(self):
+        # if com port already exists
+        for d in TDKLambda.devices:
+            if d.port == self.port and d.com is not None:
+                self.com = d.com
+                return self.com
+        # create new port
         try:
-            while terminator not in result:
-                r = self.read(1)
-                if len(r) > 0:
-                    result += r
-                    to.restart(timeout)
-                    if size is not None and len(result) >= size:
-                        break
-                else:
-                    if to.expired():
-                        raise SerialTimeoutException('Read_until timeout')
-        except SerialTimeoutException:
-            self.logger.info('Reading_until %s timeout' % terminator)
-            # self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
-            # self.logger.info('Reading timeout, increased to %5.2f s' % self.read_timeout)
-            # self.read_timeout_count.inc()
-        except:
-            self.logger.info('Unexpected exception', exc_info=True)
-            self.suspend()
-        else:
-            self.read_timeout_count.clear()
-            self.read_timeout = max(2.0 * (time.time() - t0), self.min_timeout)
-        self.logger.debug('%s %s bytes in %4.0f ms' % (result, len(result)+1, (time.time() - t0) * 1000.0))
-        return result
-
-    def read_response(self):
-        if self.is_suspended():
-            self.last_response = b''
-            return False
-        result = self.read_until(terminator=CR)
-        self.last_response = result[:-1]
-        if CR not in result:
-            self.logger.error('Response %s without CR' % self.last_response)
-            self.error_count.inc()
-            return False
-        if self.check:
-            m = result.find(b'$')
-            if m < 0:
-                self.logger.error('No expected checksum in response')
-                self.error_count.inc()
-                return False
+            if self.EMULATE:
+                self.com = FakeAsyncComPort(self.port)
             else:
-                cs = self.checksum(result[:m])
-                if result[m+1:] != cs:
-                    self.logger.error('Incorrect checksum')
-                    self.error_count.inc()
-                    return False
-                self.error_count.clear()
-                self.last_response = result[:m]
-                return True
-        self.error_count.clear()
-        return True
+                if self.port.upper().startswith('COM'):
+                    self.com = AsyncSerial(self.port, baudrate=self.baud, timeout=0.0, write_timeout=0.0)
+                else:
+                    self.com = MoxaTCPComPort(self.port)
+            self.com._current_addr = -1
+            self.com._lock = Lock()
+            self.logger.debug('%s created' % self.port)
+        except:
+            self.logger.error('%s creation error' % self.port)
+            self.logger.debug('', exc_info=True)
+            self.com = None
+        # update com for other devices with the same port
+        for d in TDKLambda.devices:
+            if d.port == self.port:
+                d.com = self.com
+        return self.com
 
-    def check_response(self, expected=b'OK', response=None):
-        if response is None:
-            response = self.last_response
-        if not response.startswith(expected):
-            msg = 'Unexpected response %s (not %s)' % (response, expected)
+    async def init(self):
+        if self.com is None:
+            return
+        # set device address
+        response = await self.set_addr()
+        if not response:
+            msg = 'Uninitialized TDKLambda device has been added to list'
             self.logger.info(msg)
-            return False
-        return True
+            TDKLambda.devices.append(self)
+            return
+        # read device type
+        if await self._send_command(b'IDN?'):
+            self.id = self.response[:-1].decode()
+            # determine max current and voltage from model name
+            n1 = self.id.find('GEN')
+            n2 = self.id.find('-')
+            if n1 >= 0 and n2 >= 0:
+                try:
+                    self.max_voltage = float(self.id[n1+3:n2])
+                    self.max_current = float(self.id[n2+1:])
+                except:
+                    pass
+        # read device serial number
+        if await self._send_command(b'SN?'):
+            self.serial_number = self.response.decode()
+        # add device to list
+        TDKLambda.devices.append(self)
+        msg = 'TDKLambda: %s has been created' % self.id
+        self.logger.info(msg)
 
-    def clear_input_buffer(self):
-        self.com.reset_input_buffer()
-
-    def write(self, cmd):
-        if self.is_suspended():
-            return False
-        t0 = time.time()
-        try:
-            # clear input buffer
-            self.clear_input_buffer()
-            # write command
-            #self.logger.debug('clear_input_buffer %4.0f ms' % ((time.time() - t0) * 1000.0))
-            length = self.com.write(cmd)
-            #time.sleep(self.sleep_after_write)
-            if len(cmd) == length:
-                result = True
-            else:
-                result = False
-            self.logger.debug('%s %s bytes in %4.0f ms %s' % (cmd, length, (time.time() - t0) * 1000.0, result))
-            return result
-        except SerialTimeoutException:
-            self.logger.error('Writing timeout')
-            self.suspend()
-            return False
-        except:
-            self.logger.error('Unexpected exception')
-            self.logger.debug("", exc_info=True)
-            self.logger.debug('%s %4.0f ms' % (cmd, (time.time() - t0) * 1000.0))
-            self.suspend()
+    async def set_addr(self):
+        if hasattr(self.com, '_current_addr'):
+            a0 = self.com._current_addr
+        else:
+            a0 = -1
+        result = await self._send_command(b'ADR %d' % self.addr)
+        if result and self.check_response(b'OK'):
+            self.com._current_addr = self.addr
+            self.logger.debug('Address %d -> %d' % (a0, self.addr))
+            return True
+        else:
+            self.logger.error('Error set address %d -> %d' % (a0, self.addr))
+            if self.com is not None:
+                self.com._current_addr = -1
             return False
 
-    def _send_command(self, cmd):
-        self.last_command = cmd
-        self.last_response = b''
-        if self.is_suspended():
-            return False
+    async def _send_command(self, cmd: bytes):
+        self.command = cmd
+        self.response = b''
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
         t0 = time.time()
         # write command
-        if not self.write(cmd):
+        if not await self.write(cmd):
             return False
         # read response (to CR by default)
-        result = self.read_response()
-        self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.last_response, result, (time.time()-t0)*1000.0))
+        result = await self.read_response()
+        dt = (time.time()-t0)*1000.0
+        self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
         return result
 
-    def send_command(self, cmd):
+    async def send_command(self, cmd):
         if self.is_suspended():
-            self.last_command = cmd
-            self.last_response = b''
+            self.command = cmd
+            self.response = b''
             return False
         try:
             # unify command
@@ -251,43 +160,140 @@ class AsyncTDKLambda(TDKLambda):
                 cs = self.checksum(cmd[:-1])
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
             if self.auto_addr and self.com._current_addr != self.addr:
-                result = self.set_addr()
+                result = await self.set_addr()
                 if not result:
                     self.suspend()
-                    self.last_response = b''
+                    self.response = b''
                     return False
-            result = self._send_command(cmd)
+            result = await self._send_command(cmd)
             if result:
                 return True
             self.logger.warning('Repeat command %s' % cmd)
-            result = self._send_command(cmd)
+            result = await self._send_command(cmd)
             if result:
                 return True
             self.logger.error('Repeated command %s error' % cmd)
             self.suspend()
-            self.last_response = b''
+            self.response = b''
             return False
         except:
             self.logger.error('Unexpected exception')
             self.logger.debug("", exc_info=True)
             self.suspend()
-            self.last_response = b''
+            self.response = b''
             return b''
 
-    def read_float(self, cmd):
+    async def write(self, cmd):
+        t0 = time.time()
         try:
-            if not self.send_command(cmd):
-                return float('Nan')
-            v = float(self.last_response)
+            # clear input buffer
+            await self.clear_input_buffer()
+            # write command
+            length = await self.com.write(cmd)
+            if len(cmd) == length:
+                result = True
+            else:
+                result = False
+            self.logger.debug('%s %s bytes in %4.0f ms %s' % (cmd, length, (time.time() - t0) * 1000.0, result))
+            return result
+        except SerialTimeoutException:
+            self.logger.error('Writing timeout')
+            return False
         except:
-            self.logger.debug('%s is not a float' % self.last_response)
+            self.logger.error('Unexpected exception')
+            self.logger.debug("", exc_info=True)
+            return False
+
+    async def clear_input_buffer(self):
+        await self.com.reset_input_buffer()
+
+    async def read_response(self):
+        result = await self.read_until(CR)
+        self.response = result
+        if CR not in result:
+            self.logger.error('Response %s without CR' % self.response)
+            self.error_count.inc()
+            return False
+        if not self.check:
+            self.error_count.clear()
+            return True
+        # checksum calculation and check
+        m = result.find(b'$')
+        if m < 0:
+            self.logger.error('No expected checksum in response')
+            self.error_count.inc()
+            return False
+        else:
+            cs = self.checksum(result[:m])
+            if result[m+1:] != cs:
+                self.logger.error('Incorrect checksum')
+                self.error_count.inc()
+                return False
+            self.error_count.clear()
+            self.response = result[:m]
+            return True
+
+    async def read_until(self, terminator=b'\r', size=None):
+        result = b''
+        t0 = time.time()
+        while not self.is_suspended() and terminator not in result:
+            r = await self.read(1)
+            if len(r) <= 0:
+                self.suspend()
+            result += r
+            if size is not None and len(result) >= size:
+                break
+        dt = (time.time() - t0) * 1000.0
+        self.logger.debug('%s %s bytes in %4.0f ms' % (result, len(result), dt))
+        return result
+
+    async def read(self, size=1, retries=3):
+        counter = 0
+        result = b''
+        t0 = time.time()
+        while counter <= retries:
+            try:
+                result = await self._read(size, self.read_timeout)
+                dt = time.time() - t0
+                self.read_timeout = max(2.0 * dt, self.min_timeout)
+                return result
+            except SerialTimeoutException:
+                counter += 1
+                self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
+                self.logger.debug('Reading timeout increased to %5.2f s' % self.read_timeout)
+            except:
+                self.logger.info('Unexpected exception', exc_info=True)
+                counter = retries
+        return result
+
+    async def _read(self, size=1, timeout=None):
+        result = b''
+        to = Timeout(timeout)
+        while len(result) < size:
+            r = await self.com.read(1)
+            if len(r) > 0:
+                result += r
+                to.restart()
+            else:
+                if to.expired():
+                    self.logger.debug('Read timeout')
+                    raise SerialTimeoutException('Read timeout')
+        return result
+
+    async def read_float(self, cmd):
+        try:
+            if not await self.send_command(cmd):
+                return float('Nan')
+            v = float(self.response)
+        except:
+            self.logger.debug('%s is not a float' % self.response)
             v = float('Nan')
         return v
 
-    def read_all(self):
-        if not self.send_command(b'DVC?'):
+    async def read_all(self):
+        if not await self.send_command(b'DVC?'):
             return [float('Nan')] * 6
-        reply = self.last_response
+        reply = self.response
         sv = reply.split(b',')
         vals = []
         for s in sv:
@@ -302,21 +308,21 @@ class AsyncTDKLambda(TDKLambda):
         else:
             return vals[:6]
 
-    def read_value(self, cmd, v_type=type(str)):
+    async def read_value(self, cmd, v_type=type(str)):
         try:
-            if self.send_command(cmd):
-                v = v_type(self.last_response)
+            if await self.send_command(cmd):
+                v = v_type(self.response)
             else:
                 v = None
         except:
-            self.logger.info('Can not convert %s to %s' % (self.last_response, v_type))
+            self.logger.info('Can not convert %s to %s' % (self.response, v_type))
             v = None
         return v
 
-    def read_bool(self, cmd):
-        if not self.send_command(cmd):
+    async def read_bool(self, cmd):
+        if not await self.send_command(cmd):
             return None
-        response = self.last_response
+        response = self.response
         if response.upper() in (b'ON', b'1'):
             return True
         if response.upper() in (b'OFF', b'0'):
@@ -324,17 +330,17 @@ class AsyncTDKLambda(TDKLambda):
         self.check_response(response=b'Not boolean:' + response)
         return False
 
-    def write_value(self, cmd: bytes, value, expect=b'OK'):
+    async def write_value(self, cmd: bytes, value, expect=b'OK'):
         cmd = cmd.upper().strip() + b' ' + str.encode(str(value))[:10] + b'\r'
-        if self.send_command(cmd):
+        if await self.send_command(cmd):
             return self.check_response(expect)
         else:
             return False
 
-    def read_output(self):
-        if not self.send_command(b'OUT?'):
+    async def read_output(self):
+        if not await self.send_command(b'OUT?'):
             return None
-        response = self.last_response.upper()
+        response = await self.response.upper()
         if response.startswith((b'ON', b'1')):
             return True
         if response.startswith((b'OFF', b'0')):
@@ -342,36 +348,30 @@ class AsyncTDKLambda(TDKLambda):
         self.logger.info('Unexpected response %s' % response)
         return None
 
-    def write_output(self, value):
+    async def write_output(self, value):
         if value:
             t_value = 'ON'
         else:
             t_value = 'OFF'
-        return self.write_value(b'OUT', t_value)
+        return await self.write_value(b'OUT', t_value)
 
-    def write_voltage(self, value):
-        return self.write_value(b'PV', value)
+    async def write_voltage(self, value):
+        return await self.write_value(b'PV', value)
 
-    def write_current(self, value):
-        return self.write_value(b'PC', value)
+    async def write_current(self, value):
+        return await self.write_value(b'PC', value)
 
-    def read_current(self):
-        return self.read_value(b'MC?', v_type=float)
+    async def read_current(self):
+        return await self.read_value(b'MC?', v_type=float)
 
-    def read_programmed_current(self):
-        return self.read_value(b'PC?', v_type=float)
+    async def read_programmed_current(self):
+        return await self.read_value(b'PC?', v_type=float)
 
-    def read_voltage(self):
-        return self.read_value(b'MV?', v_type=float)
+    async def read_voltage(self):
+        return await self.read_value(b'MV?', v_type=float)
 
-    def read_programmed_voltage(self):
-        return self.read_value(b'PV?', v_type=float)
-
-    def reset(self):
-        self.logger.debug('Resetting %s' % self)
-        self.__del__()
-        self.__init__(self.port, self.addr, self.check, self.baud, self.logger, self.auto_addr)
-
+    async def read_programmed_voltage(self):
+        return await self.read_value(b'PV?', v_type=float)
 
 
 async def main():
@@ -381,10 +381,10 @@ async def main():
     await pd2.init()
     task1 = asyncio.create_task(pd1.read_float("MC?"))
     task2 = asyncio.create_task(pd2.read_float("MC?"))
-    task5 = asyncio.create_task(pd1.write_current(2.0))
     task3 = asyncio.create_task(pd1.read_float("PC?"))
-    task6 = asyncio.create_task(pd2.write_current(3.0))
     task4 = asyncio.create_task(pd2.read_float("PC?"))
+    task5 = asyncio.create_task(pd1.write_current(2.0))
+    task6 = asyncio.create_task(pd2.write_current(3.0))
     t_0 = time.time()
     await asyncio.wait({task1})
     dt = int((time.time() - t_0) * 1000.0)    # ms
@@ -392,44 +392,15 @@ async def main():
     v2 = task2.result()
     v3 = task3.result()
     v4 = task4.result()
+    v5 = task5.result()
+    v6 = task6.result()
     print('1: ', '%4d ms ' % dt, 'MC?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
     print('2: ', '%4d ms ' % dt, 'MC?=', v2, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
     print('3: ', '%4d ms ' % dt, 'PC?=', v3, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-    print('3: ', '%4d ms ' % dt, 'PC?=', v4, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
+    print('4: ', '%4d ms ' % dt, 'PC?=', v4, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
+    print('5: ', '%4d ms ' % dt, 'PC set', v5, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
+    print('6: ', '%4d ms ' % dt, 'PC set', v6, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
     print('Elapsed: %4d ms ' % dt)
 
 if __name__ == "__main__":
-    # pd1 = TDKLambda("COM4", 6)
-    # pd2 = TDKLambda("COM4", 7)
-    # for i in range(5):
-    #     t_0 = time.time()
-    #     v1 = pd1.read_float("PC?")
-    #     dt1 = int((time.time() - t_0) * 1000.0)    # ms
-    #     print('1: ', '%4d ms ' % dt1,'PC?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-    #     t_0 = time.time()
-    #     v1 = pd1.read_float("MV?")
-    #     dt1 = int((time.time() - t_0) * 1000.0)    # ms
-    #     print('1: ', '%4d ms ' % dt1,'MV?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-    #     t_0 = time.time()
-    #     v1 = pd1.send_command("PV 1.0")
-    #     dt1 = int((time.time() - t_0) * 1000.0)    # ms
-    #     print('1: ', '%4d ms ' % dt1,'PV 1.0', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-    #     t_0 = time.time()
-    #     v1 = pd1.read_float("PV?")
-    #     dt1 = int((time.time() - t_0) * 1000.0)    # ms
-    #     print('1: ', '%4d ms ' % dt1,'PV?=', v1, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-    #     t_0 = time.time()
-    #     v3 = pd1.read_all()
-    #     dt1 = int((time.time() - t_0) * 1000.0)    # ms
-    #     print('1: ', '%4d ms ' % dt1,'DVC?=', v3, 'to=', '%5.3f' % pd1.read_timeout, pd1.port, pd1.addr)
-    #     t_0 = time.time()
-    #     v2 = pd2.read_float("PC?")
-    #     dt2 = int((time.time() - t_0) * 1000.0)    # ms
-    #     print('2: ', '%4d ms ' % dt2,'PC?=', v2, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
-    #     t_0 = time.time()
-    #     v4 = pd2.read_all()
-    #     dt1 = int((time.time() - t_0) * 1000.0)    # ms
-    #     print('2: ', '%4d ms ' % dt1,'DVC?=', v4, 'to=', '%5.3f' % pd2.read_timeout, pd2.port, pd2.addr)
-    #     time.sleep(0.1)
-
     asyncio.run(main())
