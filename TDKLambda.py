@@ -41,15 +41,8 @@ CR = b'\r'
 
 
 class TimeOut(Timeout):
-    def __init__(self, interval, count=1, action=None):
-        super.__init__(interval)
-        self.counter = Counter(count, action)
-
-    def expired(self):
-        if super().expired():
-            self.counter.inc()
-            return True
-        return False
+    def __init__(self, interval):
+        super().__init__(interval)
 
     def restart(self, duration=None):
         if duration is None:
@@ -237,73 +230,56 @@ class TDKLambda:
             else:                           # it was not suspended
                 return False
 
-    def read(self, size=1, timeout=None):
+    def _read(self, size=1, timeout=None):
         result = b''
-        if self.is_suspended():
-            return result
-        if timeout is None:
-            timeout = self.read_timeout
-        to = TimeOut(timeout, 3, self.suspend)
-        time0 = time.time()
+        to = TimeOut(timeout)
         while len(result) < size:
-            try:
-                r = self.com.read(1)
-                if len(r) > 0:
-                    result += r
-                    to.restart()
-                    to.counter.clear()
-                    dt = time.time() - time0
-                    self.read_timeout = max(2.0 * dt, self.min_timeout)
-                else:
-                    if to.expired():
-                        raise SerialTimeoutException('Read timeout')
-            except SerialTimeoutException:
-                self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
-                timeout = self.read_timeout
-                to.restart(timeout)
-                self.logger.info('Reading timeout, corrected to %5.2f s' % self.read_timeout)
-            except:
-                self.logger.info('Unexpected exception', exc_info=True)
-                self.suspend()
-            if self.is_suspended():
-                break
+            r = self.com.read(1)
+            if len(r) > 0:
+                result += r
+                to.restart()
+            else:
+                if to.expired():
+                    self.logger.debug('Read timeout')
+                    raise SerialTimeoutException('Read timeout')
         return result
 
-    def read_until(self, terminator=b'\r', size=None, timeout=None):
+    def read(self, size=1, retries=3):
+        counter = 0
         result = b''
-        if self.is_suspended():
-            return result
         t0 = time.time()
-        if timeout is None:
-            timeout = self.read_timeout
-        to = Timeout(timeout)
-        try:
-            while terminator not in result:
-                r = self.read(1)
-                if len(r) > 0:
-                    result += r
-                    to.restart(timeout)
-                    if size is not None and len(result) >= size:
-                        break
-                else:
-                    if to.expired():
-                        raise SerialTimeoutException('Read_until timeout')
-        except SerialTimeoutException:
-            self.logger.info('Reading_until %s timeout' % terminator)
-            # self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
-            # self.logger.info('Reading timeout, increased to %5.2f s' % self.read_timeout)
-            # self.read_timeout_count.inc()
-        except:
-            self.logger.info('Unexpected exception', exc_info=True)
-            self.suspend()
-        else:
-            self.read_timeout_count.clear()
-            self.read_timeout = max(2.0 * (time.time() - t0), self.min_timeout)
-        self.logger.debug('%s %s bytes in %4.0f ms' % (result, len(result)+1, (time.time() - t0) * 1000.0))
+        while counter <= retries:
+            try:
+                result = self._read(size, self.read_timeout)
+                dt = time.time() - t0
+                self.read_timeout = max(2.0 * dt, self.min_timeout)
+                #self.logger.debug('Reading timeout corrected to %5.2f s' % self.read_timeout)
+                return result
+            except SerialTimeoutException:
+                counter += 1
+                self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
+                self.logger.debug('Reading timeout increased to %5.2f s' % self.read_timeout)
+            except:
+                self.logger.info('Unexpected exception', exc_info=True)
+                counter = retries
+        return result
+
+    def read_until(self, terminator=b'\r', size=None):
+        result = b''
+        t0 = time.time()
+        while not self.is_suspended() and terminator not in result:
+            r = self.read(1)
+            if len(r) <= 0:
+                self.suspend()
+            result += r
+            if size is not None and len(result) >= size:
+                break
+        dt = (time.time() - t0) * 1000.0
+        self.logger.debug('%s %s bytes in %4.0f ms' % (result, len(result), dt))
         return result
 
     def read_response(self):
-        result = self.read_until(terminator=CR)
+        result = self.read_until(CR)
         self.response = result
         if CR not in result:
             self.logger.error('Response %s without CR' % self.response)
