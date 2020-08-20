@@ -520,7 +520,6 @@ class TDKLambda:
         return self.read_value(b'PV?', v_type=float)
 
     def reset(self):
-        return
         self.logger.debug('Resetting %s' % self)
         if self.com is None:
             self.create_com_port()
