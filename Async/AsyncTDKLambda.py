@@ -32,13 +32,15 @@ class FakeAsyncComPort(FakeComPort):
         return super().write(cmd, timeout)
 
     async def read(self, size=1, timeout=None):
-        return super().read(size, timeout)
+        v = super().read(size, timeout)
+        #await asyncio.sleep(0)
+        return v
 
     async def read_until(self, terminator=b'\r', size=None, timeout=None):
         result = bytearray()
         to = Timeout(timeout)
         while True:
-            c = await self.read(1)
+            c = self.read(1)
             if c:
                 result += c
                 if terminator in result:
@@ -48,11 +50,12 @@ class FakeAsyncComPort(FakeComPort):
                 to.restart(timeout)
             if to.expired():
                 raise SerialTimeoutException('Read timeout')
+            await asyncio.sleep(0)
         return bytes(result)
 
 
 class AsyncTDKLambda(TDKLambda):
-    LOG_LEVEL = logging.DEBUG
+    LOG_LEVEL = logging.INFO
 
     def create_com_port(self):
         # if com port already exists
@@ -177,7 +180,7 @@ class AsyncTDKLambda(TDKLambda):
             # read response (to CR by default)
             result = await self.read_response()
         dt = (time.time()-t0)*1000.0
-        self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
+        self.logger.info('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
         return result
 
     async def send_command(self, cmd):
@@ -279,6 +282,7 @@ class AsyncTDKLambda(TDKLambda):
             result += r
             if size is not None and len(result) >= size:
                 break
+            #await asyncio.sleep(0)
         dt = (time.time() - t0) * 1000.0
         self.logger.debug('%s %s bytes in %4.0f ms' % (result, len(result), dt))
         return result
@@ -314,6 +318,7 @@ class AsyncTDKLambda(TDKLambda):
                 if to.expired():
                     self.logger.debug('Read timeout')
                     raise SerialTimeoutException('Read timeout')
+            await asyncio.sleep(0)
         return result
 
     async def read_float(self, cmd):
