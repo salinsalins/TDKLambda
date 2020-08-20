@@ -29,8 +29,7 @@ class FakeAsyncComPort(FakeComPort):
         return True
 
     async def write(self, cmd, timeout=None):
-        async with self.async_lock:
-            return super().write(cmd, timeout)
+        return super().write(cmd, timeout)
 
     async def read(self, size=1, timeout=None):
         return super().read(size, timeout)
@@ -38,22 +37,22 @@ class FakeAsyncComPort(FakeComPort):
     async def read_until(self, terminator=b'\r', size=None, timeout=None):
         result = bytearray()
         to = Timeout(timeout)
-        async with self.async_lock:
-            while True:
-                c = await self.read(1)
-                if c:
-                    result += c
-                    if terminator in result:
-                        break
-                    if size is not None and len(result) >= size:
-                        break
-                    to.restart(timeout)
-                if to.expired():
-                    raise SerialTimeoutException('Read timeout')
+        while True:
+            c = await self.read(1)
+            if c:
+                result += c
+                if terminator in result:
+                    break
+                if size is not None and len(result) >= size:
+                    break
+                to.restart(timeout)
+            if to.expired():
+                raise SerialTimeoutException('Read timeout')
         return bytes(result)
 
 
 class AsyncTDKLambda(TDKLambda):
+    LOG_LEVEL = logging.DEBUG
 
     def create_com_port(self):
         # if com port already exists
@@ -171,11 +170,12 @@ class AsyncTDKLambda(TDKLambda):
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
         t0 = time.time()
-        # write command
-        if not await self.write(cmd):
-            return False
-        # read response (to CR by default)
-        result = await self.read_response()
+        async with self.com.async_lock:
+            # write command
+            if not await self.write(cmd):
+                return False
+            # read response (to CR by default)
+            result = await self.read_response()
         dt = (time.time()-t0)*1000.0
         self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
         return result
@@ -443,7 +443,8 @@ async def main():
     task5 = asyncio.create_task(pd1.write_current(2.0))
     task6 = asyncio.create_task(pd2.write_current(3.0))
     t_0 = time.time()
-    await asyncio.wait({task1})
+    await asyncio.wait({task1, task2, task3, task4, task5, task6})
+    #await asyncio.wait({task1})
     dt = int((time.time() - t_0) * 1000.0)    # ms
     v1 = task1.result()
     v2 = task2.result()
