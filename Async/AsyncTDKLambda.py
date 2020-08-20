@@ -159,7 +159,7 @@ class AsyncTDKLambda(TDKLambda):
             if self.check:
                 cs = self.checksum(cmd[:-1])
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
-            if self.auto_addr and self.com._current_addr != self.addr:
+            if self.com._current_addr != self.addr:
                 result = await self.set_addr()
                 if not result:
                     self.suspend()

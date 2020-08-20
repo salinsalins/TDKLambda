@@ -42,7 +42,7 @@ CR = b'\r'
 
 
 class TDKLambda:
-    LOG_LEVEL = logging.DEBUG
+    LOG_LEVEL = logging.INFO
     EMULATE = True
     max_timeout = 0.8  # sec
     min_timeout = 0.15  # sec
@@ -62,7 +62,7 @@ class TDKLambda:
         self.check = checksum
         self.baud = baud_rate
         self.logger = logger
-        self.auto_addr = auto_addr
+        self.auto_addr = True
         # create variables
         self.command = b''
         self.response = b''
@@ -173,13 +173,13 @@ class TDKLambda:
         self.sn = self.read_serial_number()
         # add device to list
         TDKLambda.devices.append(self)
-        msg = 'TDKLambda: %s has been created' % self.id
+        msg = 'TDKLambda: %s SN:%s has been created' % (self.id, self.sn)
         self.logger.info(msg)
 
     def read_device_id(self):
         try:
             if self._send_command(b'IDN?'):
-                id = int(self.response[:-1].decode())
+                id = self.response[:-1].decode()
                 return id
             else:
                 return 'Unknown Device'
@@ -382,7 +382,7 @@ class TDKLambda:
             if self.check:
                 cs = self.checksum(cmd[:-1])
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
-            if self.auto_addr and self.com._current_addr != self.addr:
+            if self.com._current_addr != self.addr:
                 result = self.set_addr()
                 if not result:
                     self.suspend()
