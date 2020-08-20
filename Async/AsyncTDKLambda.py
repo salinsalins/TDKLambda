@@ -434,7 +434,7 @@ class AsyncTDKLambda(TDKLambda):
 async def main():
     pd1 = AsyncTDKLambda("COM6", 6)
     await pd1.init()
-    pd2 = AsyncTDKLambda("COM6", 7)
+    pd2 = AsyncTDKLambda("COM7", 7)
     await pd2.init()
     task1 = asyncio.create_task(pd1.read_float("MC?"))
     task2 = asyncio.create_task(pd2.read_float("MC?"))
