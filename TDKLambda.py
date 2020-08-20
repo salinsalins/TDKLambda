@@ -15,6 +15,7 @@ from Counter import Counter
 from TDKLambdaExceptions import *
 from Async.AsyncSerial import Timeout
 
+
 class MoxaTCPComPort:
     def __init__(self, host: str, port: int = 4001):
         if ':' in host:
@@ -39,7 +40,6 @@ class MoxaTCPComPort:
 
 
 CR = b'\r'
-
 
 
 class TDKLambda:
