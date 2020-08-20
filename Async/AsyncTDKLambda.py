@@ -172,8 +172,8 @@ class AsyncTDKLambda(TDKLambda):
         self.response = b''
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
-        t0 = time.time()
         async with self.com.async_lock:
+            t0 = time.time()
             # write command
             if not await self.write(cmd):
                 return False
