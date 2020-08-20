@@ -5,6 +5,7 @@ import logging
 import socket
 import time
 from threading import Lock
+import asyncio
 
 import serial
 from serial import *
@@ -98,7 +99,8 @@ class TDKLambda:
             TDKLambda.devices.append(self)
             return
         #
-        if self.__class__ == TDKLambda:
+        #if self.__class__ == TDKLambda:
+        if not asyncio.iscoroutinefunction(self.init):
             self.init()
 
     def __del__(self):
@@ -163,7 +165,7 @@ class TDKLambda:
             # determine max current and voltage from model name
             n1 = self.id.find('GEN')
             n2 = self.id.find('-')
-            if n1 >= 0 and n2 > n1:
+            if 0 <= n1 < n2:
                 try:
                     self.max_voltage = float(self.id[n1+3:n2])
                     self.max_current = float(self.id[n2+1:])
@@ -179,8 +181,7 @@ class TDKLambda:
     def read_device_id(self):
         try:
             if self._send_command(b'IDN?'):
-                id = self.response[:-1].decode()
-                return id
+                return self.response[:-1].decode()
             else:
                 return 'Unknown Device'
         except:
@@ -529,6 +530,7 @@ class TDKLambda:
                     self.init()
                     return
         # no working devices on same port so try to recreate com port
+        self.close_com_port()
         self.create_com_port()
         self.init()
         return

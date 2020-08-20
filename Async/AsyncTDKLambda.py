@@ -55,6 +55,10 @@ class FakeAsyncComPort(FakeComPort):
 
 class AsyncTDKLambda(TDKLambda):
 
+    ##def __init__(self, port: str, addr=6, checksum=False, baud_rate=9600, logger=None, auto_addr=True):
+    ##    super().__init__(port, addr, checksum, baud_rate, logger, auto_addr)
+    ##    await self.init()
+
     def create_com_port(self):
         # if com port already exists
         for d in TDKLambda.devices:
@@ -85,6 +89,7 @@ class AsyncTDKLambda(TDKLambda):
 
     async def init(self):
         if self.com is None:
+            self.suspend()
             return
         # set device address
         response = await self.set_addr()
@@ -94,24 +99,43 @@ class AsyncTDKLambda(TDKLambda):
             TDKLambda.devices.append(self)
             return
         # read device type
-        if await self._send_command(b'IDN?'):
-            self.id = self.response[:-1].decode()
+        self.id = await self.read_device_id()
+        if self.id.find('LAMBDA') >= 0:
             # determine max current and voltage from model name
             n1 = self.id.find('GEN')
             n2 = self.id.find('-')
-            if n1 >= 0 and n2 >= 0:
+            if n1 >= 0 and n2 > n1:
                 try:
                     self.max_voltage = float(self.id[n1+3:n2])
                     self.max_current = float(self.id[n2+1:])
                 except:
                     pass
         # read device serial number
-        if await self._send_command(b'SN?'):
-            self.serial_number = self.response.decode()
+        self.sn = await self.read_serial_number()
         # add device to list
         TDKLambda.devices.append(self)
-        msg = 'TDKLambda: %s has been created' % self.id
+        msg = 'TDKLambda: %s SN:%s has been created' % (self.id, self.sn)
         self.logger.info(msg)
+
+    async def read_device_id(self):
+        try:
+            if await self._send_command(b'IDN?'):
+                id = self.response[:-1].decode()
+                return id
+            else:
+                return 'Unknown Device'
+        except:
+            return 'Unknown Device'
+
+    async def read_serial_number(self):
+        try:
+            if await self._send_command(b'SN?'):
+                serial_number = int(self.response[:-1].decode())
+                return serial_number
+            else:
+                return -1
+        except:
+            return -1
 
     async def set_addr(self):
         if hasattr(self.com, '_current_addr'):
@@ -373,6 +397,27 @@ class AsyncTDKLambda(TDKLambda):
     async def read_programmed_voltage(self):
         return await self.read_value(b'PV?', v_type=float)
 
+    async def reset(self):
+        self.logger.debug('Resetting %s' % self)
+        if self.com is None:
+            self.create_com_port()
+            await self.init()
+            return
+        # check working devices on same port
+        for d in TDKLambda.devices:
+            if d.port == self.port and d.sn > 0:
+                if asyncio.iscoroutinefunction(d.read_device_id):
+                    did = await d.read_device_id()
+                else:
+                    did = d.read_device_id()
+                if did.find('LAMBDA') >= 0:
+                    await self.init()
+                    return
+        # no working devices on same port so try to recreate com port
+        self.close_com_port()
+        self.create_com_port()
+        await self.init()
+        return
 
 async def main():
     pd1 = AsyncTDKLambda("COM6", 6)
