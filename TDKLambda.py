@@ -148,6 +148,7 @@ class TDKLambda:
 
     def init(self):
         if self.com is None:
+            self.suspend()
             return
         # set device address
         response = self.set_addr()
@@ -516,8 +517,23 @@ class TDKLambda:
 
     def reset(self):
         self.logger.debug('Resetting %s' % self)
-        self.__del__()
-        self.__init__(self.port, self.addr, self.check, self.baud, self.logger)
+        if self.com is None:
+            self.create_com_port()
+            self.init()
+            return
+        # check working devices on same port
+        for d in TDKLambda.devices:
+            if d.port == self.port and d.sn > 0:
+                did = d.read_device_id()
+                if did.find('LAMBDA') >= 0:
+                    self.init()
+                    return
+        # no working devices on same port so try to recreate com port
+        self.create_com_port()
+        self.init()
+        return
+
+
 
 
 if __name__ == "__main__":
