@@ -23,7 +23,7 @@ class FakeComPort:
         self.sn = {self.last_address: str(FakeComPort.SN).encode()}
         FakeComPort.SN += 1
         self.id = {self.last_address: FakeComPort.ID}
-        self.t = {self.last_address: time.time()}
+        self.t = {self.last_address: time.perf_counter()}
 
     def close(self):
         self.last_write = b''
@@ -52,18 +52,18 @@ class FakeComPort:
                 self.out[self.last_address] = True
             elif self.last_write.startswith(b'OUT OF') or self.last_write.startswith(b'OUT 0'):
                 self.out[self.last_address] = False
-            self.t[self.last_address] = time.time()
+            self.t[self.last_address] = time.perf_counter()
             return len(cmd)
         except:
-            self.t[self.last_address] = time.time()
+            self.t[self.last_address] = time.perf_counter()
             return 0
 
     def read(self, size=1, timeout=None):
         if self.last_write == b'':
             return b''
-        if time.time() - self.t[self.last_address] < self.RESPONSE_DELAY:
+        if time.perf_counter() - self.t[self.last_address] < self.RESPONSE_DELAY:
             return b''
-        self.t[self.last_address] = time.time()
+        self.t[self.last_address] = time.perf_counter()
         if self.last_write.startswith(b'ADR '):
             self.last_address = int(self.last_write[3:])
             self.last_write = b''

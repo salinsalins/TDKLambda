@@ -55,10 +55,6 @@ class FakeAsyncComPort(FakeComPort):
 
 class AsyncTDKLambda(TDKLambda):
 
-    ##def __init__(self, port: str, addr=6, checksum=False, baud_rate=9600, logger=None, auto_addr=True):
-    ##    super().__init__(port, addr, checksum, baud_rate, logger, auto_addr)
-    ##    await self.init()
-
     def create_com_port(self):
         # if com port already exists
         for d in TDKLambda.devices:
@@ -153,6 +149,22 @@ class AsyncTDKLambda(TDKLambda):
                 self.com._current_addr = -1
             return False
 
+    async def is_suspended(self):
+        if time.time() < self.suspend_to:   # if suspension does not expire
+            return True
+        else:                               # suspension expires
+            if self.suspend_flag:           # if it was suspended and expires
+                await self.reset()
+                if self.com is None:        # if initialization was not successful
+                    # suspend again
+                    self.suspend()
+                    return True
+                else:                       # initialization was successful
+                    self.unsuspend()
+                    return False
+            else:                           # it was not suspended
+                return False
+
     async def _send_command(self, cmd: bytes):
         self.command = cmd
         self.response = b''
@@ -169,7 +181,7 @@ class AsyncTDKLambda(TDKLambda):
         return result
 
     async def send_command(self, cmd):
-        if self.is_suspended():
+        if await self.is_suspended():
             self.command = cmd
             self.response = b''
             return False
@@ -260,7 +272,7 @@ class AsyncTDKLambda(TDKLambda):
     async def read_until(self, terminator=b'\r', size=None):
         result = b''
         t0 = time.time()
-        while not self.is_suspended() and terminator not in result:
+        while not await self.is_suspended() and terminator not in result:
             r = await self.read(1)
             if len(r) <= 0:
                 self.suspend()
@@ -364,7 +376,7 @@ class AsyncTDKLambda(TDKLambda):
     async def read_output(self):
         if not await self.send_command(b'OUT?'):
             return None
-        response = await self.response.upper()
+        response = self.response.upper()
         if response.startswith((b'ON', b'1')):
             return True
         if response.startswith((b'OFF', b'0')):

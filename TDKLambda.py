@@ -247,6 +247,7 @@ class TDKLambda:
     def _read(self, size=1, timeout=None):
         result = b''
         to = Timeout(timeout)
+        # t0 = time.perf_counter()
         while len(result) < size:
             r = self.com.read(1)
             if len(r) > 0:
@@ -256,6 +257,8 @@ class TDKLambda:
                 if to.expired():
                     self.logger.debug('Read timeout')
                     raise SerialTimeoutException('Read timeout')
+            # dt = (time.perf_counter() - t0) * 1000.0
+            # self.logger.debug('%s %5.2f ms' % (r, dt))
         return result
 
     def read(self, size=1, retries=3):
@@ -281,7 +284,7 @@ class TDKLambda:
     def read_until(self, terminator=b'\r', size=None):
         result = b''
         t0 = time.time()
-        while not self.is_suspended() and terminator not in result:
+        while terminator not in result and not self.is_suspended():
             r = self.read(1)
             if len(r) <= 0:
                 self.suspend()
@@ -517,6 +520,7 @@ class TDKLambda:
         return self.read_value(b'PV?', v_type=float)
 
     def reset(self):
+        return
         self.logger.debug('Resetting %s' % self)
         if self.com is None:
             self.create_com_port()
@@ -536,13 +540,9 @@ class TDKLambda:
         return
 
 
-
-
 if __name__ == "__main__":
     pd1 = TDKLambda("COM6", 6)
-    ###pd1.init()
     pd2 = TDKLambda("COM6", 7)
-    ####pd2.init()
     for i in range(5):
         t_0 = time.time()
         v1 = pd1.read_float("PC?")
