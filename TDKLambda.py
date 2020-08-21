@@ -543,7 +543,7 @@ class TDKLambda:
         return
 
     def initialized(self):
-        return self.id.find('LAMBDA') > 0
+        return self.com is not None and self.id.find('LAMBDA') > 0
 
 
 if __name__ == "__main__":
