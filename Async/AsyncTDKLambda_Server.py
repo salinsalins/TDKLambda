@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
-
-from .AsyncTDKLambda import TDKLambda
+from .AsyncTDKLambda import AsyncTDKLambda
 
 import logging
 import time
@@ -10,21 +9,21 @@ from math import isnan
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
+from tango import GreenMode
 from tango.server import Device, attribute, command
 
 from Utils import *
 
 ORGANIZATION_NAME = 'BINP'
-APPLICATION_NAME = 'TDKLambda_Server'
-APPLICATION_NAME_SHORT = 'TDKLambda_Server'
-APPLICATION_VERSION = '2_2'
+APPLICATION_NAME = 'Async_TDKLambda_Server'
+APPLICATION_VERSION = '1_0'
 
-# init a thread lock
-_lock = Lock()
 logger = config_logger(level=logging.INFO)
 
 
-class TDKLambda_Server(Device):
+class Async_TDKLambda_Server(Device):
+    green_mode = GreenMode.Asyncio
+
     READING_VALID_TIME = 0.7
     devices = []
 
@@ -89,40 +88,40 @@ class TDKLambda_Server(Device):
         except:
             return default
 
-    def init_device(self):
-        with _lock:
-            self.error_count = 0
-            self.values = [float('NaN')] * 6
-            self.time = time.time() - 100.0
-            self.set_state(DevState.INIT)
-            Device.init_device(self)
-            self.last_level = logging.INFO
-            # get port and address from property
-            port = self.get_device_property('port', 'COM1')
-            addr = self.get_device_property('addr', 6)
-            # create TDKLambda device
-            self.tdk = TDKLambda(port, addr)
-            # check if device OK
-            if self.tdk.com is None:
-                msg = '%s TDKLambda device creation error' % self
-                logger.error(msg)
-                self.error_stream(msg)
-                self.set_state(DevState.FAULT)
-                return
-            # add device to list
-            TDKLambda_Server.devices.append(self)
-            if self.tdk.id is not None and self.tdk.id != b'':
-                # set state to running
-                self.set_state(DevState.RUNNING)
-                msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
-                logger.info(msg)
-                self.info_stream(msg)
-            else:
-                # unknown device id
-                msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
-                logger.error(msg)
-                self.error_stream(msg)
-                self.set_state(DevState.FAULT)
+    async def init_device(self):
+        self.error_count = 0
+        self.values = [float('NaN')] * 6
+        self.time = time.time() - 100.0
+        self.set_state(DevState.INIT)
+        Device.init_device(self)
+        self.last_level = logging.INFO
+        # get port and address from property
+        port = self.get_device_property('port', 'COM1')
+        addr = self.get_device_property('addr', 6)
+        # create TDKLambda device
+        self.tdk = AsyncTDKLambda(port, addr)
+        await self.tdk.init()
+        # check if device OK
+        if self.tdk.com is None:
+            msg = '%s TDKLambda device creation error' % self
+            logger.error(msg)
+            self.error_stream(msg)
+            self.set_state(DevState.FAULT)
+            return
+        # add device to list
+        Async_TDKLambda_Server.devices.append(self)
+        if self.tdk.sn > 0:
+            # set state to running
+            self.set_state(DevState.RUNNING)
+            msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
+            logger.info(msg)
+            self.info_stream(msg)
+        else:
+            # unknown device id
+            msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
+            logger.error(msg)
+            self.error_stream(msg)
+            self.set_state(DevState.FAULT)
 
     def delete_device(self):
         with _lock:
