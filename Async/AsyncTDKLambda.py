@@ -436,6 +436,7 @@ class AsyncTDKLambda(TDKLambda):
         await self.init()
         return
 
+
 async def main():
     pd1 = AsyncTDKLambda("COM6", 6)
     await pd1.init()
