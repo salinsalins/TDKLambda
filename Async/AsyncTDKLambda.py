@@ -94,7 +94,7 @@ class AsyncTDKLambda(TDKLambda):
         if not response:
             msg = 'Uninitialized TDKLambda device has been added to list'
             self.logger.info(msg)
-            TDKLambda.devices.append(self)
+            self.add_to_list()
             return
         # read device type
         self.id = await self.read_device_id()
@@ -111,7 +111,7 @@ class AsyncTDKLambda(TDKLambda):
         # read device serial number
         self.sn = await self.read_serial_number()
         # add device to list
-        TDKLambda.devices.append(self)
+        self.add_to_list()
         msg = 'TDKLambda: %s SN:%s has been created' % (self.id, self.sn)
         self.logger.info(msg)
 
@@ -422,12 +422,12 @@ class AsyncTDKLambda(TDKLambda):
             return
         # check working devices on same port
         for d in TDKLambda.devices:
-            if d.port == self.port and d.sn > 0:
+            if d.port == self.port and d.initialized() and d != self:
                 if asyncio.iscoroutinefunction(d.read_device_id):
-                    did = await d.read_device_id()
+                    did = await d.init()
                 else:
-                    did = d.read_device_id()
-                if did.find('LAMBDA') >= 0:
+                    did = d.init()
+                if did.initialized():
                     await self.init()
                     return
         # no working devices on same port so try to recreate com port

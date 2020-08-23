@@ -94,9 +94,9 @@ class TDKLambda:
         self.create_com_port()
         #
         if self.com is None:
-            msg = 'TDKLambda device with uninitialized port has been added to list'
+            msg = 'TDKLambda: %s port was not initialized' % self.port
             self.logger.info(msg)
-            TDKLambda.devices.append(self)
+            self.add_to_list()
             return
         #
         #if self.__class__ == TDKLambda:
@@ -155,9 +155,9 @@ class TDKLambda:
         # set device address
         response = self.set_addr()
         if not response:
-            msg = 'Uninitialized TDKLambda device has been added to list'
+            msg = 'TDKLambda: device is not initialized properly'
             self.logger.info(msg)
-            TDKLambda.devices.append(self)
+            self.add_to_list()
             return
         # read device type
         self.id = self.read_device_id()
@@ -174,9 +174,13 @@ class TDKLambda:
         # read device serial number
         self.sn = self.read_serial_number()
         # add device to list
-        TDKLambda.devices.append(self)
-        msg = 'TDKLambda: %s SN:%s has been created' % (self.id, self.sn)
-        self.logger.info(msg)
+        self.add_to_list()
+        msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
+        self.logger.debug(msg)
+
+    def add_to_list(self):
+        if self not in TDKLambda.devices:
+            TDKLambda.devices.append(self)
 
     def read_device_id(self):
         try:
@@ -527,9 +531,9 @@ class TDKLambda:
             return
         # check working devices on same port
         for d in TDKLambda.devices:
-            if d.port == self.port and d.sn > 0:
-                did = d.read_device_id()
-                if did.find('LAMBDA') >= 0:
+            if d.port == self.port and d.initialized() and d != self:
+                d.init()
+                if d.initilized():
                     self.init()
                     return
         # no working devices on same port so try to recreate com port
@@ -537,6 +541,9 @@ class TDKLambda:
         self.create_com_port()
         self.init()
         return
+
+    def initialized(self):
+        return self.com is not None and self.id.find('LAMBDA') > 0
 
 
 if __name__ == "__main__":

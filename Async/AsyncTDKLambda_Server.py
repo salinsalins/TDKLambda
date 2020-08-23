@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
-
-from .AsyncTDKLambda import TDKLambda
+from .AsyncTDKLambda import AsyncTDKLambda
 
 import logging
 import time
@@ -10,21 +9,21 @@ from math import isnan
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
+from tango import GreenMode
 from tango.server import Device, attribute, command
 
 from Utils import *
 
 ORGANIZATION_NAME = 'BINP'
-APPLICATION_NAME = 'TDKLambda_Server'
-APPLICATION_NAME_SHORT = 'TDKLambda_Server'
-APPLICATION_VERSION = '2_2'
+APPLICATION_NAME = 'Async_TDKLambda_Server'
+APPLICATION_VERSION = '1_0'
 
-# init a thread lock
-_lock = Lock()
 logger = config_logger(level=logging.INFO)
 
 
-class TDKLambda_Server(Device):
+class Async_TDKLambda_Server(Device):
+    green_mode = GreenMode.Asyncio
+
     READING_VALID_TIME = 0.7
     devices = []
 
@@ -68,81 +67,51 @@ class TDKLambda_Server(Device):
                                    min_value=0.0,
                                    doc="Programmed current")
 
-    def get_device_property(self, prop: str, default=None):
-        name = self.get_name()
-        if not hasattr(self, 'dp'):
-            # device proxy
-            self.dp = tango.DeviceProxy(name)
-        # read property
-        pr = self.dp.get_property(prop)[prop]
-        result = None
-        if len(pr) > 0:
-            result = pr[0]
-        if default is None:
-            return result
-        try:
-            if result is None or result == '':
-                result = default
-            else:
-                result = type(default)(result)
-            return result
-        except:
-            return default
-
-    def init_device(self):
-        with _lock:
-            self.error_count = 0
-            self.values = [float('NaN')] * 6
-            self.time = time.time() - 100.0
-            self.set_state(DevState.INIT)
-            Device.init_device(self)
-            self.last_level = logging.INFO
-            # get port and address from property
-            port = self.get_device_property('port', 'COM1')
-            addr = self.get_device_property('addr', 6)
-            # create TDKLambda device
-            self.tdk = TDKLambda(port, addr)
-            # check if device OK
-            if self.tdk.com is None:
-                msg = '%s TDKLambda device creation error' % self
-                logger.error(msg)
-                self.error_stream(msg)
-                self.set_state(DevState.FAULT)
-                return
+    async def init_device(self):
+        self.error_count = 0
+        self.values = [float('NaN')] * 6
+        self.time = time.time() - 100.0
+        self.set_state(DevState.INIT)
+        Device.init_device(self)
+        self.last_level = logging.INFO
+        # get port and address from property
+        port = self.get_device_property('port', 'COM1')
+        addr = self.get_device_property('addr', 6)
+        # create TDKLambda device
+        self.tdk = AsyncTDKLambda(port, addr)
+        await self.tdk.init()
+        # check if device OK
+        if self.tdk.initialized():
             # add device to list
-            TDKLambda_Server.devices.append(self)
-            if self.tdk.id is not None and self.tdk.id != b'':
-                # set state to running
-                self.set_state(DevState.RUNNING)
-                msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
-                logger.info(msg)
-                self.info_stream(msg)
-            else:
-                # unknown device id
-                msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
-                logger.error(msg)
-                self.error_stream(msg)
-                self.set_state(DevState.FAULT)
+            Async_TDKLambda_Server.devices.append(self)
+            # set state to running
+            self.set_state(DevState.RUNNING)
+            msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
+            logger.info(msg)
+            self.info_stream(msg)
+        else:
+            msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
+            logger.error(msg)
+            self.error_stream(msg)
+            self.set_state(DevState.FAULT)
 
-    def delete_device(self):
-        with _lock:
-            if self in TDKLambda_Server.devices:
-                TDKLambda_Server.devices.remove(self)
-                self.tdk.__del__()
-                msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
-                logger.info(msg)
-                self.info_stream(msg)
+    async def delete_device(self):
+        if self in Async_TDKLambda_Server.devices:
+            Async_TDKLambda_Server.devices.remove(self)
+            self.tdk.__del__()
+            msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
+            logger.info(msg)
+            self.info_stream(msg)
 
-    def read_device_type(self):
-        with _lock:
-            if self.tdk.com is None:
-                return "Uninitialized"
+    async def read_device_type(self):
+        if self.tdk.initialized():
             return self.tdk.id
+        return "Uninitialized"
 
-    def read_all(self):
+    async def read_all(self):
         t0 = time.time()
         try:
-            values = self.tdk.read_all()
+            values = await self.tdk.read_all()
             self.values = values
             self.time = time.time()
             msg = '%s:%d read_all %s ms %s' % \
@@ -156,249 +125,176 @@ class TDKLambda_Server(Device):
             logger.debug('', exc_info=True)
             self.info_stream(msg)
 
-    def read_voltage(self, attr: tango.Attribute):
-        with _lock:
-            if time.time() - self.time > self.READING_VALID_TIME:
-                self.read_all()
-            val = self.values[0]
-            attr.set_value(val)
-            if isnan(val):
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                msg = "%s Output voltage read error" % self
-                self.info_stream(msg)
-                logger.warning(msg)
-                self.set_fault()
-            else:
-                attr.set_quality(tango.AttrQuality.ATTR_VALID)
-                self.set_running()
-            return val
+    async def read_one(self, attr: tango.Attribute, index: int, message: str):
+        if time.time() - self.time > self.READING_VALID_TIME:
+            await self.read_all()
+        val = self.values[index]
+        attr.set_value(val)
+        if isnan(val):
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            msg = ('%s ' + message) % self
+            self.info_stream(msg)
+            logger.warning(msg)
+            self.set_fault()
+        else:
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            self.set_running()
+        return val
 
-    def read_current(self, attr: tango.Attribute):
-        with _lock:
-            if time.time() - self.time > self.READING_VALID_TIME:
-                self.read_all()
-            val = self.values[2]
-            attr.set_value(val)
-            if isnan(val):
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                msg = "%s Output current read error" % self
-                self.info_stream(msg)
-                logger.warning(msg)
-                self.set_fault()
-            else:
-                attr.set_quality(tango.AttrQuality.ATTR_VALID)
-                self.set_running()
-            return val
+    async def read_voltage(self, attr: tango.Attribute):
+        return await self.read_one(0, "Output voltage read error")
 
-    def read_programmed_voltage(self, attr: tango.Attribute):
-        with _lock:
-            if time.time() - self.time > self.READING_VALID_TIME:
-                self.read_all()
-            val = self.values[1]
-            attr.set_value(val)
-            if isnan(val):
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                msg = "%s Programmed voltage read error" % self
-                self.info_stream(msg)
-                logger.warning(msg)
-                self.set_fault()
-            else:
-                attr.set_quality(tango.AttrQuality.ATTR_VALID)
-                self.set_running()
-            return val
+    async def read_current(self, attr: tango.Attribute):
+        return await self.read_one(2, "Output current read error")
 
-    def read_programmed_current(self, attr: tango.Attribute):
-        with _lock:
-            if time.time() - self.time > self.READING_VALID_TIME:
-                self.read_all()
-            val = self.values[3]
-            attr.set_value(val)
-            if isnan(val):
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                msg = "%s Programmed current  read error" % self
-                self.info_stream(msg)
-                logger.warning(msg)
-                self.set_fault()
-            else:
-                attr.set_quality(tango.AttrQuality.ATTR_VALID)
-                self.set_running()
-            return val
+    async def read_programmed_voltage(self, attr: tango.Attribute):
+        return await self.read_one(1, "Programmed voltage read error")
 
-    def write_programmed_voltage(self, value):
-        with _lock:
-            if self.tdk.com is None:
-                self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
-                msg = "%s Writing to offline device" % self
-                self.info_stream(msg)
-                logger.warning(msg)
-                result = False
-                self.set_fault()
-            else:
-                result = self.tdk.write_value(b'PV', value)
-            if result:
-                self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_VALID)
-                self.set_running()
-            else:
-                self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
-                msg = "%s Error writing programmed voltage" % self
-                self.info_stream(msg)
-                logger.warning(msg)
-                self.set_fault()
+    async def read_programmed_current(self, attr: tango.Attribute):
+        return await self.read_one(3, "Programmed current read error")
+
+    async def write_one(self, value, cmd, message):
+        if not self.tdk.initialized():
+            self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
+            msg = "%s Writing to offline device" % self
+            self.info_stream(msg)
+            logger.warning(msg)
+            result = False
+            self.set_fault()
+        else:
+            result = await self.tdk.write_value(cmd, value)
+        if result:
+            self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_VALID)
+            self.set_running()
+        else:
+            self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
+            msg = ('%s ' + message) % self
+            self.info_stream(msg)
+            logger.warning(msg)
+            self.set_fault()
+        return result
+
+    async def write_programmed_voltage(self, value):
+        return await self.write_one(value, b'PV', 'Error writing programmed voltage')
+
+    async def write_programmed_current(self, value):
+        return await self.write_one(value, b'PC', 'Error writing programmed current')
+
+    async def read_output_state(self, attr: tango.Attribute):
+        if not self.tdk.initialized():
+            self.set_fault()
+            attr.set_value(False)
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            return False
+        response = await self.tdk.send_command(b'OUT?')
+        if response.upper().startswith(b'ON') or response.upper().startswith(b'1'):
+            quality = tango.AttrQuality.ATTR_VALID
+            value = True
+            self.set_running()
+        elif response.upper().startswith(b'OFF') or response.upper().startswith(b'0'):
+            quality = tango.AttrQuality.ATTR_VALID
+            value = False
+            self.set_running()
+        else:
+            msg = "%s Error reading output state" % self
+            self.info_stream(msg)
+            logger.warning(msg)
+            quality = tango.AttrQuality.ATTR_INVALID
+            value = False
+            self.set_fault()
+        attr.set_value(value)
+        attr.set_quality(quality)
+        return value
+
+    async def write_output_state(self, value):
+        if not self.tdk.initialized():
+            msg = '%s:%d Switch output for offline device' % (self.tdk.port, self.tdk.addr)
+            self.debug_stream(msg)
+            logger.debug(msg)
+            self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
+            result = False
+            self.set_fault()
             return result
-
-    def write_programmed_current(self, value):
-        with _lock:
-            if self.tdk.com is None:
-                self.programmed_current.set_quality(tango.AttrQuality.ATTR_INVALID)
-                msg = "%s Writing to offline device" % self
-                self.info_stream(msg)
-                logger.warning(msg)
-                result = False
-                self.set_fault()
-            else:
-                result = self.tdk.write_value(b'PC', value)
-            if result:
-                self.programmed_current.set_quality(tango.AttrQuality.ATTR_VALID)
-                self.set_running()
-            else:
-                self.programmed_current.set_quality(tango.AttrQuality.ATTR_INVALID)
-                msg = "%s Error writing programmed current" % self
-                self.info_stream(msg)
-                logger.warning(msg)
-                self.set_fault()
-            return result
-
-    def read_output_state(self, attr: tango.Attribute):
-        with _lock:
-            qual = tango.AttrQuality.ATTR_INVALID
-            if self.tdk.com is None:
-                value = False
-                qual = tango.AttrQuality.ATTR_INVALID
-                self.set_fault()
-            else:
-                response = self.tdk.send_command(b'OUT?')
-                if response.upper().startswith(b'ON') or response.upper().startswith(b'1'):
-                    qual = tango.AttrQuality.ATTR_VALID
-                    value = True
-                    self.set_running()
-                elif response.upper().startswith(b'OFF') or response.upper().startswith(b'0'):
-                    qual = tango.AttrQuality.ATTR_VALID
-                    value = False
-                    self.set_running()
-                else:
-                    msg = "%s Error reading output state" % self
-                    self.info_stream(msg)
-                    logger.warning(msg)
-                    qual = tango.AttrQuality.ATTR_INVALID
-                    value = False
-                    self.set_fault()
-            attr.set_value(value)
-            attr.set_quality(qual)
-            return value
-
-    def write_output_state(self, value):
-        with _lock:
-            if self.tdk.com is None:
-                msg = '%s:%d Switch output for offline device' % (self.tdk.port, self.tdk.addr)
-                self.debug_stream(msg)
-                logger.debug(msg)
-                self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
-                result = False
-                self.set_fault()
-            else:
-                if value:
-                    response = self.tdk.send_command(b'OUT 1')
-                else:
-                    response = self.tdk.send_command(b'OUT 0')
-                if response.startswith(b'OK'):
-                    self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
-                    result = True
-                    self.set_running()
-                else:
-                    msg = '%s:%d Error switch output %s' % (self.tdk.port, self.tdk.addr, response)
-                    self.error_stream(msg)
-                    logger.error(msg)
-                    self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
-                    result = False
-                    self.set_fault()
-            return result
-
-    def set_running(self):
-        self.error_count = 0
-        self.set_state(DevState.RUNNING)
-
-    def set_fault(self):
-        self.error_count += 1
-        if self.error_count > 5:
-            self.set_state(DevState.FAULT)
+        if value:
+            response = await self.tdk.send_command(b'OUT 1')
+        else:
+            response = await self.tdk.send_command(b'OUT 0')
+        if response.startswith(b'OK'):
+            self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
+            result = True
+            self.set_running()
+        else:
+            msg = '%s:%d Error switch output %s' % (self.tdk.port, self.tdk.addr, response)
+            self.error_stream(msg)
+            logger.error(msg)
+            self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
+            result = False
+            self.set_fault()
+        return result
 
     @command
-    def Reset(self):
-        with _lock:
-            msg = '%s:%d Reset TDKLambda PS' % (self.tdk.port, self.tdk.addr)
+    async def Reset(self):
+        msg = '%s:%d Reset TDKLambda PS' % (self.tdk.port, self.tdk.addr)
+        logger.info(msg)
+        self.info_stream(msg)
+        await self.tdk._send_command(b'RST')
+
+    @command
+    async def Debug(self):
+        if self.tdk.logger.getEffectiveLevel() != logging.DEBUG:
+            self.last_level = self.tdk.logger.getEffectiveLevel()
+            logger.setLevel(logging.DEBUG)
+            self.tdk.logger.setLevel(logging.DEBUG)
+            msg = '%s:%d switch logging to DEBUG' % (self.tdk.port, self.tdk.addr)
             logger.info(msg)
             self.info_stream(msg)
-            self.tdk._send_command(b'RST')
-
-    @command
-    def Debug(self):
-        with _lock:
-            if self.tdk.logger.getEffectiveLevel() != logging.DEBUG:
-                self.last_level = self.tdk.logger.getEffectiveLevel()
-                logger.setLevel(logging.DEBUG)
-                self.tdk.logger.setLevel(logging.DEBUG)
-                msg = '%s:%d switch logging to DEBUG' % (self.tdk.port, self.tdk.addr)
-                logger.info(msg)
-                self.info_stream(msg)
-            else:
-                self.tdk.logger.setLevel(self.last_level)
-                msg = '%s:%d switch logging from DEBUG' % (self.tdk.port, self.tdk.addr)
-                logger.info(msg)
-                self.info_stream(msg)
+        else:
+            self.tdk.logger.setLevel(self.last_level)
+            msg = '%s:%d switch logging from DEBUG' % (self.tdk.port, self.tdk.addr)
+            logger.info(msg)
+            self.info_stream(msg)
 
     @command(dtype_in=int)
-    def SetLogLevel(self, level):
-        with _lock:
-            msg = '%s:%d set log level to %d' % (self.tdk.port, self.tdk.addr, level)
-            logger.info(msg)
-            self.info_stream(msg)
-            logger.setLevel(level)
-            self.tdk.logger.setLevel(level)
+    async def SetLogLevel(self, level):
+        msg = '%s:%d set log level to %d' % (self.tdk.port, self.tdk.addr, level)
+        logger.info(msg)
+        self.info_stream(msg)
+        logger.setLevel(level)
+        self.tdk.logger.setLevel(level)
 
     @command(dtype_in=str, doc_in='Directly send command to the device',
              dtype_out=str, doc_out='Response from device without final CR')
-    def SendCommand(self, cmd):
-        with _lock:
-            rsp = self.tdk.send_command(cmd).decode()
-            msg = '%s:%d %s -> %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
+    async def SendCommand(self, cmd):
+        rsp = self.tdk.send_command(cmd).decode()
+        msg = '%s:%d %s -> %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
+        logger.debug(msg)
+        self.debug_stream(msg)
+        if self.tdk.com is None:
+            msg = '%s COM port is None' % self
             logger.debug(msg)
             self.debug_stream(msg)
-            if self.tdk.com is None:
-                msg = '%s COM port is None' % self
-                logger.debug(msg)
-                self.debug_stream(msg)
-                self.set_state(DevState.FAULT)
-                return
-            return rsp
+            self.set_state(DevState.FAULT)
+            return
+        return rsp
 
     @command
-    def TurnOn(self):
-        with _lock:
-            # turn on the actual power supply here
-            msg = '%s Turn On' % self
-            logger.debug(msg)
-            self.output_state = True
-            # self.set_state(DevState.ON)
+    async def TurnOn(self):
+        # turn on the power supply
+        msg = '%s Turn On' % self
+        logger.debug(msg)
+        # self.output_state = True
+        # self.set_state(DevState.ON)
+        await self.write_output_state(True)
 
     @command
-    def TurnOff(self):
-        with _lock:
-            # turn off the actual power supply here
-            msg = '%s Turn Off' % self
-            logger.debug(msg)
-            self.output_state = False
-            # self.set_state(DevState.OFF)
+    async def TurnOff(self):
+        # turn off the power supply
+        msg = '%s Turn Off' % self
+        logger.debug(msg)
+        # self.output_state = False
+        # self.set_state(DevState.OFF)
+        await self.write_output_state(False)
 
 
 if __name__ == "__main__":
-    TDKLambda_Server.run_server()
+    Async_TDKLambda_Server.run_server()
