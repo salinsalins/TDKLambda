@@ -231,21 +231,19 @@ class Async_TDKLambda_Server(Device):
             result = False
             self.set_fault()
             return result
-        if value:
-            response = await self.tdk.send_command(b'OUT 1')
-        else:
-            response = await self.tdk.send_command(b'OUT 0')
-        if response and self.tdk.responce.startswith(b'OK'):
-            self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
-            result = True
-            self.set_running()
-        else:
-            msg = '%s:%d Error switch output %s' % (self.tdk.port, self.tdk.addr, response)
-            self.error_stream(msg)
-            logger.error(msg)
-            self.output_state.set_quality(tango.AttrQuality.ATTR_INVALID)
-            result = False
+        attr = self.output_state
+        result = await self.tdk.write_output(value)
+        if result is None:
+            msg = "%s Error writing output state" % self
+            self.info_stream(msg)
+            logger.warning(msg)
             self.set_fault()
+            attr.set_value(False)
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            return False
+        attr.set_value(value)
+        attr.set_quality(tango.AttrQuality.ATTR_VALID)
+        self.set_running()
         return result
 
     @command
