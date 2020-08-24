@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
-from .AsyncTDKLambda import AsyncTDKLambda
+from Async.AsyncTDKLambda import AsyncTDKLambda
 
 import logging
 import time
 from threading import Thread, Lock
 from math import isnan
+import asyncio
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
@@ -66,6 +67,27 @@ class Async_TDKLambda_Server(Device):
                                    unit="A", format="%6.2f",
                                    min_value=0.0,
                                    doc="Programmed current")
+
+    def get_device_property(self, prop: str, default=None):
+        name = self.get_name()
+        if not hasattr(self, 'dp'):
+            # device proxy
+            self.dp = tango.DeviceProxy(name)
+        # read property
+        pr = self.dp.get_property(prop)[prop]
+        result = None
+        if len(pr) > 0:
+            result = pr[0]
+        if default is None:
+            return result
+        try:
+            if result is None or result == '':
+                result = default
+            else:
+                result = type(default)(result)
+            return result
+        except:
+            return default
 
     async def init_device(self):
         self.error_count = 0
@@ -129,6 +151,7 @@ class Async_TDKLambda_Server(Device):
         if time.time() - self.time > self.READING_VALID_TIME:
             await self.read_all()
         val = self.values[index]
+        print(index, val)
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
@@ -138,24 +161,28 @@ class Async_TDKLambda_Server(Device):
             self.set_fault()
         else:
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            print('*')
             self.set_running()
+            print('^')
         return val
 
     async def read_voltage(self, attr: tango.Attribute):
-        return await self.read_one(0, "Output voltage read error")
+        v = await self.read_one(attr, 0, "Output voltage read error")
+        print(v)
+        return v
 
     async def read_current(self, attr: tango.Attribute):
-        return await self.read_one(2, "Output current read error")
+        return await self.read_one(attr, 2, "Output current read error")
 
     async def read_programmed_voltage(self, attr: tango.Attribute):
-        return await self.read_one(1, "Programmed voltage read error")
+        return await self.read_one(attr, 1, "Programmed voltage read error")
 
     async def read_programmed_current(self, attr: tango.Attribute):
-        return await self.read_one(3, "Programmed current read error")
+        return await self.read_one(attr, 3, "Programmed current read error")
 
-    async def write_one(self, value, cmd, message):
+    async def write_one(self, attrib, value, cmd, message):
         if not self.tdk.initialized():
-            self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
+            attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
             msg = "%s Writing to offline device" % self
             self.info_stream(msg)
             logger.warning(msg)
@@ -164,10 +191,10 @@ class Async_TDKLambda_Server(Device):
         else:
             result = await self.tdk.write_value(cmd, value)
         if result:
-            self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_VALID)
+            attrib.set_quality(tango.AttrQuality.ATTR_VALID)
             self.set_running()
         else:
-            self.programmed_voltage.set_quality(tango.AttrQuality.ATTR_INVALID)
+            attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
             msg = ('%s ' + message) % self
             self.info_stream(msg)
             logger.warning(msg)
@@ -175,10 +202,10 @@ class Async_TDKLambda_Server(Device):
         return result
 
     async def write_programmed_voltage(self, value):
-        return await self.write_one(value, b'PV', 'Error writing programmed voltage')
+        return await self.write_one(self.programmed_voltage, value, b'PV', 'Error writing programmed voltage')
 
     async def write_programmed_current(self, value):
-        return await self.write_one(value, b'PC', 'Error writing programmed current')
+        return await self.write_one(self.programmed_voltage, value, b'PC', 'Error writing programmed current')
 
     async def read_output_state(self, attr: tango.Attribute):
         if not self.tdk.initialized():
@@ -186,25 +213,18 @@ class Async_TDKLambda_Server(Device):
             attr.set_value(False)
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
             return False
-        response = await self.tdk.send_command(b'OUT?')
-        if response.upper().startswith(b'ON') or response.upper().startswith(b'1'):
-            quality = tango.AttrQuality.ATTR_VALID
-            value = True
-            self.set_running()
-        elif response.upper().startswith(b'OFF') or response.upper().startswith(b'0'):
-            quality = tango.AttrQuality.ATTR_VALID
-            value = False
-            self.set_running()
-        else:
+        response = await self.tdk.read_output()
+        if response is None:
             msg = "%s Error reading output state" % self
             self.info_stream(msg)
             logger.warning(msg)
-            quality = tango.AttrQuality.ATTR_INVALID
-            value = False
             self.set_fault()
-        attr.set_value(value)
-        attr.set_quality(quality)
-        return value
+            attr.set_value(False)
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+            return False
+        attr.set_value(response)
+        attr.set_quality(tango.AttrQuality.ATTR_VALID)
+        return response
 
     async def write_output_state(self, value):
         if not self.tdk.initialized():
@@ -219,7 +239,7 @@ class Async_TDKLambda_Server(Device):
             response = await self.tdk.send_command(b'OUT 1')
         else:
             response = await self.tdk.send_command(b'OUT 0')
-        if response.startswith(b'OK'):
+        if response and self.tdk.responce.startswith(b'OK'):
             self.output_state.set_quality(tango.AttrQuality.ATTR_VALID)
             result = True
             self.set_running()
@@ -294,6 +314,12 @@ class Async_TDKLambda_Server(Device):
         # self.output_state = False
         # self.set_state(DevState.OFF)
         await self.write_output_state(False)
+
+    def set_running(self):
+        self.set_state(DevState.RUNNING)
+
+    def set_fault(self):
+        self.set_state(DevState.FAULT)
 
 
 if __name__ == "__main__":
