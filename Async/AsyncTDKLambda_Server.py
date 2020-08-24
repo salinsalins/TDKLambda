@@ -151,7 +151,6 @@ class Async_TDKLambda_Server(Device):
         if time.time() - self.time > self.READING_VALID_TIME:
             await self.read_all()
         val = self.values[index]
-        print(index, val)
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
@@ -161,14 +160,11 @@ class Async_TDKLambda_Server(Device):
             self.set_fault()
         else:
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            print('*')
             self.set_running()
-            print('^')
         return val
 
     async def read_voltage(self, attr: tango.Attribute):
         v = await self.read_one(attr, 0, "Output voltage read error")
-        print(v)
         return v
 
     async def read_current(self, attr: tango.Attribute):
