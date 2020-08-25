@@ -153,25 +153,25 @@ class Async_TDKLambda_Server(Device):
             self.info_stream(msg)
 
     async def read_one(self, attr: tango.Attribute, index: int, message: str):
-        #if time.time() - self.time > self.READING_VALID_TIME:
-            #await self.read_all()
-        try:
-            if self.task is None:
-                self.task = asyncio.create_task(self.read_all())
-                self.task_time = time.time()
-            else:
-                if self.task.done():
-                    self.task = asyncio.create_task(self.read_all())
-                    self.task_time = time.time()
-                else:
-                    if time.time() - self.task_time > 5.0:
-                        msg = 'Reading slow response from %s' % self
-                        self.error_stream(msg)
-                        logger.warning(msg)
-                        self.task.cancel()
-                        self.task = None
-        except asyncio.CancelledError:
-            self.task = None
+        if time.time() - self.time > self.READING_VALID_TIME:
+            await self.read_all()
+        # try:
+        #     if self.task is None:
+        #         self.task = asyncio.create_task(self.read_all())
+        #         self.task_time = time.time()
+        #     else:
+        #         if self.task.done():
+        #             self.task = asyncio.create_task(self.read_all())
+        #             self.task_time = time.time()
+        #         else:
+        #             if time.time() - self.task_time > 5.0:
+        #                 msg = 'Reading slow response from %s' % self
+        #                 self.error_stream(msg)
+        #                 logger.warning(msg)
+        #                 self.task.cancel()
+        #                 self.task = None
+        # except asyncio.CancelledError:
+        #     self.task = None
         val = self.values[index]
         attr.set_value(val)
         if isnan(val):
