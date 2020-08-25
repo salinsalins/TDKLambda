@@ -108,6 +108,9 @@ class Async_TDKLambda_Server(Device):
             Async_TDKLambda_Server.devices.append(self)
             # set state to running
             self.set_state(DevState.RUNNING)
+            # set maximal values for set voltage and current
+            self.programmed_current.set_max_value(self.tdk.max_current)
+            self.programmed_voltage.set_max_value(self.tdk.max_voltage)
             msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
             logger.info(msg)
             self.info_stream(msg)
@@ -251,7 +254,7 @@ class Async_TDKLambda_Server(Device):
         msg = '%s:%d Reset TDKLambda PS' % (self.tdk.port, self.tdk.addr)
         logger.info(msg)
         self.info_stream(msg)
-        await self.tdk._send_command(b'RST')
+        await self.tdk.send_command(b'RST')
 
     @command
     async def Debug(self):
@@ -296,8 +299,6 @@ class Async_TDKLambda_Server(Device):
         # turn on the power supply
         msg = '%s Turn On' % self
         logger.debug(msg)
-        # self.output_state = True
-        # self.set_state(DevState.ON)
         await self.write_output_state(True)
 
     @command
@@ -305,8 +306,6 @@ class Async_TDKLambda_Server(Device):
         # turn off the power supply
         msg = '%s Turn Off' % self
         logger.debug(msg)
-        # self.output_state = False
-        # self.set_state(DevState.OFF)
         await self.write_output_state(False)
 
     def set_running(self):
