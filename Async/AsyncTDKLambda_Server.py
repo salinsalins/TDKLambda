@@ -153,8 +153,9 @@ class Async_TDKLambda_Server(Device):
             self.info_stream(msg)
 
     async def read_one(self, attr: tango.Attribute, index: int, message: str):
-        if time.time() - self.time > self.READING_VALID_TIME:
-            await self.read_all()
+        # if time.time() - self.time > self.READING_VALID_TIME:
+        #     await self.read_all()
+        await self.read_all()
         # try:
         #     if self.task is None:
         #         self.task = asyncio.create_task(self.read_all())
@@ -207,10 +208,12 @@ class Async_TDKLambda_Server(Device):
             result = False
             self.set_fault()
         else:
+            #result = True
             result = await self.tdk.write_value(cmd, value)
         if result:
-            attrib.set_quality(tango.AttrQuality.ATTR_VALID)
-            self.set_running()
+            pass
+            #attrib.set_quality(tango.AttrQuality.ATTR_VALID)
+            #self.set_running()
         else:
             attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
             msg = ('%s ' + message) % self

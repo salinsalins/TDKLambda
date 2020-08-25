@@ -298,7 +298,11 @@ class AsyncTDKLambda(TDKLambda):
             try:
                 result = await self._read(size, self.read_timeout)
                 dt = time.time() - t0
-                self.read_timeout = max(2.0 * dt, self.min_timeout)
+                # if dt > self.max_timeout:
+                #     print(dt)
+                #self.read_timeout = max(2.0 * dt, self.min_timeout)
+                self.read_timeout = min(max(2.0 * dt, self.min_timeout), self.max_timeout)
+                self.logger.debug('%s Reading timeout corrected to %5.2f s' % (result, self.read_timeout))
                 return result
             except SerialTimeoutException:
                 counter += 1
@@ -316,7 +320,7 @@ class AsyncTDKLambda(TDKLambda):
             r = await self.com.read(1)
             if len(r) > 0:
                 result += r
-                to.restart()
+                to.restart(timeout)
             else:
                 if to.expired():
                     self.logger.debug('Read timeout')
