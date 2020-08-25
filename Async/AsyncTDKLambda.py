@@ -15,9 +15,11 @@ from TDKLambda import *
 
 class FakeAsyncComPort(FakeComPort):
     SN = 9876543
-    RESPONSE_TIME = 0.035
+    RESPONSE_DELAY = 0.055
 
     def __init__(self, port, *args, **kwargs):
+        FakeComPort.SN = FakeAsyncComPort.SN
+        FakeComPort.RESPONSE_DELAY = FakeAsyncComPort.RESPONSE_DELAY
         super().__init__(port, *args, **kwargs)
         self.async_lock = asyncio.Lock()
 
@@ -180,10 +182,11 @@ class AsyncTDKLambda(TDKLambda):
             # read response (to CR by default)
             result = await self.read_response()
         dt = (time.time()-t0)*1000.0
-        self.logger.info('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
+        self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
         return result
 
     async def send_command(self, cmd):
+        t0 = time.time()
         if await self.is_suspended():
             self.command = cmd
             self.response = b''
@@ -205,16 +208,16 @@ class AsyncTDKLambda(TDKLambda):
                     self.response = b''
                     return False
             result = await self._send_command(cmd)
-            if result:
-                return True
-            self.logger.warning('Repeat command %s' % cmd)
-            result = await self._send_command(cmd)
-            if result:
-                return True
-            self.logger.error('Repeated command %s error' % cmd)
-            self.suspend()
-            self.response = b''
-            return False
+            if not result:
+                self.logger.warning('Error executing %s, repeated' % cmd)
+                result = await self._send_command(cmd)
+            if not result:
+                self.logger.error('Repeated error executing %s' % cmd)
+                self.suspend()
+                self.response = b''
+            dt = (time.time()-t0)*1000.0
+            self.logger.info('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
+            return result
         except:
             self.logger.error('Unexpected exception')
             self.logger.debug("", exc_info=True)
