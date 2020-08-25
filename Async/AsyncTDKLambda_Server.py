@@ -90,6 +90,7 @@ class Async_TDKLambda_Server(Device):
             return default
 
     async def init_device(self):
+        self.task = None
         self.error_count = 0
         self.values = [float('NaN')] * 6
         self.time = time.time() - 100.0
@@ -151,8 +152,25 @@ class Async_TDKLambda_Server(Device):
             self.info_stream(msg)
 
     async def read_one(self, attr: tango.Attribute, index: int, message: str):
-        if time.time() - self.time > self.READING_VALID_TIME:
-            await self.read_all()
+        #if time.time() - self.time > self.READING_VALID_TIME:
+            #await self.read_all()
+        try:
+            if self.task is None:
+                self.task = asyncio.create_task(self.read_all())
+                self.task_time = time.time()
+            else:
+                if self.task.done():
+                    self.task = asyncio.create_task(self.read_all())
+                    self.task_time = time.time()
+                else:
+                    if time.time() - self.task_time > 5.0:
+                        msg = 'Reading slow response from %s' % self
+                        self.error_stream(msg)
+                        logger.warning(msg)
+                        self.task.cancel()
+                        self.task = None
+        except asyncio.CancelledError:
+            self.task = None
         val = self.values[index]
         attr.set_value(val)
         if isnan(val):
@@ -204,7 +222,7 @@ class Async_TDKLambda_Server(Device):
         return await self.write_one(self.programmed_voltage, value, b'PV', 'Error writing programmed voltage')
 
     async def write_programmed_current(self, value):
-        return await self.write_one(self.programmed_voltage, value, b'PC', 'Error writing programmed current')
+        return await self.write_one(self.programmed_current, value, b'PC', 'Error writing programmed current')
 
     async def read_output_state(self, attr: tango.Attribute):
         if not self.tdk.initialized():
