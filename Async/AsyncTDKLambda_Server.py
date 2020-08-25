@@ -144,6 +144,7 @@ class Async_TDKLambda_Server(Device):
                   (self.tdk.port, self.tdk.addr, int((self.time - t0) * 1000.0), values)
             logger.debug(msg)
             # self.debug_stream(msg)
+            return values
         except:
             self.set_fault()
             msg = '%s:%d read_all error' % (self.tdk.port, self.tdk.addr)
