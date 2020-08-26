@@ -179,17 +179,17 @@ class AsyncTDKLambda(TDKLambda):
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
         t1 = time.time()
-        async with self.com.async_lock:
-            t0 = time.time()
-            # write command
-            if not await self.write(cmd):
-                return False
-            # read response (to CR by default)
-            result = await self.read_response()
-            dt = (time.time()-t0)*1000.0
-            dt1 = (time.time()-t1)*1000.0
-            self.logger.debug('%s -> %s %s %4.0f ms %4.0f ms' % (cmd, self.response, result, dt, dt1))
-            return result
+        #async with self.com.async_lock:
+        t0 = time.time()
+        # write command
+        if not await self.write(cmd):
+            return False
+        # read response (to CR by default)
+        result = await self.read_response()
+        dt = (time.time()-t0)*1000.0
+        dt1 = (time.time()-t1)*1000.0
+        self.logger.debug('%s -> %s %s %4.0f ms %4.0f ms' % (cmd, self.response, result, dt, dt1))
+        return result
 
     async def send_command(self, cmd):
         t0 = time.time()

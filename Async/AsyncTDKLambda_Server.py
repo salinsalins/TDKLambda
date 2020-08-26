@@ -93,47 +93,49 @@ class Async_TDKLambda_Server(Device):
             return default
 
     async def init_device(self):
-        self.task = None
-        self.error_count = 0
-        self.values = [float('NaN')] * 6
-        self.time = time.time() - 100.0
-        self.set_state(DevState.INIT)
-        Device.init_device(self)
-        self.last_level = logging.INFO
-        # get port and address from property
-        port = self.get_device_property('port', 'COM1')
-        addr = self.get_device_property('addr', 6)
-        # create TDKLambda device
-        self.tdk = AsyncTDKLambda(port, addr)
-        await self.tdk.init()
-        # check if device OK
-        if self.tdk.initialized():
-            # add device to list
-            Async_TDKLambda_Server.devices.append(self)
-            # set state to running
-            self.set_state(DevState.RUNNING)
-            # set maximal values for set voltage and current
-            self.programmed_current.set_max_value(self.tdk.max_current)
-            self.programmed_voltage.set_max_value(self.tdk.max_voltage)
-            msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
-            logger.info(msg)
-            self.info_stream(msg)
-        else:
-            msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
-            logger.error(msg)
-            self.error_stream(msg)
-            self.set_state(DevState.FAULT)
+        #with _lock:
+            self.task = None
+            self.error_count = 0
+            self.values = [float('NaN')] * 6
+            self.time = time.time() - 100.0
+            self.set_state(DevState.INIT)
+            Device.init_device(self)
+            self.last_level = logging.INFO
+            # get port and address from property
+            port = self.get_device_property('port', 'COM1')
+            addr = self.get_device_property('addr', 6)
+            # create TDKLambda device
+            self.tdk = AsyncTDKLambda(port, addr)
+            await self.tdk.init()
+            # check if device OK
+            if self.tdk.initialized():
+                # add device to list
+                Async_TDKLambda_Server.devices.append(self)
+                # set state to running
+                self.set_state(DevState.RUNNING)
+                # set maximal values for set voltage and current
+                self.programmed_current.set_max_value(self.tdk.max_current)
+                self.programmed_voltage.set_max_value(self.tdk.max_voltage)
+                msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
+                logger.info(msg)
+                self.info_stream(msg)
+            else:
+                msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
+                logger.error(msg)
+                self.error_stream(msg)
+                self.set_state(DevState.FAULT)
 
     async def delete_device(self):
-        if self in Async_TDKLambda_Server.devices:
-            Async_TDKLambda_Server.devices.remove(self)
-            self.tdk.__del__()
-            msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
-            logger.info(msg)
-            self.info_stream(msg)
+        #with _lock:
+            if self in Async_TDKLambda_Server.devices:
+                Async_TDKLambda_Server.devices.remove(self)
+                self.tdk.__del__()
+                msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
+                logger.info(msg)
+                self.info_stream(msg)
 
     async def read_device_type(self):
-        with _lock:
+        #with _lock:
             if self.tdk.initialized():
                 return self.tdk.id
             return "Uninitialized"
@@ -191,20 +193,20 @@ class Async_TDKLambda_Server(Device):
         return val
 
     async def read_voltage(self, attr: tango.Attribute):
-        with _lock:
+        #with _lock:
             v = await self.read_one(attr, 0, "Output voltage read error")
             return v
 
     async def read_current(self, attr: tango.Attribute):
-        with _lock:
+        #with _lock:
             return await self.read_one(attr, 2, "Output current read error")
 
     async def read_programmed_voltage(self, attr: tango.Attribute):
-        with _lock:
+        #with _lock:
             return await self.read_one(attr, 1, "Programmed voltage read error")
 
     async def read_programmed_current(self, attr: tango.Attribute):
-        with _lock:
+        #with _lock:
             return await self.read_one(attr, 3, "Programmed current read error")
 
     async def write_one(self, attrib, value, cmd, message):
@@ -230,16 +232,16 @@ class Async_TDKLambda_Server(Device):
         return result
 
     async def write_programmed_voltage(self, value):
-        with _lock:
+        #with _lock:
             result = await self.write_one(self.programmed_voltage, value, b'PV', 'Error writing programmed voltage')
             return result
 
     async def write_programmed_current(self, value):
-        with _lock:
+        #with _lock:
             return await self.write_one(self.programmed_current, value, b'PC', 'Error writing programmed current')
 
     async def read_output_state(self, attr: tango.Attribute):
-        with _lock:
+        #with _lock:
             if not self.tdk.initialized():
                 self.set_fault()
                 attr.set_value(False)
@@ -259,7 +261,7 @@ class Async_TDKLambda_Server(Device):
             return response
 
     async def write_output_state(self, value):
-        with _lock:
+        #with _lock:
             if not self.tdk.initialized():
                 msg = '%s:%d Switch output for offline device' % (self.tdk.port, self.tdk.addr)
                 self.debug_stream(msg)
@@ -285,7 +287,7 @@ class Async_TDKLambda_Server(Device):
 
     @command
     async def Reset(self):
-        with _lock:
+        #with _lock:
             msg = '%s:%d Reset TDKLambda PS' % (self.tdk.port, self.tdk.addr)
             logger.info(msg)
             self.info_stream(msg)
@@ -293,7 +295,7 @@ class Async_TDKLambda_Server(Device):
 
     @command
     async def Debug(self):
-        with _lock:
+        #with _lock:
             if self.tdk.logger.getEffectiveLevel() != logging.DEBUG:
                 self.last_level = self.tdk.logger.getEffectiveLevel()
                 logger.setLevel(logging.DEBUG)
@@ -309,7 +311,7 @@ class Async_TDKLambda_Server(Device):
 
     @command(dtype_in=int)
     async def SetLogLevel(self, level):
-        with _lock:
+        #with _lock:
             msg = '%s:%d set log level to %d' % (self.tdk.port, self.tdk.addr, level)
             logger.info(msg)
             self.info_stream(msg)
@@ -319,7 +321,7 @@ class Async_TDKLambda_Server(Device):
     @command(dtype_in=str, doc_in='Directly send command to the device',
              dtype_out=str, doc_out='Response from device without final CR')
     async def SendCommand(self, cmd):
-        with _lock:
+        #with _lock:
             rsp = self.tdk.send_command(cmd).decode()
             msg = '%s:%d %s -> %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
             logger.debug(msg)
@@ -334,7 +336,7 @@ class Async_TDKLambda_Server(Device):
 
     @command
     async def TurnOn(self):
-        with _lock:
+        #with _lock:
             # turn on the power supply
             msg = '%s Turn On' % self
             logger.debug(msg)
@@ -342,7 +344,7 @@ class Async_TDKLambda_Server(Device):
 
     @command
     async def TurnOff(self):
-        with _lock:
+        #with _lock:
             # turn off the power supply
             msg = '%s Turn Off' % self
             logger.debug(msg)
