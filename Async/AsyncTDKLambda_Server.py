@@ -208,23 +208,19 @@ class Async_TDKLambda_Server(Device):
             return await self.read_one(attr, 3, "Programmed current read error")
 
     async def write_one(self, attrib, value, cmd, message):
-        print('c')
         if not self.tdk.initialized():
             attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
             msg = "%s Writing to offline device" % self
-            self.info_stream(msg)
+            #self.info_stream(msg)
             logger.warning(msg)
             result = False
             self.set_fault()
         else:
-            print('d')
-            #result = True
             result = await self.tdk.write_value(cmd, value)
-            print(result)
         if result:
             pass
-            #attrib.set_quality(tango.AttrQuality.ATTR_VALID)
-            #self.set_running()
+            attrib.set_quality(tango.AttrQuality.ATTR_VALID)
+            self.set_running()
         else:
             attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
             msg = ('%s ' + message) % self
@@ -234,15 +230,8 @@ class Async_TDKLambda_Server(Device):
         return result
 
     async def write_programmed_voltage(self, value):
-        print('a')
-        print('_lock', _lock.locked())
-        while _lock.locked():
-            print(_lock)
-            await asyncio.sleep(0)
         with _lock:
-            print('b')
             result = await self.write_one(self.programmed_voltage, value, b'PV', 'Error writing programmed voltage')
-            print(result)
             return result
 
     async def write_programmed_current(self, value):

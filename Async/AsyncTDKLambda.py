@@ -179,7 +179,6 @@ class AsyncTDKLambda(TDKLambda):
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
         t1 = time.time()
-        print('async_lock', self.com.async_lock.locked())
         async with self.com.async_lock:
             t0 = time.time()
             # write command
@@ -193,14 +192,11 @@ class AsyncTDKLambda(TDKLambda):
             return result
 
     async def send_command(self, cmd):
-        print('e')
         t0 = time.time()
         if await self.is_suspended():
             self.command = cmd
             self.response = b''
-            print('g')
             return False
-        print('h')
         try:
             # unify command
             cmd = cmd.upper().strip()
@@ -212,16 +208,12 @@ class AsyncTDKLambda(TDKLambda):
                 cs = self.checksum(cmd[:-1])
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
             if self.com._current_addr != self.addr:
-                print('i')
                 result = await self.set_addr()
-                print('j')
                 if not result:
                     self.suspend()
                     self.response = b''
                     return False
-            print('k')
             result = await self._send_command(cmd)
-            print('l')
             if not result:
                 self.logger.warning('Error executing %s, repeated' % cmd)
                 result = await self._send_command(cmd)
@@ -393,10 +385,8 @@ class AsyncTDKLambda(TDKLambda):
         return False
 
     async def write_value(self, cmd: bytes, value, expect=b'OK'):
-        print('e')
         cmd = cmd.upper().strip() + b' ' + str.encode(str(value))[:10] + b'\r'
         result = await self.send_command(cmd)
-        print(result)
         if result:
             return self.check_response(expect)
         else:
