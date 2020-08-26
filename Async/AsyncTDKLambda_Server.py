@@ -235,6 +235,10 @@ class Async_TDKLambda_Server(Device):
 
     async def write_programmed_voltage(self, value):
         print('a')
+        print('_lock', _lock.locked())
+        while _lock.locked():
+            print(_lock)
+            await asyncio.sleep(0)
         with _lock:
             print('b')
             result = await self.write_one(self.programmed_voltage, value, b'PV', 'Error writing programmed voltage')

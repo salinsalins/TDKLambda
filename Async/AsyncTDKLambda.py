@@ -120,8 +120,8 @@ class AsyncTDKLambda(TDKLambda):
     async def read_device_id(self):
         try:
             if await self._send_command(b'IDN?'):
-                id = self.response[:-1].decode()
-                return id
+                device_id = self.response[:-1].decode()
+                return device_id
             else:
                 return 'Unknown Device'
         except:
@@ -138,10 +138,14 @@ class AsyncTDKLambda(TDKLambda):
             return -1
 
     async def set_addr(self):
-        if hasattr(self.com, '_current_addr'):
-            a0 = self.com._current_addr
-        else:
-            a0 = -1
+        if self.com is None:
+            self.logger.warning('%s port is not configured' % self.port)
+            return False
+        # if hasattr(self.com, '_current_addr'):
+        #     a0 = self.com._current_addr
+        # else:
+        #     a0 = -1
+        a0 = self.com._current_addr
         result = await self._send_command(b'ADR %d' % self.addr)
         if result and self.check_response(b'OK'):
             self.com._current_addr = self.addr
@@ -174,60 +178,66 @@ class AsyncTDKLambda(TDKLambda):
         self.response = b''
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
-        t0 = time.time()
-        # write command
-        if not await self.write(cmd):
-            return False
-        # read response (to CR by default)
-        result = await self.read_response()
-        dt = (time.time()-t0)*1000.0
-        self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
-        return result
+        t1 = time.time()
+        print('async_lock', self.com.async_lock.locked())
+        async with self.com.async_lock:
+            t0 = time.time()
+            # write command
+            if not await self.write(cmd):
+                return False
+            # read response (to CR by default)
+            result = await self.read_response()
+            dt = (time.time()-t0)*1000.0
+            dt1 = (time.time()-t1)*1000.0
+            self.logger.debug('%s -> %s %s %4.0f ms %4.0f ms' % (cmd, self.response, result, dt, dt1))
+            return result
 
     async def send_command(self, cmd):
         print('e')
-        async with self.com.async_lock:
-            print('f')
-            t0 = time.time()
-            if await self.is_suspended():
-                self.command = cmd
-                self.response = b''
-                print('g')
-                return False
-            print('h')
-            try:
-                # unify command
-                cmd = cmd.upper().strip()
-                # convert str to bytes
-                if isinstance(cmd, str):
-                    cmd = str.encode(cmd)
-                # add checksum
-                if self.check:
-                    cs = self.checksum(cmd[:-1])
-                    cmd = b'%s$%s\r' % (cmd[:-1], cs)
-                if self.com._current_addr != self.addr:
-                    result = await self.set_addr()
-                    if not result:
-                        self.suspend()
-                        self.response = b''
-                        return False
-                result = await self._send_command(cmd)
+        t0 = time.time()
+        if await self.is_suspended():
+            self.command = cmd
+            self.response = b''
+            print('g')
+            return False
+        print('h')
+        try:
+            # unify command
+            cmd = cmd.upper().strip()
+            # convert str to bytes
+            if isinstance(cmd, str):
+                cmd = str.encode(cmd)
+            # add checksum
+            if self.check:
+                cs = self.checksum(cmd[:-1])
+                cmd = b'%s$%s\r' % (cmd[:-1], cs)
+            if self.com._current_addr != self.addr:
+                print('i')
+                result = await self.set_addr()
+                print('j')
                 if not result:
-                    self.logger.warning('Error executing %s, repeated' % cmd)
-                    result = await self._send_command(cmd)
-                if not result:
-                    self.logger.error('Repeated error executing %s' % cmd)
                     self.suspend()
                     self.response = b''
-                dt = (time.time()-t0)*1000.0
-                self.logger.info('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
-                return result
-            except:
-                self.logger.error('Unexpected exception')
-                self.logger.debug("", exc_info=True)
+                    return False
+            print('k')
+            result = await self._send_command(cmd)
+            print('l')
+            if not result:
+                self.logger.warning('Error executing %s, repeated' % cmd)
+                result = await self._send_command(cmd)
+            if not result:
+                self.logger.error('Repeated error executing %s' % cmd)
                 self.suspend()
                 self.response = b''
-                return b''
+            dt = (time.time()-t0)*1000.0
+            self.logger.info('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
+            return result
+        except:
+            self.logger.error('Unexpected exception')
+            self.logger.debug("", exc_info=True)
+            self.suspend()
+            self.response = b''
+            return b''
 
     async def write(self, cmd):
         t0 = time.time()
