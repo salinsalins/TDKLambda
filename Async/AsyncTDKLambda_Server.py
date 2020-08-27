@@ -4,7 +4,7 @@ from Async.AsyncTDKLambda import AsyncTDKLambda
 
 import logging
 import time
-from threading import Thread, Lock
+from threading import Lock
 from math import isnan
 import asyncio
 
@@ -27,6 +27,7 @@ logger = config_logger(level=logging.INFO)
 
 class Async_TDKLambda_Server(Device):
     green_mode = GreenMode.Asyncio
+    #reen_mode = GreenMode.Synchronous
 
     READING_VALID_TIME = 0.7
     devices = []
@@ -159,38 +160,45 @@ class Async_TDKLambda_Server(Device):
             self.info_stream(msg)
 
     async def read_one(self, attr: tango.Attribute, index: int, message: str):
-        # if time.time() - self.time > self.READING_VALID_TIME:
-        #     await self.read_all()
-        await self.read_all()
-        # try:
-        #     if self.task is None:
-        #         self.task = asyncio.create_task(self.read_all())
-        #         self.task_time = time.time()
-        #     else:
-        #         if self.task.done():
-        #             self.task = asyncio.create_task(self.read_all())
-        #             self.task_time = time.time()
-        #         else:
-        #             if time.time() - self.task_time > 5.0:
-        #                 msg = 'Reading slow response from %s' % self
-        #                 self.error_stream(msg)
-        #                 logger.warning(msg)
-        #                 self.task.cancel()
-        #                 self.task = None
-        # except asyncio.CancelledError:
-        #     self.task = None
-        val = self.values[index]
-        attr.set_value(val)
-        if isnan(val):
-            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            msg = ('%s ' + message) % self
-            self.info_stream(msg)
-            logger.warning(msg)
-            self.set_fault()
-        else:
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            self.set_running()
-        return val
+        val = float('nan')
+        try:
+            # if time.time() - self.time > self.READING_VALID_TIME:
+            #     await self.read_all()
+            await self.read_all()
+            # try:
+            #     if self.task is None:
+            #         self.task = asyncio.create_task(self.read_all())
+            #         self.task_time = time.time()
+            #     else:
+            #         if self.task.done():
+            #             self.task = asyncio.create_task(self.read_all())
+            #             self.task_time = time.time()
+            #         else:
+            #             if time.time() - self.task_time > 5.0:
+            #                 msg = 'Reading slow response from %s' % self
+            #                 self.error_stream(msg)
+            #                 logger.warning(msg)
+            #                 self.task.cancel()
+            #                 self.task = None
+            # except asyncio.CancelledError:
+            #     self.task = None
+            val = self.values[index]
+            attr.set_value(val)
+            if isnan(val):
+                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+                msg = ('%s ' + message) % self
+                self.info_stream(msg)
+                logger.warning(msg)
+                self.set_fault()
+            else:
+                attr.set_quality(tango.AttrQuality.ATTR_VALID)
+                self.set_running()
+            return val
+        except:
+            print(self.com.async_lock.locked())
+            self.logger.debug("", exc_info=True)
+            return val
+
 
     async def read_voltage(self, attr: tango.Attribute):
         #with _lock:
@@ -210,26 +218,32 @@ class Async_TDKLambda_Server(Device):
             return await self.read_one(attr, 3, "Programmed current read error")
 
     async def write_one(self, attrib, value, cmd, message):
-        if not self.tdk.initialized():
-            attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
-            msg = "%s Writing to offline device" % self
-            #self.info_stream(msg)
-            logger.warning(msg)
-            result = False
-            self.set_fault()
-        else:
-            result = await self.tdk.write_value(cmd, value)
-        if result:
-            pass
-            attrib.set_quality(tango.AttrQuality.ATTR_VALID)
-            self.set_running()
-        else:
-            attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
-            msg = ('%s ' + message) % self
-            self.info_stream(msg)
-            logger.warning(msg)
-            self.set_fault()
-        return result
+        result = False
+        try:
+            if not self.tdk.initialized():
+                attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
+                msg = "%s Writing to offline device" % self
+                #self.info_stream(msg)
+                logger.warning(msg)
+                result = False
+                self.set_fault()
+            else:
+                result = await self.tdk.write_value(cmd, value)
+            if result:
+                pass
+                attrib.set_quality(tango.AttrQuality.ATTR_VALID)
+                self.set_running()
+            else:
+                attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
+                msg = ('%s ' + message) % self
+                self.info_stream(msg)
+                logger.warning(msg)
+                self.set_fault()
+            return result
+        except:
+            print(self.com.async_lock.locked())
+            self.logger.debug("", exc_info=True)
+            return result
 
     async def write_programmed_voltage(self, value):
         #with _lock:
@@ -241,6 +255,7 @@ class Async_TDKLambda_Server(Device):
             return await self.write_one(self.programmed_current, value, b'PC', 'Error writing programmed current')
 
     async def read_output_state(self, attr: tango.Attribute):
+        try:
         #with _lock:
             if not self.tdk.initialized():
                 self.set_fault()
@@ -258,6 +273,10 @@ class Async_TDKLambda_Server(Device):
                 return False
             attr.set_value(response)
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            return response
+        except:
+            print(self.com.async_lock.locked())
+            self.logger.debug("", exc_info=True)
             return response
 
     async def write_output_state(self, value):
