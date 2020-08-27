@@ -5,6 +5,7 @@ import logging
 import socket
 from threading import Lock
 import time
+import types
 
 from Async.AsyncSerial import *
 from EmulatedLambda import FakeComPort
@@ -12,6 +13,17 @@ from serial import Timeout
 
 from TDKLambda import *
 
+
+@types.coroutine
+def yield_():
+    """Skip one event loop run cycle.
+
+    This is a private helper for 'asyncio.sleep()', used
+    when the 'delay' is set to 0.  It uses a bare 'yield'
+    expression (which Task.__step knows how to handle)
+    instead of creating a Future object.
+    """
+    yield
 
 class FakeAsyncComPort(FakeComPort):
     SN = 9876543
@@ -52,12 +64,13 @@ class FakeAsyncComPort(FakeComPort):
                 to.restart(timeout)
             if to.expired():
                 raise SerialTimeoutException('Read timeout')
-            await asyncio.sleep(0)
+            #await asyncio.sleep(0)
+            await yield_()
         return bytes(result)
 
 
 class AsyncTDKLambda(TDKLambda):
-    LOG_LEVEL = logging.INFO
+    LOG_LEVEL = logging.DEBUG
 
     def create_com_port(self):
         # if com port already exists
@@ -120,8 +133,8 @@ class AsyncTDKLambda(TDKLambda):
     async def read_device_id(self):
         try:
             if await self._send_command(b'IDN?'):
-                id = self.response[:-1].decode()
-                return id
+                device_id = self.response[:-1].decode()
+                return device_id
             else:
                 return 'Unknown Device'
         except:
@@ -138,10 +151,14 @@ class AsyncTDKLambda(TDKLambda):
             return -1
 
     async def set_addr(self):
-        if hasattr(self.com, '_current_addr'):
-            a0 = self.com._current_addr
-        else:
-            a0 = -1
+        if self.com is None:
+            self.logger.warning('%s port is not configured' % self.port)
+            return False
+        # if hasattr(self.com, '_current_addr'):
+        #     a0 = self.com._current_addr
+        # else:
+        #     a0 = -1
+        a0 = self.com._current_addr
         result = await self._send_command(b'ADR %d' % self.addr)
         if result and self.check_response(b'OK'):
             self.com._current_addr = self.addr
@@ -170,22 +187,31 @@ class AsyncTDKLambda(TDKLambda):
                 return False
 
     async def _send_command(self, cmd: bytes):
+        self.logger.debug('entry')
         self.command = cmd
         self.response = b''
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
-        async with self.com.async_lock:
-            t0 = time.time()
-            # write command
-            if not await self.write(cmd):
-                return False
-            # read response (to CR by default)
-            result = await self.read_response()
-        dt = (time.time()-t0)*1000.0
-        self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
-        return result
+        t1 = time.time()
+        try:
+            async with self.com.async_lock:
+                t0 = time.time()
+                # write command
+                if not await self.write(cmd):
+                    return False
+                # read response (to CR by default)
+                result = await self.read_response()
+                dt = (time.time()-t0)*1000.0
+                dt1 = (time.time()-t1)*1000.0
+                self.logger.debug('%s -> %s %s %4.0f ms %4.0f ms' % (cmd, self.response, result, dt, dt1))
+                return result
+        except:
+            print(self.com.async_lock.locked())
+            self.logger.debug("", exc_info=True)
+            return result
 
     async def send_command(self, cmd):
+        self.logger.debug('entry')
         t0 = time.time()
         if await self.is_suspended():
             self.command = cmd
@@ -226,6 +252,7 @@ class AsyncTDKLambda(TDKLambda):
             return b''
 
     async def write(self, cmd):
+        self.logger.debug('entry')
         t0 = time.time()
         try:
             # clear input buffer
@@ -250,6 +277,7 @@ class AsyncTDKLambda(TDKLambda):
         await self.com.reset_input_buffer()
 
     async def read_response(self):
+        self.logger.debug('entry')
         result = await self.read_until(CR)
         self.response = result
         if CR not in result:
@@ -291,15 +319,17 @@ class AsyncTDKLambda(TDKLambda):
         return result
 
     async def read(self, size=1, retries=3):
+        self.logger.debug('entry')
         counter = 0
         result = b''
         t0 = time.time()
         while counter <= retries:
             try:
+                self.logger.debug('loop')
                 result = await self._read(size, self.read_timeout)
                 dt = time.time() - t0
-                # if dt > self.max_timeout:
-                #     print(dt)
+                if dt > self.max_timeout:
+                    print(dt)
                 #self.read_timeout = max(2.0 * dt, self.min_timeout)
                 self.read_timeout = min(max(2.0 * dt, self.min_timeout), self.max_timeout)
                 self.logger.debug('%s Reading timeout corrected to %5.2f s' % (result, self.read_timeout))
@@ -314,18 +344,25 @@ class AsyncTDKLambda(TDKLambda):
         return result
 
     async def _read(self, size=1, timeout=None):
+        self.logger.debug('entry')
         result = b''
         to = Timeout(timeout)
         while len(result) < size:
+            self.logger.debug('loop')
             r = await self.com.read(1)
+            self.logger.debug('loop1')
             if len(r) > 0:
+                self.logger.debug('loop2')
                 result += r
                 to.restart(timeout)
             else:
+                self.logger.debug('loop3')
                 if to.expired():
                     self.logger.debug('Read timeout')
                     raise SerialTimeoutException('Read timeout')
-            await asyncio.sleep(0)
+            self.logger.debug('loop4')
+            #await asyncio.sleep(0)
+            self.logger.debug('loop5')
         return result
 
     async def read_float(self, cmd):
@@ -380,7 +417,8 @@ class AsyncTDKLambda(TDKLambda):
 
     async def write_value(self, cmd: bytes, value, expect=b'OK'):
         cmd = cmd.upper().strip() + b' ' + str.encode(str(value))[:10] + b'\r'
-        if await self.send_command(cmd):
+        result = await self.send_command(cmd)
+        if result:
             return self.check_response(expect)
         else:
             return False
