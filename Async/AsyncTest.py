@@ -7,7 +7,11 @@ import asyncio
 async def looper():
     loop = asyncio.get_running_loop()
     while True:
-        print(time.time() - t0, loop.is_running(), len(asyncio.all_tasks()))
+        tasks = asyncio.all_tasks()
+        for task in tasks:
+            print(task)
+            #print(task.get_name())
+        print(time.time() - t0, loop.is_running(), len(tasks))
         await asyncio.sleep(0.5)
 
 async def main():
