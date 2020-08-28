@@ -7,6 +7,7 @@ import time
 from threading import Lock
 from math import isnan
 import asyncio
+from asyncio import InvalidStateError
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
@@ -94,6 +95,9 @@ class Async_TDKLambda_Server(Device):
             return default
 
     async def init_device(self):
+        if not hasattr(Async_TDKLambda_Server, 'task1'):
+            Async_TDKLambda_Server.task1 = asyncio.create_task(looper())
+            print('looper created')
         #with _lock:
             self.task = None
             self.error_count = 0
@@ -375,6 +379,31 @@ class Async_TDKLambda_Server(Device):
     def set_fault(self):
         self.set_state(DevState.FAULT)
 
+
+async def looper(delay=1.0):
+    loop = asyncio.get_running_loop()
+    while True:
+        tasks = asyncio.all_tasks()
+        #logger.debug("Running tasks: %s" % len(tasks))
+        #print("Running tasks: %s" % len(tasks))
+        for task in tasks:
+            #logger.debug("%s" % task)
+            print("%s" % task)
+            try:
+                # print(task.exception())
+                ex = task.exception()
+                #logger.debug("%s" % ex)
+                print("%s" % ex)
+            except InvalidStateError:
+                pass
+                # logger.debug("InvalidStateError: Exception is not set.")
+            except:
+                print("Exception")
+                #logger.debug("", exc_info=True)
+            # print(task.get_name())
+        print(time.time(), loop.is_running(), len(tasks), loop)
+        #logger.debug("\n")
+        await asyncio.sleep(delay)
 
 if __name__ == "__main__":
     Async_TDKLambda_Server.run_server()

@@ -325,7 +325,6 @@ class AsyncTDKLambda(TDKLambda):
         t0 = time.time()
         while counter <= retries:
             try:
-                self.logger.debug('loop')
                 result = await self._read(size, self.read_timeout)
                 dt = time.time() - t0
                 if dt > self.max_timeout:
@@ -344,25 +343,22 @@ class AsyncTDKLambda(TDKLambda):
         return result
 
     async def _read(self, size=1, timeout=None):
+        loop = asyncio.get_running_loop()
+        tasks = asyncio.all_tasks()
+        print(time.time(), len(tasks), loop)
         self.logger.debug('entry')
         result = b''
         to = Timeout(timeout)
         while len(result) < size:
-            self.logger.debug('loop')
             r = await self.com.read(1)
-            self.logger.debug('loop1')
             if len(r) > 0:
-                self.logger.debug('loop2')
                 result += r
                 to.restart(timeout)
             else:
-                self.logger.debug('loop3')
                 if to.expired():
                     self.logger.debug('Read timeout')
                     raise SerialTimeoutException('Read timeout')
-            self.logger.debug('loop4')
             #await asyncio.sleep(0)
-            self.logger.debug('loop5')
         return result
 
     async def read_float(self, cmd):
