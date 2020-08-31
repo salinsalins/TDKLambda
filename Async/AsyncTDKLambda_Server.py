@@ -203,7 +203,6 @@ class Async_TDKLambda_Server(Device):
             self.logger.debug("", exc_info=True)
             return val
 
-
     async def read_voltage(self, attr: tango.Attribute):
         #with _lock:
             v = await self.read_one(attr, 0, "Output voltage read error")
