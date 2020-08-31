@@ -95,40 +95,39 @@ class Async_TDKLambda_Server(Device):
             return default
 
     async def init_device(self):
-        # if not hasattr(Async_TDKLambda_Server, 'task1'):
-        #     Async_TDKLambda_Server.task1 = asyncio.create_task(looper())
-        #     print('looper created')
-        #with _lock:
-            self.task = None
-            self.error_count = 0
-            self.values = [float('NaN')] * 6
-            self.time = time.time() - 100.0
-            self.set_state(DevState.INIT)
-            Device.init_device(self)
-            self.last_level = logging.INFO
-            # get port and address from property
-            port = self.get_device_property('port', 'COM1')
-            addr = self.get_device_property('addr', 6)
-            # create TDKLambda device
-            self.tdk = AsyncTDKLambda(port, addr)
-            await self.tdk.init()
-            # check if device OK
-            if self.tdk.initialized():
-                # add device to list
-                Async_TDKLambda_Server.devices.append(self)
-                # set state to running
-                self.set_state(DevState.RUNNING)
-                # set maximal values for set voltage and current
-                self.programmed_current.set_max_value(self.tdk.max_current)
-                self.programmed_voltage.set_max_value(self.tdk.max_voltage)
-                msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
-                logger.info(msg)
-                self.info_stream(msg)
-            else:
-                msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
-                logger.error(msg)
-                self.error_stream(msg)
-                self.set_state(DevState.FAULT)
+        if not hasattr(Async_TDKLambda_Server, 'task1'):
+            Async_TDKLambda_Server.task1 = asyncio.create_task(looper(0.5))
+            print('looper created')
+        self.tasks = []
+        self.error_count = 0
+        self.values = [float('NaN')] * 6
+        self.time = time.time() - 100.0
+        self.set_state(DevState.INIT)
+        Device.init_device(self)
+        self.last_level = logging.INFO
+        # get port and address from property
+        port = self.get_device_property('port', 'COM1')
+        addr = self.get_device_property('addr', 6)
+        # create TDKLambda device
+        self.tdk = AsyncTDKLambda(port, addr)
+        await self.tdk.init()
+        # check if device OK
+        if self.tdk.initialized():
+            # add device to list
+            Async_TDKLambda_Server.devices.append(self)
+            # set state to running
+            self.set_state(DevState.RUNNING)
+            # set maximal values for set voltage and current
+            self.programmed_current.set_max_value(self.tdk.max_current)
+            self.programmed_voltage.set_max_value(self.tdk.max_voltage)
+            msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
+            logger.info(msg)
+            self.info_stream(msg)
+        else:
+            msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
+            logger.error(msg)
+            self.error_stream(msg)
+            self.set_state(DevState.FAULT)
 
     async def delete_device(self):
         #with _lock:
@@ -168,24 +167,11 @@ class Async_TDKLambda_Server(Device):
         try:
             # if time.time() - self.time > self.READING_VALID_TIME:
             #     await self.read_all()
-            await self.read_all()
-            # try:
-            #     if self.task is None:
-            #         self.task = asyncio.create_task(self.read_all())
-            #         self.task_time = time.time()
-            #     else:
-            #         if self.task.done():
-            #             self.task = asyncio.create_task(self.read_all())
-            #             self.task_time = time.time()
-            #         else:
-            #             if time.time() - self.task_time > 5.0:
-            #                 msg = 'Reading slow response from %s' % self
-            #                 self.error_stream(msg)
-            #                 logger.warning(msg)
-            #                 self.task.cancel()
-            #                 self.task = None
-            # except asyncio.CancelledError:
-            #     self.task = None
+            #await self.read_all()
+            task = asyncio.create_task(self.read_all())
+            #await asyncio.sleep(0)
+            #await asyncio.wait_for(task, 1.0)
+
             val = self.values[index]
             attr.set_value(val)
             if isnan(val):
@@ -199,7 +185,7 @@ class Async_TDKLambda_Server(Device):
                 self.set_running()
             return val
         except:
-            print(self.com.async_lock.locked())
+            attr.set_quality(tango.AttrQuality.ATTR_INVALID)
             self.logger.debug("", exc_info=True)
             return val
 
@@ -378,6 +364,8 @@ class Async_TDKLambda_Server(Device):
     def set_fault(self):
         self.set_state(DevState.FAULT)
 
+# def looping():
+#     time.sleep(0.3)
 
 async def looper(delay=1.0):
     loop = asyncio.get_running_loop()
@@ -387,7 +375,7 @@ async def looper(delay=1.0):
         #print("Running tasks: %s" % len(tasks))
         for task in tasks:
             #logger.debug("%s" % task)
-            print("%s" % task)
+            #print("%s" % task)
             try:
                 # print(task.exception())
                 ex = task.exception()
@@ -400,7 +388,7 @@ async def looper(delay=1.0):
                 print("Exception")
                 #logger.debug("", exc_info=True)
             # print(task.get_name())
-        print(time.time(), loop.is_running(), len(tasks), loop)
+        print(len(tasks))
         #logger.debug("\n")
         await asyncio.sleep(delay)
 

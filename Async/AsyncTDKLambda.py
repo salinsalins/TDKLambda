@@ -345,7 +345,7 @@ class AsyncTDKLambda(TDKLambda):
     async def _read(self, size=1, timeout=None):
         loop = asyncio.get_running_loop()
         tasks = asyncio.all_tasks()
-        print(time.time(), len(tasks), loop)
+        #print(time.time(), len(tasks), loop)
         self.logger.debug('entry')
         result = b''
         to = Timeout(timeout)
