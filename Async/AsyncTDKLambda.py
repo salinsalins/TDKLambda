@@ -6,6 +6,7 @@ import socket
 from threading import Lock
 import time
 import types
+from datetime import datetime
 
 from Async.AsyncSerial import *
 from EmulatedLambda import FakeComPort
@@ -479,6 +480,11 @@ class AsyncTDKLambda(TDKLambda):
         await asyncio.wait(AsyncTDKLambda.tasks)
 
 
+def task_completed_callback(task):
+    now = datetime.now()
+    current_time = now.strftime("%H:%M:%S,%f")
+    print(current_time, 'Task', task, 'completed, result:', task.result(), file=sys.stderr)
+
 
 async def main():
     pd1 = AsyncTDKLambda("COM6", 6)
@@ -486,6 +492,7 @@ async def main():
     pd2 = AsyncTDKLambda("COM7", 7)
     await pd2.init()
     task1 = asyncio.create_task(pd1.read_float("MC?"))
+    task1.add_done_callback(task_completed_callback)
     task2 = asyncio.create_task(pd2.read_float("MC?"))
     task3 = asyncio.create_task(pd1.read_float("PC?"))
     task4 = asyncio.create_task(pd2.read_float("PC?"))
