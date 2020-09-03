@@ -188,7 +188,7 @@ class Async_TDKLambda_Server(Device):
             self.set_fault()
             msg = '%s:%d read_all error' % (self.tdk.port, self.tdk.addr)
             logger.info(msg)
-            logger.debug('', exc_info=True)
+            logger.debug(' ', exc_info=True)
             self.info_stream(msg)
 
     async def read_one(self, attr: tango.Attribute, index: int, message: str):
@@ -215,7 +215,7 @@ class Async_TDKLambda_Server(Device):
         except:
             attr.set_value(val)
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            logger.debug("", exc_info=True)
+            logger.debug(" ", exc_info=True)
             return val
 
     async def read_voltage(self, attr: tango.Attribute):
@@ -248,7 +248,6 @@ class Async_TDKLambda_Server(Device):
             else:
                 result = await self.tdk.write_value(cmd, value)
             if result:
-                pass
                 attrib.set_quality(tango.AttrQuality.ATTR_VALID)
                 self.set_running()
             else:
@@ -292,7 +291,7 @@ class Async_TDKLambda_Server(Device):
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
             return response
         except:
-            logger.debug("", exc_info=True)
+            logger.debug(" ", exc_info=True)
             return response
 
     async def write_output_state(self, value):
