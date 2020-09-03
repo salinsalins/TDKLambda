@@ -23,7 +23,7 @@ APPLICATION_VERSION = '1_0'
 # init a thread lock
 _lock = Lock()
 # config logger
-logger = config_logger(level=logging.INFO)
+logger = config_logger(level=logging.DEBUG)
 
 
 class Async_TDKLambda_Server(Device):
@@ -38,6 +38,18 @@ class Async_TDKLambda_Server(Device):
                            access=AttrWriteType.READ,
                            unit="", format="%s",
                            doc="TDKLambda device type")
+
+    port = attribute(label="Port", dtype=str,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ,
+                            unit="", format="%s",
+                            doc="TDKLambda port")
+
+    address = attribute(label="Address", dtype=str,
+                     display_level=DispLevel.OPERATOR,
+                     access=AttrWriteType.READ,
+                     unit="", format="%s",
+                     doc="TDKLambda address")
 
     output_state = attribute(label="Output", dtype=bool,
                              display_level=DispLevel.OPERATOR,
@@ -102,6 +114,7 @@ class Async_TDKLambda_Server(Device):
         self.error_count = 0
         self.values = [float('NaN')] * 6
         self.time = time.time() - 100.0
+        self.timeval = tango.TimeVal.now()
         self.set_state(DevState.INIT)
         Device.init_device(self)
         self.last_level = logging.INFO
@@ -120,6 +133,7 @@ class Async_TDKLambda_Server(Device):
             # set maximal values for set voltage and current
             self.programmed_current.set_max_value(self.tdk.max_current)
             self.programmed_voltage.set_max_value(self.tdk.max_voltage)
+            await self.read_all()
             msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
             logger.info(msg)
             self.info_stream(msg)
@@ -144,18 +158,33 @@ class Async_TDKLambda_Server(Device):
                 return self.tdk.id
             return "Uninitialized"
 
+    async def read_port(self):
+        #with _lock:
+        if self.tdk.initialized():
+            return self.tdk.port
+        return "Unknown"
+
+    async def read_address(self):
+        #with _lock:
+        if self.tdk.initialized():
+            return str(self.tdk.addr)
+        return "-1"
+
     async def read_all(self):
         t0 = time.time()
         try:
             values = await self.tdk.read_all()
-            self.values = values
             self.time = time.time()
+            self.timeval = tango.TimeVal.now()
+            self.values = values
             msg = '%s:%d read_all %s ms %s' % \
                   (self.tdk.port, self.tdk.addr, int((self.time - t0) * 1000.0), values)
             logger.debug(msg)
             # self.debug_stream(msg)
             return values
         except:
+            self.time = time.time()
+            self.timeval = tango.TimeVal.now()
             self.set_fault()
             msg = '%s:%d read_all error' % (self.tdk.port, self.tdk.addr)
             logger.info(msg)
@@ -167,14 +196,12 @@ class Async_TDKLambda_Server(Device):
         try:
             #if time.time() - self.time > self.READING_VALID_TIME:
             #    asyncio.create_task(self.read_all())
-            # if self.task is None or self.task.done():
-            #     self.task = asyncio.create_task(self.read_all())
-            # else:
-            #     asyncio.wait(self.task)
-            self.task = asyncio.create_task(self.read_all())
-            await asyncio.wait(self.task)
+            if self.task is None or self.task.done():
+                del self.task
+                self.task = asyncio.create_task(self.read_all())
             val = self.values[index]
             attr.set_value(val)
+            attr.set_date(self.timeval)
             if isnan(val):
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
                 msg = ('%s ' + message) % self
@@ -186,6 +213,7 @@ class Async_TDKLambda_Server(Device):
                 self.set_running()
             return val
         except:
+            attr.set_value(val)
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
             logger.debug("", exc_info=True)
             return val
