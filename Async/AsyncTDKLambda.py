@@ -71,6 +71,7 @@ class FakeAsyncComPort(FakeComPort):
 
 class AsyncTDKLambda(TDKLambda):
     LOG_LEVEL = logging.DEBUG
+    tasks = []
 
     def create_com_port(self):
         # if com port already exists
@@ -469,6 +470,14 @@ class AsyncTDKLambda(TDKLambda):
         self.create_com_port()
         await self.init()
         return
+
+    def create_task(self, action):
+        task1 = asyncio.create_task(action)
+        AsyncTDKLambda.tasks.append(task1)
+
+    async def wait_all_tasks(self):
+        await asyncio.wait(AsyncTDKLambda.tasks)
+
 
 
 async def main():
