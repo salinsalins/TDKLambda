@@ -187,7 +187,6 @@ class AsyncTDKLambda(TDKLambda):
                 return False
 
     async def _send_command(self, cmd: bytes):
-        self.logger.debug('entry')
         self.command = cmd
         self.response = b''
         if not cmd.endswith(b'\r'):
@@ -211,7 +210,6 @@ class AsyncTDKLambda(TDKLambda):
             return result
 
     async def send_command(self, cmd):
-        self.logger.debug('entry')
         t0 = time.time()
         if await self.is_suspended():
             self.command = cmd
@@ -252,7 +250,6 @@ class AsyncTDKLambda(TDKLambda):
             return b''
 
     async def write(self, cmd):
-        self.logger.debug('entry')
         t0 = time.time()
         try:
             # clear input buffer
@@ -277,7 +274,6 @@ class AsyncTDKLambda(TDKLambda):
         await self.com.reset_input_buffer()
 
     async def read_response(self):
-        self.logger.debug('entry')
         result = await self.read_until(CR)
         self.response = result
         if CR not in result:
@@ -310,43 +306,40 @@ class AsyncTDKLambda(TDKLambda):
             r = await self.read(1)
             if len(r) <= 0:
                 self.suspend()
+                dt = (time.time() - t0) * 1000.0
+                self.logger.debug('Read error %s %4.0f ms', result, dt)
+                return result
             result += r
             if size is not None and len(result) >= size:
                 break
-            #await asyncio.sleep(0)
         dt = (time.time() - t0) * 1000.0
-        self.logger.debug('%s %s bytes in %4.0f ms' % (result, len(result), dt))
+        self.logger.debug('%s %s bytes in %4.0f ms', result, len(result), dt)
         return result
 
     async def read(self, size=1, retries=3):
-        self.logger.debug('entry')
         counter = 0
         result = b''
-        t0 = time.time()
         while counter <= retries:
             try:
+                t0 = time.time()
                 result = await self._read(size, self.read_timeout)
                 dt = time.time() - t0
-                if dt > self.max_timeout:
-                    print(dt)
-                #self.read_timeout = max(2.0 * dt, self.min_timeout)
-                self.read_timeout = min(max(2.0 * dt, self.min_timeout), self.max_timeout)
-                self.logger.debug('%s Reading timeout corrected to %5.2f s' % (result, self.read_timeout))
+                new_timeout = min(max(2.0 * dt, self.min_timeout), self.max_timeout)
+                if new_timeout != self.read_timeout:
+                    self.read_timeout = min(max(2.0 * dt, self.min_timeout), self.max_timeout)
+                    self.logger.debug('read: %s timeout corrected to %5.2f s', result, self.read_timeout)
                 return result
             except SerialTimeoutException:
                 counter += 1
                 self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
-                self.logger.debug('Reading timeout increased to %5.2f s' % self.read_timeout)
+                self.logger.debug('Reading timeout - increased to %5.2f s', self.read_timeout)
             except:
-                self.logger.info('Unexpected exception', exc_info=True)
                 counter = retries
+                self.logger.info('Unexpected exception', exc_info=True)
+                self.logger.debug('', exc_info=True)
         return result
 
     async def _read(self, size=1, timeout=None):
-        loop = asyncio.get_running_loop()
-        tasks = asyncio.all_tasks()
-        #print(time.time(), len(tasks), loop)
-        self.logger.debug('entry')
         result = b''
         to = Timeout(timeout)
         while len(result) < size:
@@ -358,7 +351,7 @@ class AsyncTDKLambda(TDKLambda):
                 if to.expired():
                     self.logger.debug('Read timeout')
                     raise SerialTimeoutException('Read timeout')
-            #await asyncio.sleep(0)
+            await asyncio.sleep(0)
         return result
 
     async def read_float(self, cmd):
@@ -367,7 +360,7 @@ class AsyncTDKLambda(TDKLambda):
                 return float('Nan')
             v = float(self.response)
         except:
-            self.logger.debug('%s is not a float' % self.response)
+            self.logger.debug('%s is not a float', self.response)
             v = float('Nan')
         return v
 
@@ -381,7 +374,7 @@ class AsyncTDKLambda(TDKLambda):
             try:
                 v = float(s)
             except:
-                self.logger.debug('%s is not a float' % reply)
+                self.logger.debug('%s is not a float', reply)
                 v = float('Nan')
             vals.append(v)
         if len(vals) <= 6:
