@@ -95,10 +95,10 @@ class Async_TDKLambda_Server(Device):
             return default
 
     async def init_device(self):
-        if not hasattr(Async_TDKLambda_Server, 'task1'):
-            Async_TDKLambda_Server.task1 = asyncio.create_task(looper(0.5))
-            print('looper created')
-        self.tasks = []
+        # if not hasattr(Async_TDKLambda_Server, 'task1'):
+        #     Async_TDKLambda_Server.task1 = asyncio.create_task(looper(0.5))
+        #     print('looper created')
+        self.task = None
         self.error_count = 0
         self.values = [float('NaN')] * 6
         self.time = time.time() - 100.0
@@ -165,13 +165,14 @@ class Async_TDKLambda_Server(Device):
     async def read_one(self, attr: tango.Attribute, index: int, message: str):
         val = float('nan')
         try:
-            # if time.time() - self.time > self.READING_VALID_TIME:
-            #     await self.read_all()
-            #await self.read_all()
-            task = asyncio.create_task(self.read_all())
-            #await asyncio.sleep(0)
-            #await asyncio.wait_for(task, 1.0)
-
+            #if time.time() - self.time > self.READING_VALID_TIME:
+            #    asyncio.create_task(self.read_all())
+            # if self.task is None or self.task.done():
+            #     self.task = asyncio.create_task(self.read_all())
+            # else:
+            #     asyncio.wait(self.task)
+            self.task = asyncio.create_task(self.read_all())
+            await asyncio.wait(self.task)
             val = self.values[index]
             attr.set_value(val)
             if isnan(val):
@@ -186,7 +187,7 @@ class Async_TDKLambda_Server(Device):
             return val
         except:
             attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-            self.logger.debug("", exc_info=True)
+            logger.debug("", exc_info=True)
             return val
 
     async def read_voltage(self, attr: tango.Attribute):
@@ -230,8 +231,7 @@ class Async_TDKLambda_Server(Device):
                 self.set_fault()
             return result
         except:
-            print(self.com.async_lock.locked())
-            self.logger.debug("", exc_info=True)
+            logger.debug("", exc_info=True)
             return result
 
     async def write_programmed_voltage(self, value):
@@ -264,8 +264,7 @@ class Async_TDKLambda_Server(Device):
             attr.set_quality(tango.AttrQuality.ATTR_VALID)
             return response
         except:
-            print(self.com.async_lock.locked())
-            self.logger.debug("", exc_info=True)
+            logger.debug("", exc_info=True)
             return response
 
     async def write_output_state(self, value):

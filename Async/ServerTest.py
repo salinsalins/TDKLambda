@@ -9,30 +9,31 @@ dp1 = tango.DeviceProxy(dn1)
 dp2 = tango.DeviceProxy(dn2)
 ping1 = dp1.ping()
 ping2 = dp2.ping()
-print(dn1, 'ping', ping1)
-print(dn2, 'ping', ping2)
+print(dn1, 'ping', ping1, 's')
+print(dn2, 'ping', ping2, 's')
 ran = ['programmed_voltage', 'voltage', 'current', 'programmed_current']
 wan = ['programmed_voltage', 'programmed_current']
 wv = 0.0
 rid = [0,1]
+print(' ')
 
-while True:
+for i in range(2):
     for a in ran:
         t0 = time.time()
         v1 = dp1.read_attribute(a)
         dt = (time.time()-t0)*1000.0
-        print(a, v1.value, int(dt), 'ms')
+        print(dn1, a, v1.value, int(dt), 'ms')
         v2 = dp2.read_attribute(a)
         dt = (time.time()-t0)*1000.0
-        print(a, v1.value, v2.value, int(dt), 'ms')
-    for a in wan:
-        t0 = time.time()
-        dp1.write_attribute(a, wv)
-        dt = (time.time()-t0)*1000.0
-        wv += 0.1
-        if wv >= 1.0:
-            wv = 0.0
-        print(a, 'write', wv, int(dt), 'ms')
+        print(dn2, a, v2.value, int(dt), 'ms')
+    # for a in wan:
+    #     t0 = time.time()
+    #     dp1.write_attribute(a, wv)
+    #     dt = (time.time()-t0)*1000.0
+    #     wv += 0.1
+    #     if wv >= 1.0:
+    #         wv = 0.0
+    #     print(dn1, a, 'write', wv, int(dt), 'ms')
 
     t0 = time.time()
     rid[0] = dp1.read_attribute_asynch(ran[0])
