@@ -194,8 +194,6 @@ class Async_TDKLambda_Server(Device):
     async def read_one(self, attr: tango.Attribute, index: int, message: str):
         val = float('nan')
         try:
-            #if time.time() - self.time > self.READING_VALID_TIME:
-            #    asyncio.create_task(self.read_all())
             if self.task is None or self.task.done():
                 del self.task
                 self.task = asyncio.create_task(self.read_all())
