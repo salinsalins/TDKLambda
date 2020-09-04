@@ -30,7 +30,7 @@ class Async_TDKLambda_Server(Device):
     green_mode = GreenMode.Asyncio
     #reen_mode = GreenMode.Synchronous
 
-    READING_VALID_TIME = 0.7
+    READING_VALID_TIME = 3.0
     devices = []
 
     device_type = attribute(label="PS Type", dtype=str,
@@ -199,6 +199,8 @@ class Async_TDKLambda_Server(Device):
             if self.task is None or self.task.done():
                 del self.task
                 self.task = asyncio.create_task(self.read_all())
+            if time.time() - self.time > self.READING_VALID_TIME:
+                asyncio.wait(self.task)
             val = self.values[index]
             attr.set_value(val)
             attr.set_date(self.timeval)
