@@ -87,8 +87,8 @@ class Async_TDKLambda_Server(Device):
 
     def get_device_property(self, prop: str, default=None):
         name = self.get_name()
+        # create device proxy
         if not hasattr(self, 'dp'):
-            # device proxy
             self.dp = tango.DeviceProxy(name)
         # read property
         pr = self.dp.get_property(prop)[prop]
@@ -107,22 +107,24 @@ class Async_TDKLambda_Server(Device):
             return default
 
     async def init_device(self):
-        # if not hasattr(Async_TDKLambda_Server, 'task1'):
-        #     Async_TDKLambda_Server.task1 = asyncio.create_task(looper(0.5))
-        #     print('looper created')
         self.task = None
         self.error_count = 0
         self.values = [float('NaN')] * 6
-        self.time = time.time() - 100.0
+        self.time = time.time()
         self.timeval = tango.TimeVal.now()
         self.set_state(DevState.INIT)
         Device.init_device(self)
         self.last_level = logging.INFO
-        # get port and address from property
-        port = self.get_device_property('port', 'COM1')
-        addr = self.get_device_property('addr', 6)
+        # get device proxy
+        self.dp = tango.DeviceProxy(self.get_name())
+        # get all defined device properties
+        self.proplist = self.dp.get_property_list('*')
+        self.properties = self.dp.get_property(self.proplist)
+        # read port and addr properties
+        self.port = self.get_device_property('port', 'COM1')
+        self.addr = self.get_device_property('addr', 6)
         # create TDKLambda device
-        self.tdk = AsyncTDKLambda(port, addr)
+        self.tdk = AsyncTDKLambda(self.port, self.addr)
         await self.tdk.init()
         # check if device OK
         if self.tdk.initialized():
