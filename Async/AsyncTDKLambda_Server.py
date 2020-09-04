@@ -116,7 +116,7 @@ class Async_TDKLambda_Server(Device):
         self.task = None
         self.error_count = 0
         self.values = [float('NaN')] * 6
-        self.time = time.time()
+        self.time = time.time() - self.READING_VALID_TIME - 1.0
         self.timeval = tango.TimeVal.now()
         self.set_state(DevState.INIT)
         Device.init_device(self)
@@ -146,10 +146,10 @@ class Async_TDKLambda_Server(Device):
             logger.info(msg)
             self.info_stream(msg)
         else:
+            self.set_state(DevState.FAULT)
             msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
             logger.error(msg)
             self.error_stream(msg)
-            self.set_state(DevState.FAULT)
 
     async def delete_device(self):
         if self in Async_TDKLambda_Server.devices:
