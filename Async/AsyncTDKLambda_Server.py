@@ -127,20 +127,20 @@ class Async_TDKLambda_Server(Device):
         self.proplist = self.dp.get_property_list('*')
         self.properties = self.dp.get_property(self.proplist)
         # read port and addr properties
-        self.port = self.get_device_property('port', 'COM1')
+        self.prt = self.get_device_property('port', 'COM1')
         self.addr = self.get_device_property('addr', 6)
         # config logger
         self.logger = logging.getLogger(__name__)
         self.logger.propagate = False
         self.logger.setLevel(logging.DEBUG)
         self.f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
-                '%(funcName)s(%(lineno)s) ' + ('%s:%s' %(self.port, self.addr)) + '%(message)s'
+                '%(funcName)s(%(lineno)s) ' + ('%s:%s' %(self.prt, self.addr)) + ' - %(message)s'
         log_formatter = logging.Formatter(self.f_str, datefmt='%H:%M:%S')
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(log_formatter)
         self.logger.addHandler(console_handler)
         # create TDKLambda device
-        self.tdk = AsyncTDKLambda(self.port, self.addr, logger=self.logger)
+        self.tdk = AsyncTDKLambda(self.prt, self.addr, logger=self.logger)
         await self.tdk.init()
         # check if device OK
         if self.tdk.initialized():
