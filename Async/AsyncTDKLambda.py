@@ -16,13 +16,8 @@ from TDKLambda import *
 
 
 @types.coroutine
-def yield_():
+def async_yield():
     """Skip one event loop run cycle.
-
-    This is a private helper for 'asyncio.sleep()', used
-    when the 'delay' is set to 0.  It uses a bare 'yield'
-    expression (which Task.__step knows how to handle)
-    instead of creating a Future object.
     """
     yield
 
@@ -65,8 +60,7 @@ class FakeAsyncComPort(FakeComPort):
                 to.restart(timeout)
             if to.expired():
                 raise SerialTimeoutException('Read timeout')
-            #await asyncio.sleep(0)
-            await yield_()
+            await asyncio.sleep(0)
         return bytes(result)
 
 
@@ -156,11 +150,11 @@ class AsyncTDKLambda(TDKLambda):
         if self.com is None:
             self.logger.warning('%s port is not configured' % self.port)
             return False
-        # if hasattr(self.com, '_current_addr'):
-        #     a0 = self.com._current_addr
-        # else:
-        #     a0 = -1
-        a0 = self.com._current_addr
+        if hasattr(self.com, '_current_addr'):
+            a0 = self.com._current_addr
+        else:
+            a0 = -1
+        # a0 = self.com._current_addr
         result = await self._send_command(b'ADR %d' % self.addr)
         if result and self.check_response(b'OK'):
             self.com._current_addr = self.addr
@@ -168,8 +162,8 @@ class AsyncTDKLambda(TDKLambda):
             return True
         else:
             self.logger.error('Error set address %d -> %d' % (a0, self.addr))
-            if self.com is not None:
-                self.com._current_addr = -1
+            # if self.com is not None:
+            #     self.com._current_addr = -1
             return False
 
     async def is_suspended(self):
