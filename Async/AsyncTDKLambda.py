@@ -195,7 +195,16 @@ class AsyncTDKLambda(TDKLambda):
             cmd += b'\r'
         t1 = time.time()
         try:
+            while self.com.async_lock.locked():
+                await asyncio.wait(0)
+            if cmd.startswith(b'PV') or cmd.startswith(b'PC'):
+                print('*')
+                print(self.com.async_lock.locked())
+                #return True
             async with self.com.async_lock:
+                if cmd.startswith(b'PV') or cmd.startswith(b'PC'):
+                    print('*')
+                    #return True
                 t0 = time.time()
                 # write command
                 if not await self.write(cmd):

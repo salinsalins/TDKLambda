@@ -258,6 +258,8 @@ class Async_TDKLambda_Server(Device):
                 result = False
                 self.set_fault()
             else:
+                tasks = asyncio.all_tasks()
+                print(len(tasks))
                 result = await self.tdk.write_value(cmd, value)
             if result:
                 attrib.set_quality(tango.AttrQuality.ATTR_VALID)
@@ -279,6 +281,7 @@ class Async_TDKLambda_Server(Device):
         return result
 
     async def write_programmed_current(self, value):
+        return True
         return await self.write_one(self.programmed_current, value, b'PC', 'Error writing programmed current')
 
     async def read_output_state(self, attr: tango.Attribute):
