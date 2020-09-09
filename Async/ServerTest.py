@@ -3,8 +3,8 @@ import sys
 import time
 import tango
 
-#dn1 = 'binp/nbi/TDKLambda1'
-dn1 = 'bip/nbi/AsyncLambda'
+dn1 = 'binp/nbi/TDKLambda1'
+#dn1 = 'bip/nbi/AsyncLambda'
 #dn2 = 'binp/nbi/TDKLambda2'
 dp1 = tango.DeviceProxy(dn1)
 #dp2 = tango.DeviceProxy(dn2)
@@ -29,12 +29,16 @@ for i in range(10):
         #print(dn2, a, v2.value, int(dt), 'ms')
     for i in range(10):
         for a in wan:
-            t0 = time.time()
-            dp1.write_attribute(a, wv)
+            try:
+                t0 = time.time()
+                dp1.write_attribute(a, wv)
+                #dt = (time.time()-t0)*1000.0
+                wv += 0.1
+                if wv >= 3.0:
+                    wv = 0.0
+            except:
+                print('exception', sys.exc_info())
             dt = (time.time()-t0)*1000.0
-            wv += 0.1
-            if wv >= 3.0:
-                wv = 0.0
             print('write', dn1, a, wv, int(dt), 'ms')
 
     # t0 = time.time()

@@ -130,7 +130,8 @@ class Async_TDKLambda_Server(Device):
         self.prt = self.get_device_property('port', 'COM1')
         self.addr = self.get_device_property('addr', 6)
         # config logger
-        self.logger = logging.getLogger(__name__)
+        #self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger('%s:%s' %(self.prt, self.addr))
         self.logger.propagate = False
         self.logger.setLevel(logging.DEBUG)
         self.f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
@@ -138,7 +139,8 @@ class Async_TDKLambda_Server(Device):
         log_formatter = logging.Formatter(self.f_str, datefmt='%H:%M:%S')
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(log_formatter)
-        self.logger.addHandler(console_handler)
+        if not self.logger.hasHandlers():
+            self.logger.addHandler(console_handler)
         # create TDKLambda device
         self.tdk = AsyncTDKLambda(self.prt, self.addr, logger=self.logger)
         await self.tdk.init()
@@ -272,6 +274,7 @@ class Async_TDKLambda_Server(Device):
             return result
 
     async def write_programmed_voltage(self, value):
+        self.logger.debug('entry ()()()() %s', value)
         result = await self.write_one(self.programmed_voltage, value, b'PV', 'Error writing programmed voltage')
         return result
 
