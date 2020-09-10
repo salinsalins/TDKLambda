@@ -183,34 +183,30 @@ class AsyncTDKLambda(TDKLambda):
                 return False
 
     async def _send_command(self, cmd: bytes):
-        self.command = cmd
-        self.response = b''
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
         t1 = time.time()
         try:
-            while self.com.async_lock.locked():
-                await asyncio.wait(0)
-            if cmd.startswith(b'PV') or cmd.startswith(b'PC'):
-                print('*')
-                print(self.com.async_lock.locked())
-                #return True
+            # if cmd.startswith(b'PV ') or cmd.startswith(b'PC '):
+            #     self.logger.debug('***************************')
+                #self.response = b'OK\r'
+            if self.com.async_lock.locked():
+                self.logger.debug('***************** Locked %s %s', cmd, self.command)
+                #return False
             async with self.com.async_lock:
-                if cmd.startswith(b'PV') or cmd.startswith(b'PC'):
-                    print('*')
-                    #return True
                 t0 = time.time()
+                self.command = cmd
+                self.response = b''
                 # write command
                 if not await self.write(cmd):
                     return False
                 # read response (to CR by default)
                 result = await self.read_response()
-                dt = (time.time()-t0)*1000.0
-                dt1 = (time.time()-t1)*1000.0
+                dt = (time.time() - t0) * 1000.0
+                dt1 = (time.time() - t1) * 1000.0
                 self.logger.debug('%s -> %s %s %4.0f ms %4.0f ms' % (cmd, self.response, result, dt, dt1))
                 return result
         except:
-            print(self.com.async_lock.locked())
             self.logger.debug("", exc_info=True)
             return result
 
@@ -463,10 +459,10 @@ class AsyncTDKLambda(TDKLambda):
         for d in TDKLambda.devices:
             if d.port == self.port and d.initialized() and d != self:
                 if asyncio.iscoroutinefunction(d.read_device_id):
-                    did = await d.init()
+                    did = await d.read_device_id()
                 else:
-                    did = d.init()
-                if did.initialized():
+                    did = d.read_device_id()
+                if not did.startswith('Unknown'):
                     await self.init()
                     return
         # no working devices on same port so try to recreate com port

@@ -214,7 +214,7 @@ class Async_TDKLambda_Server(Device):
                 del self.task
                 self.task = asyncio.create_task(self.read_all())
             if time.time() - self.time > self.READING_VALID_TIME:
-                asyncio.wait(self.task)
+                await asyncio.wait({self.task})
             val = self.values[index]
             attr.set_value(val)
             attr.set_date(self.timeval)
@@ -258,8 +258,8 @@ class Async_TDKLambda_Server(Device):
                 result = False
                 self.set_fault()
             else:
-                tasks = asyncio.all_tasks()
-                print(len(tasks))
+                ##tasks = asyncio.all_tasks()
+                ##self.logger.debug('Tasks %d', len(tasks))
                 result = await self.tdk.write_value(cmd, value)
             if result:
                 attrib.set_quality(tango.AttrQuality.ATTR_VALID)
@@ -276,12 +276,10 @@ class Async_TDKLambda_Server(Device):
             return result
 
     async def write_programmed_voltage(self, value):
-        self.logger.debug('entry ()()()() %s', value)
         result = await self.write_one(self.programmed_voltage, value, b'PV', 'Error writing programmed voltage')
         return result
 
     async def write_programmed_current(self, value):
-        return True
         return await self.write_one(self.programmed_current, value, b'PC', 'Error writing programmed current')
 
     async def read_output_state(self, attr: tango.Attribute):
@@ -391,13 +389,17 @@ class Async_TDKLambda_Server(Device):
         await self.write_output_state(False)
 
     def set_running(self):
+        self.error_count = 0
         self.set_state(DevState.RUNNING)
 
     def set_fault(self):
-        self.set_state(DevState.FAULT)
+        self.error_count += 1
+        if self.error_count > 5:
+            self.set_state(DevState.FAULT)
 
 # def looping():
 #     time.sleep(0.3)
+
 
 async def looper(delay=1.0):
     loop = asyncio.get_running_loop()

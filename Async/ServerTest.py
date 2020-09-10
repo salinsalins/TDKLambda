@@ -13,7 +13,8 @@ ping1 = dp1.ping()
 print(dn1, 'ping', ping1, 's')
 #print(dn2, 'ping', ping2, 's')
 ran = ['device_type', 'port', 'address', 'output_state', 'voltage', 'programmed_voltage', 'current', 'programmed_current']
-wan = ['programmed_voltage', 'programmed_current']
+#wan = ['programmed_voltage', 'programmed_current']
+wan = ['programmed_voltage']
 wv = 0.0
 rid = [0,1]
 print(' ')
@@ -27,6 +28,14 @@ for i in range(10):
         #v2 = dp2.read_attribute(a)
         #dt = (time.time()-t0)*1000.0
         #print(dn2, a, v2.value, int(dt), 'ms')
+
+    a = 'output_state'
+    for i in range(10):
+        t0 = time.time()
+        v1 = dp1.read_attribute(a)
+        dt = (time.time()-t0)*1000.0
+        print(' read', dn1, a, v1.value, int(dt), 'ms')
+
     for i in range(10):
         for a in wan:
             try:
