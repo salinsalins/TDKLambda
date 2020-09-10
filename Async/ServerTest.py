@@ -19,7 +19,7 @@ wv = 0.0
 rid = [0,1]
 print(' ')
 
-for i in range(10):
+for i in range(2):
     for a in ran:
         t0 = time.time()
         v1 = dp1.read_attribute(a)
@@ -50,25 +50,86 @@ for i in range(10):
             dt = (time.time()-t0)*1000.0
             print('write', dn1, a, wv, int(dt), 'ms')
 
-    # t0 = time.time()
-    # rid[0] = dp1.read_attribute_asynch(ran[0])
-    # rid[1] = dp2.read_attribute_asynch(ran[0])
-    # dt = (time.time()-t0)*1000.0
-    # print('\nasync read request', int(dt), 'ms', rid[0], rid[1])
-    # read_result1 = None
-    # read_result2 = None
-    # flag = True
-    # while flag:
-    #     try:
-    #         if read_result1 is None:
-    #             read_result1 = dp1.read_attribute_reply(rid[0])
-    #         read_result2 = dp2.read_attribute_reply(rid[1])
-    #         flag = False
-    #     except tango.AsynReplyNotArrived:
-    #         pass
-    #     except:
-    #         print('Error', sys.exc_info(), read_result1, read_result2)
-    #         #flag = False
-    # dt = (time.time()-t0)*1000.0
-    # print('async read time', int(dt), 'ms')
-    # print('\n')
+    print(' ')
+    rids = []
+    t0 = time.time()
+    for a in ran:
+        rid = dp1.read_attribute_asynch(a)
+        dt = (time.time()-t0)*1000.0
+        print('async read request', a, int(dt), 'ms', rid)
+        rids.append(rid)
+
+    print(' ')
+    rids = []
+    wids = []
+    t0 = time.time()
+    for i in range(10):
+        for a in wan:
+            wid = dp1.write_attribute_asynch(a, wv)
+            rid = dp1.read_attribute_asynch(a)
+            dt = (time.time()-t0)*1000.0
+            wv += 0.1
+            if wv >= 3.0:
+                wv = 0.0
+            print('async WRITE request', a, int(dt), 'ms', wid, wv)
+            wids.append(wid)
+
+            for i in range(10):
+                for a in wan:
+                    try:
+                        t0 = time.time()
+                        dp1.write_attribute(a, wv)
+                        #dt = (time.time()-t0)*1000.0
+                        wv += 0.1
+                        if wv >= 3.0:
+                            wv = 0.0
+                    except:
+                        print('exception', sys.exc_info())
+                    dt = (time.time()-t0)*1000.0
+                    print('write', dn1, a, wv, int(dt), 'ms')
+
+    print(' ')
+    wids = []
+    t0 = time.time()
+    for i in range(10):
+        for a in wan:
+            wid = dp1.write_attribute_asynch(a, wv)
+            dt = (time.time()-t0)*1000.0
+            wv += 0.1
+            if wv >= 3.0:
+                wv = 0.0
+            print('async WRITE request', a, int(dt), 'ms', wid, wv)
+            wids.append(wid)
+
+    print(' ')
+    results = []
+    while len(rids) > 0:
+        for id in rids:
+            try:
+                result = dp1.read_attribute_reply(id)
+                results.append(result.value)
+                rids.remove(id)
+            except tango.AsynReplyNotArrived:
+                pass
+            except:
+                print('Error', sys.exc_info(), result)
+    dt = (time.time()-t0)*1000.0
+    print(results)
+    print('async read time', int(dt), 'ms')
+
+    print(' ')
+    #results = []
+    while len(wids) > 0:
+        for id in wids:
+            try:
+                result = dp1.write_attribute_reply(id)
+                #results.append(result.value)
+                wids.remove(id)
+            except tango.AsynReplyNotArrived:
+                pass
+            except:
+                print('Error', sys.exc_info())
+    dt = (time.time()-t0)*1000.0
+    #print(results)
+    print('async write time', int(dt), 'ms')
+    print('\n')

@@ -242,6 +242,8 @@ class AsyncTDKLambda(TDKLambda):
                 self.response = b''
             dt = (time.time()-t0)*1000.0
             self.logger.info('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
+            if dt > 1000:
+                self.logger.info('\n---------!!!!!!!!!!!!!!!!!!!!!!!!!!!-------\n')
             return result
         except:
             self.logger.error('Unexpected exception')
@@ -260,6 +262,7 @@ class AsyncTDKLambda(TDKLambda):
             if len(cmd) == length:
                 result = True
             else:
+                self.logger.error('Writing error: expected %d - written %d bytes', len(cmd), length)
                 result = False
             self.logger.debug('%s %s bytes in %4.0f ms %s' % (cmd, length, (time.time() - t0) * 1000.0, result))
             return result
