@@ -301,35 +301,6 @@ class Async_TDKLambda_Server(Device):
         self.logger.debug('------------Entry----------')
         return await self.write_one(self.programmed_current, value, b'PC', 'Error writing programmed current')
 
-    async def write_wrapper(self, attr: tango.Attribute, *args, **kwargs):
-        self.logger.debug('------------Entry----------')
-        try:
-            if not self.tdk.initialized():
-                self.set_fault()
-                attr.set_value(False)
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                return False
-            if self.task is not None and not self.task.done():
-                await asyncio.wait({self.task})
-            self.task = asyncio.create_task(self.read_all())
-            if time.time() - self.time > self.READING_VALID_TIME:
-                await asyncio.wait({self.task})
-            response = await self.tdk.read_output()
-            if response is None:
-                msg = "%s Error reading output state" % self
-                self.info_stream(msg)
-                self.logger.warning(msg)
-                self.set_fault()
-                attr.set_value(False)
-                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-                return False
-            attr.set_value(response)
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            return response
-        except:
-            self.logger.debug(" ", exc_info=True)
-            return response
-
     async def read_output_state(self, attr: tango.Attribute):
         self.logger.debug('------------Entry----------')
         try:
