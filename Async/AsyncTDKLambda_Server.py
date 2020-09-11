@@ -7,6 +7,7 @@ import time
 from math import isnan
 import asyncio
 from asyncio import InvalidStateError
+import threading
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
@@ -516,6 +517,14 @@ async def looper(delay=1.0):
         #logger.debug("\n")
         await asyncio.sleep(delay)
 
+def timertask():
+    print(time.time())
+    t = threading.Timer(0.5, timertask)
+    t.start()
+
+
 if __name__ == "__main__":
+    #timer = threading.Timer(0.5, timertask)
+    #timer.start()
     logging.getLogger('asyncio').setLevel(logging.DEBUG)
     Async_TDKLambda_Server.run_server()
