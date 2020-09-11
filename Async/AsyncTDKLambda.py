@@ -183,6 +183,8 @@ class AsyncTDKLambda(TDKLambda):
                 return False
 
     async def _send_command(self, cmd: bytes):
+        task = asyncio.current_task()
+        self.logger.debug('++++++++++++++Entry %s %s', cmd, task)
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
         t1 = time.time()
@@ -191,7 +193,7 @@ class AsyncTDKLambda(TDKLambda):
             #     self.logger.debug('***************************')
                 #self.response = b'OK\r'
             if self.com.async_lock.locked():
-                self.logger.debug('***************** Locked %s %s', cmd, self.command)
+                self.logger.debug('\n***************** Locked %s %s\n', cmd, self.command)
                 #return False
             async with self.com.async_lock:
                 t0 = time.time()
@@ -346,9 +348,12 @@ class AsyncTDKLambda(TDKLambda):
     async def _read(self, size=1, timeout=None):
         result = b''
         to = Timeout(timeout)
+        n = 0
         while len(result) < size:
+            n += 1
             r = await self.com.read(1)
             if len(r) > 0:
+                self.logger.debug('++++++++++++++ %s', r)
                 result += r
                 to.restart(timeout)
             else:
@@ -356,6 +361,7 @@ class AsyncTDKLambda(TDKLambda):
                     self.logger.debug('Read timeout')
                     raise SerialTimeoutException('Read timeout')
             await asyncio.sleep(0)
+        self.logger.debug('%d', n)
         return result
 
     async def read_float(self, cmd):

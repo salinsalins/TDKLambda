@@ -50,14 +50,23 @@ async def interrupter(delay=0.7):
     await asyncio.sleep(delay)
     raise Exception('Test')
 
+async def wait(task):
+    await task
 
 async def main():
     global task3
     task1 = asyncio.create_task(looper())
     task2 = asyncio.create_task(printer(1))
     task3 = asyncio.create_task(interrupter(1.2))
-    while True:
-        await asyncio.sleep(0)
+    task4 = asyncio.create_task(asyncio.sleep(3))
+    task5 = asyncio.create_task(wait(task4))
+    task6 = asyncio.create_task(wait(task4))
+    # while True:
+    #     await asyncio.sleep(0)
+    at = await task5
+    logger.debug("at1 %s", at)
+    at = await task6
+    logger.debug("at2 %s", at)
     # await asyncio.wait({task1})
 
 task3 = None
