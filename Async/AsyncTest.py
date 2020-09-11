@@ -50,8 +50,31 @@ async def interrupter(delay=0.7):
     await asyncio.sleep(delay)
     raise Exception('Test')
 
+
+def benchmark(func):
+    async def wrapper(*args, **kwargs):
+        start = time.time()
+        await func(*args, **kwargs)
+        end = time.time()
+        print('Время выполнения %s %s секунд' % (func,end-start))
+    return wrapper
+
+
+def enterexit(func):
+    async def wrapper(*args, **kwargs):
+        start = time.time()
+        print('Enter ', func)
+        await func(*args, **kwargs)
+        print('Exit ', func)
+        end = time.time()
+        print('Время выполнения %s %s секунд' % (func,end-start))
+    return wrapper
+
+
+@enterexit
 async def wait(task):
     await task
+
 
 async def main():
     global task3

@@ -14,12 +14,57 @@ from serial import Timeout
 
 from TDKLambda import *
 
+import os
+
+os.system("")
+
+
+# Group of Different functions for different styles
+class style():
+    BLACK = '\033[30m'
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    MAGENTA = '\033[35m'
+    CYAN = '\033[36m'
+    WHITE = '\033[37m'
+    UNDERLINE = '\033[4m'
+    RESET = '\033[0m'
+
+
+def enterexit(func):
+    async def wrapper(*args, **kwargs):
+        tasks1 = asyncio.all_tasks()
+        strfunc = style.GREEN + ('%s' % func)[9:-23] + style.RESET
+        start = time.time()
+        print('Enter ', strfunc, args, file=sys.stderr)
+        result = await func(*args, **kwargs)
+        end = time.time()
+        dt = (end-start)*1000.0
+        print('Exit %s Время выполнения %5.0f ms' % (strfunc, dt), file=sys.stderr)
+        if dt > 1000.0:
+            tasks2 = asyncio.all_tasks()
+            for t in tasks1:
+                if t not in tasks2:
+                    print('completed %s' % t, file=sys.stderr)
+                else:
+                    print('old %s' % t, file=sys.stderr)
+            for t in tasks2:
+                if t not in tasks1:
+                    print('new %s' % t, file=sys.stderr)
+            #print('%s' % tasks1, file=sys.stderr)
+            #print('%s' % tasks2, file=sys.stderr)
+        return result
+
+    return wrapper
 
 @types.coroutine
 def async_yield():
     """Skip one event loop run cycle.
     """
     yield
+
 
 class FakeAsyncComPort(FakeComPort):
     SN = 9876543
@@ -30,6 +75,7 @@ class FakeAsyncComPort(FakeComPort):
         FakeComPort.RESPONSE_DELAY = FakeAsyncComPort.RESPONSE_DELAY
         super().__init__(port, *args, **kwargs)
         self.async_lock = asyncio.Lock()
+        self.s = super()
 
     async def reset_input_buffer(self, timeout=None):
         return True
@@ -182,9 +228,9 @@ class AsyncTDKLambda(TDKLambda):
             else:                           # it was not suspended
                 return False
 
+    @enterexit
     async def _send_command(self, cmd: bytes):
-        task = asyncio.current_task()
-        self.logger.debug('++++++++++++++Entry %s %s', cmd, task)
+        self.logger.debug('++++++++++++++Entry %s', cmd)
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
         t1 = time.time()
@@ -351,9 +397,11 @@ class AsyncTDKLambda(TDKLambda):
         n = 0
         while len(result) < size:
             n += 1
-            r = await self.com.read(1)
+            r = self.com.s.read(1)
+            #r = await self.com.read(1)
+            if self.command.startswith(b'PV '):
+                self.logger.debug('OOOOOOOOOOOO')
             if len(r) > 0:
-                self.logger.debug('++++++++++++++ %s', r)
                 result += r
                 to.restart(timeout)
             else:

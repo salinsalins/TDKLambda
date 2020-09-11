@@ -517,4 +517,5 @@ async def looper(delay=1.0):
         await asyncio.sleep(delay)
 
 if __name__ == "__main__":
+    logging.getLogger('asyncio').setLevel(logging.DEBUG)
     Async_TDKLambda_Server.run_server()
