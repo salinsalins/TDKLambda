@@ -273,9 +273,13 @@ class Async_TDKLambda_Server(Device):
                 self.set_fault()
             else:
                 if self.task is not None and not self.task.done():
-                    await asyncio.wait({self.task})
+                    await self.task
                 self.task = asyncio.create_task(self.tdk.write_value(cmd, value))
-                await asyncio.wait({self.task})
+                #done, pending = await asyncio.wait({self.task})
+                try:
+                    await self.task
+                except Exception as ex:
+                    raise ex
                 result = self.task.result()
                 #result = await self.tdk.write_value(cmd, value)
             if result:
@@ -284,12 +288,17 @@ class Async_TDKLambda_Server(Device):
             else:
                 attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
                 msg = ('%s ' + message) % self
-                self.info_stream(msg)
                 self.logger.warning(msg)
+                self.info_stream(msg)
                 self.set_fault()
             return result
         except:
+            attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
+            msg = ('%s ' + message) % self
+            self.logger.warning(msg)
+            self.info_stream(msg)
             self.logger.debug("", exc_info=True)
+            self.set_fault()
             return result
 
     async def write_programmed_voltage(self, value):
