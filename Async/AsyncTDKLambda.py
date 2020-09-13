@@ -68,7 +68,7 @@ def async_yield():
 
 class FakeAsyncComPort(FakeComPort):
     SN = 9876543
-    RESPONSE_DELAY = 0.055
+    RESPONSE_DELAY = 0.0
 
     def __init__(self, port, *args, **kwargs):
         FakeComPort.SN = FakeAsyncComPort.SN
