@@ -68,8 +68,8 @@ class FakeComPort:
     def read(self, size=1, timeout=None):
         if self.last_write == b'':
             return b''
-        if time.perf_counter() - self.t[self.last_address] < self.RESPONSE_DELAY:
-            return b''
+        #if time.perf_counter() - self.t[self.last_address] < self.RESPONSE_DELAY:
+        #    return b''
         self.t[self.last_address] = time.perf_counter()
         if self.write_error:
             self.last_write = b''
