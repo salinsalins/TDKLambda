@@ -20,7 +20,7 @@ CR = b'\r'
 
 
 class MoxaTCPComPort:
-    def __init__(self, host: str, port: int = 4001):
+    def __init__(self, host, port=4001, **kwargs):
         if ':' in host:
             n = host.find(':')
             self.host = host[:n].strip()
@@ -47,25 +47,51 @@ class MoxaTCPComPort:
     def isOpen(self):
         return True
 
+    def reset_input_buffer(self):
+        return True
 
-class ComPort(serial.Serial):
-    def __init__(self, port=None, *args, **kwargs):
+
+class ComPort():
+    def __init__(self, port, *args, **kwargs):
         self.current_addr = -1
         self.lock = Lock()
         self.initialized = False
-        #if port is None or port.upper().startswith('COM') or port.lower().startswith('tty'):
+        self.port = port
+        self._port = None
         try:
-            super().__init__(port, *args, **kwargs)
+            self._port = serial.Serial(port, *args, timeout=0.0, write_timeout=0.0, **kwargs)
             self.initialized = True
         except:
             if port.startswith('FAKE'):
-                self.close = FakeComPort.close
-                self.write = FakeComPort.write
-                self.read = FakeComPort.read
-                self.reset_input_buffer = FakeComPort.reset_input_buffer
+                self._port = FakeComPort(port, *args, **kwargs)
                 self.initialized = True
             else:
-                self.moxa = MoxaTCPComPort(port)
+                try:
+                    self._port = MoxaTCPComPort(port, *args, **kwargs)
+                    self.initialized = True
+                except:
+                    self.initialized = False
+
+    def read(self, *args, **kwargs):
+        if self.ready:
+            return self._port.read(*args, **kwargs)
+        else:
+            return b''
+
+    def write(self, *args, **kwargs):
+        if self.ready:
+            return self._port.write(*args, **kwargs)
+        else:
+            return 0
+
+    def reset_input_buffer(self):
+        return self._port.reset_input_buffer()
+
+    def close(self):
+        return self._port.close()
+
+    def isOpen(self):
+        return self._port.isOpen()
 
     @property
     def ready(self):
@@ -106,7 +132,6 @@ class TDKLambda:
         self.read_timeout = self.min_timeout
         self.timeout_clear_input = 0.5
         # sleep timings
-        self.sleep_after_write = 0.02
         self.sleep_clear_input = 0.0
         # default com port, id, and serial number
         self.com = None
@@ -121,17 +146,10 @@ class TDKLambda:
             if d.port == self.port and d.addr == self.addr and d != self:
                 raise addressInUseException
         # create COM port
-        self.create_com_port()
-        #
-        if self.com is None:
-            msg = 'TDKLambda: %s port was not initialized' % self.port
-            self.logger.info(msg)
-            self.add_to_list()
-            return
-        #
-        #if self.__class__ == TDKLambda:
-        if not asyncio.iscoroutinefunction(self.init):
-            self.init()
+        self.com = self.create_com_port()
+        # add device to list
+        self.add_to_list()
+        self.init()
 
     def __del__(self):
         if self in TDKLambda.devices:
@@ -153,40 +171,26 @@ class TDKLambda:
     def create_com_port(self):
         # if com port already exists
         for d in TDKLambda.devices:
-            if d.port == self.port and d.com is not None:
+            if d.port == self.port:
                 self.com = d.com
                 return self.com
         # create new port
-        try:
-            if self.port.upper().startswith('FAKE'):
-                self.com = FakeComPort(self.port)
-            elif self.port.upper().startswith('COM') or self.port.lower().startswith('tty'):
-                self.com = serial.Serial(self.port, baudrate=self.baud, timeout=0.0, write_timeout=0.0)
-            else:
-                self.com = MoxaTCPComPort(self.port)
-            self.com.current_addr = -1
-            self.com.lock = Lock()
+        self.com = ComPort(self.port, baudrate=self.baud)
+        if self.com.ready:
             self.logger.debug('Port %s has been created', self.port)
-        except:
-            self.com = None
+        else:
             self.logger.error('Port %s creation error', self.port)
-            self.logger.debug('', exc_info=True)
-        # update com for other devices with the same port
-        for d in TDKLambda.devices:
-            if d.port == self.port:
-                d.com = self.com
         return self.com
 
     def init(self):
-        if self.com is None:
+        if not self.com.ready:
             self.suspend()
             return
         # set device address
         response = self.set_addr()
         if not response:
-            msg = 'TDKLambda: device is not initialized properly'
+            msg = 'TDKLambda: device was not initialized properly'
             self.logger.info(msg)
-            self.add_to_list()
             return
         # read device type
         self.id = self.read_device_id()
@@ -200,10 +204,12 @@ class TDKLambda:
                     self.max_current = float(self.id[n2+1:])
                 except:
                     pass
+        else:
+            msg = 'TDKLambda: device was not initialized properly'
+            self.logger.info(msg)
+            return
         # read device serial number
         self.sn = self.read_serial_number()
-        # add device to list
-        self.add_to_list()
         msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
         self.logger.debug(msg)
 
@@ -235,11 +241,10 @@ class TDKLambda:
             self.com.close()
         except:
             pass
-        self.com = None
+        self.com.initialized = False
         self.suspend()
         for d in TDKLambda.devices:
             if d.port == self.port:
-                d.com = None
                 d.suspend()
 
     @staticmethod
@@ -267,7 +272,7 @@ class TDKLambda:
         else:                               # suspension expires
             if self.suspend_flag:           # if it was suspended and expires
                 self.reset()
-                if self.com is None:        # if initialization was not successful
+                if not self.com.ready:        # if initialization was not successful
                     # suspend again
                     self.suspend()
                     return True
@@ -363,23 +368,22 @@ class TDKLambda:
             return False
         return True
 
-    def clear_input_buffer(self):
+    def reset_input_buffer(self):
         self.com.reset_input_buffer()
 
     def write(self, cmd):
-        t0 = time.time()
+        t0 = time.perf_counter()
         try:
-            # clear input buffer
-            self.clear_input_buffer()
+            # reset input buffer
+            self.reset_input_buffer()
             # write command
-            #self.logger.debug('clear_input_buffer %4.0f ms' % ((time.time() - t0) * 1000.0))
             length = self.com.write(cmd)
-            #time.sleep(self.sleep_after_write)
             if len(cmd) == length:
                 result = True
             else:
                 result = False
-            self.logger.debug('%s %s bytes in %4.0f ms %s' % (cmd, length, (time.time() - t0) * 1000.0, result))
+            dt = (time.perf_counter() - t0) * 1000.0
+            self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
             return result
         except SerialTimeoutException:
             self.logger.error('Writing timeout')
@@ -394,14 +398,14 @@ class TDKLambda:
         self.response = b''
         if not cmd.endswith(b'\r'):
             cmd += b'\r'
-        t0 = time.time()
+        t0 = time.perf_counter()
         # write command
         if not self.write(cmd):
             return False
         # read response (to CR by default)
         result = self.read_response()
-        dt = (time.time()-t0)*1000.0
-        self.logger.debug('%s -> %s %s %4.0f ms' % (cmd, self.response, result, dt))
+        dt = (time.perf_counter()-t0)*1000.0
+        self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt)
         return result
 
     def send_command(self, cmd):
@@ -419,7 +423,7 @@ class TDKLambda:
             if self.check:
                 cs = self.checksum(cmd[:-1])
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
-            if self.com._current_addr != self.addr:
+            if self.com.current_addr != self.addr:
                 result = self.set_addr()
                 if not result:
                     self.suspend()
@@ -444,19 +448,19 @@ class TDKLambda:
             return b''
 
     def set_addr(self):
-        if hasattr(self.com, '_current_addr'):
-            a0 = self.com._current_addr
+        if hasattr(self.com, 'current_addr'):
+            a0 = self.com.current_addr
         else:
             a0 = -1
         result = self._send_command(b'ADR %d' % self.addr)
         if result and self.check_response(b'OK'):
-            self.com._current_addr = self.addr
+            self.com.current_addr = self.addr
             self.logger.debug('Address %d -> %d' % (a0, self.addr))
             return True
         else:
             self.logger.error('Error set address %d -> %d' % (a0, self.addr))
             if self.com is not None:
-                self.com._current_addr = -1
+                self.com.current_addr = -1
             return False
 
     def read_float(self, cmd):
@@ -479,7 +483,7 @@ class TDKLambda:
             try:
                 v = float(s)
             except:
-                self.logger.debug('%s is not a float' % reply)
+                self.logger.debug('%s is not a float', reply)
                 v = float('Nan')
             vals.append(v)
         if len(vals) <= 6:
@@ -494,7 +498,7 @@ class TDKLambda:
             else:
                 v = None
         except:
-            self.logger.info('Can not convert %s to %s' % (self.response, v_type))
+            self.logger.info('Can not convert %s to %s', self.response, v_type)
             v = None
         return v
 
@@ -572,12 +576,12 @@ class TDKLambda:
         return
 
     def initialized(self):
-        return self.com is not None and self.id.find('LAMBDA') > 0
+        return self.com.ready and self.id.find('LAMBDA') > 0
 
 
 if __name__ == "__main__":
-    pd1 = TDKLambda("COM6", 6)
-    pd2 = TDKLambda("COM6", 7)
+    pd1 = TDKLambda("FAKE6", 6)
+    pd2 = TDKLambda("FAKE7", 7)
     for i in range(5):
         t_0 = time.time()
         v1 = pd1.read_float("PC?")

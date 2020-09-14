@@ -304,7 +304,7 @@ class AsyncTDKLambda(TDKLambda):
         t0 = time.time()
         try:
             # clear input buffer
-            await self.clear_input_buffer()
+            await self.reset_input_buffer()
             # write command
             length = await self.com.write(cmd)
             if len(cmd) == length:
@@ -322,7 +322,7 @@ class AsyncTDKLambda(TDKLambda):
             self.logger.debug("", exc_info=True)
             return False
 
-    async def clear_input_buffer(self):
+    async def reset_input_buffer(self):
         await self.com.reset_input_buffer()
 
     async def read_response(self):
