@@ -53,13 +53,21 @@ class ComPort(serial.Serial):
         self.current_addr = -1
         self.lock = Lock()
         self.initialized = False
-        if port is None or port.upper().startswith('COM') or port.lower().startswith('tty'):
-            try:
-                super().__init__(port, *args, **kwargs)
+        #if port is None or port.upper().startswith('COM') or port.lower().startswith('tty'):
+        try:
+            super().__init__(port, *args, **kwargs)
+            self.initialized = True
+        except:
+            if port.startswith('FAKE'):
+                self.close = FakeComPort.close
+                self.write = FakeComPort.write
+                self.read = FakeComPort.read
+                self.reset_input_buffer = FakeComPort.reset_input_buffer
                 self.initialized = True
-            except:
-                pass
+            else:
+                self.moxa = MoxaTCPComPort(port)
 
+    @property
     def ready(self):
         return self.initialized and self.isOpen()
 

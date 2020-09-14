@@ -134,3 +134,7 @@ class FakeComPort:
 
     def reset_input_buffer(self, timeout=None):
         return True
+
+    def isOpen(self):
+        return True
+
