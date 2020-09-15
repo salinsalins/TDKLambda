@@ -291,7 +291,7 @@ class TDKLambda:
         result = str.encode(hex(s)[-2:].upper())
         return result
 
-    def suspend(self, duration=5.0):
+    def suspend(self, duration=0.0):
         self.suspend_to = time.time() + duration
         self.suspend_flag = True
         self.logger.info('Suspended for %5.2f sec', duration)
@@ -445,6 +445,7 @@ class TDKLambda:
         if self.is_suspended():
             self.command = cmd
             self.response = b''
+            self.logger.debug('Command %s to suspended device ignored', cmd)
             return False
         try:
             # unify command
@@ -478,7 +479,7 @@ class TDKLambda:
             self.logger.debug("", exc_info=True)
             self.suspend()
             self.response = b''
-            return b''
+            return False
 
     def set_addr(self):
         a0 = self.com.current_addr
@@ -586,22 +587,23 @@ class TDKLambda:
         return self.read_value(b'PV?', v_type=float)
 
     def reset(self):
-        self.logger.debug('Resetting %s', self)
-        if self.com is None:
+        self.logger.debug('Resetting')
+        if not self.com.ready:
             self.create_com_port()
             self.init()
             return
         # check working devices on same port
         for d in TDKLambda.devices:
-            if d.port == self.port and d.initialized() and d != self:
-                d.init()
-                if d.initilized():
-                    self.init()
-                    return
+            if d != self and d.port == self.port and d.initialized():
+                self.init()
+                return
         # no working devices on same port so try to recreate com port
         self.close_com_port()
         self.create_com_port()
         self.init()
+        for d in TDKLambda.devices:
+            if d != self and d.port == self.port:
+                d.com = self.com
         return
 
     def initialized(self):
