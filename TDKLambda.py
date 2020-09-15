@@ -73,10 +73,6 @@ class ComPort:
         def isOpen(self):
             return False
 
-        @property
-        def ready(self):
-            return False
-
     # def __new__(cls, port, *args, **kwargs):
     #     if port in cls._ports:
     #         return cls._ports[port]
@@ -89,33 +85,21 @@ class ComPort:
         self.kwargs = kwargs
         self.current_addr = -1
         self.lock = Lock()
-        self.initialized = False
         self._ex = None
-        self._device = None
+        self._device = ComPort.UninitializedDevice(port, *args, **kwargs)
         if port in ComPort._devices:
             self._device = ComPort._devices[port]
-            if isinstance(self._device, ComPort.UninitializedDevice):
-                self.initialized = False
-            else:
-                self.initialized = True
             return
         if port.startswith('FAKE'):
             self._device = FakeComPort(port, *args, **kwargs)
-            self.initialized = True
         else:
             try:
                 self._device = serial.Serial(port, *args, timeout=0.0, write_timeout=0.0, **kwargs)
-                self.initialized = True
-                ComPort._devices[port] = self._device
             except Exception as ex:
                 self._ex = [ex]
                 try:
                     self._device = MoxaTCPComPort(port, *args, **kwargs)
-                    self.initialized = True
-                    ComPort._devices[port] = self._device
                 except Exception as ex:
-                    self._device = ComPort.UninitializedDevice(port, *args, **kwargs)
-                    self.initialized = False
                     self._ex.append(ex)
         ComPort._devices[port] = self._device
 
@@ -143,17 +127,9 @@ class ComPort:
         else:
             return True
 
-    def isOpen(self):
-        if self.initialized:
-            return self._device.isOpen()
-        else:
-            return False
-
     @property
     def ready(self):
-        if self.initialized:
-            return self.isOpen()
-        return False
+        return self._device.isOpen()
 
 
 class TDKLambda:
@@ -634,7 +610,7 @@ class TDKLambda:
 
 if __name__ == "__main__":
     pd1 = TDKLambda("FAKE6", 6)
-    pd2 = TDKLambda("FAKE6", 7)
+    pd2 = TDKLambda("aFAKE6", 7)
     for i in range(5):
         t_0 = time.time()
         v1 = pd1.read_float("PC?")
