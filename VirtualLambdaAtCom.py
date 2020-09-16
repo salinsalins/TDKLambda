@@ -20,14 +20,16 @@ logger.addHandler(console_handler)
 class VirtualLambdaAtCom:
     SERIAL_NUMBER = 56789
     devices = {}
+    current_address = -1
 
     def __init__(self, port, addr, checksum=False, baud_rate=9600, delay=0.035):
         # input parameters
-        self.port = port.upper().strip()
+        self.port = port.strip()
         self.addr = addr
         self.check = checksum
         self.baud = baud_rate
         self.delay = delay
+        self.active = False
         # create variables
         self.input = b''
         # default com port, id, and serial number
@@ -71,7 +73,7 @@ class VirtualLambdaAtCom:
         self.out = False
         # add device to dict
         VirtualLambdaAtCom.devices[self.addr] = self
-        logger.info('TDKLambda: %s has been created at %s:%d' % (self.id, self.port, self.addr))
+        logger.info('TDKLambda: %s SN:%s has been created at %s:%d' % (self.id, self.serial_number, self.port, self.addr))
 
     def init_com_port(self):
         if len(VirtualLambdaAtCom.devices) > 0:
@@ -98,17 +100,22 @@ class VirtualLambdaAtCom:
             pass
 
     def read(self):
+        self.input = b''
         data = self.com.read(10000)
-        while len(data) <= 0:
+        if len(data) <= 0:
             return
-        logger.debug('%s Received' % data)
-        self.input += data
+        while len(data) > 0:
+            self.input += data
+            data = self.com.read(10000)
+            logger.debug('Received %s', data)
+        logger.debug('Processing %s', self.input)
         # check for CR
         if b'\r' in self.input:
             self.input = self.input.replace(b'\n', b'')
         if b'\n' in self.input:
             self.input = self.input.replace(b'\n', b'\r')
         if b'\r' not in self.input:
+            logger.warning('Read %s without CR - ignored', self.input)
             return
         # interpret command
         commands = self.input.split(b'\r')
@@ -229,7 +236,6 @@ class VirtualLambdaAtCom:
             self.write(b'C01\r')
 
     def write(self, st):
-        logger.debug('Write: get %s' % st)
         if st.endswith(b'\r'):
             st = st[:-1]
         if self.check:
@@ -238,9 +244,9 @@ class VirtualLambdaAtCom:
         if not st.endswith(b'\r'):
             st += b'\r'
         time.sleep(self.delay)
-        logger.debug('pause %s s' % self.delay)
+        logger.debug('Pause %s s', self.delay)
         n = self.com.write(st)
-        logger.debug('Writing    %s -> %s' % (st, n))
+        logger.debug('Writing    %s   %s bytes', st, n)
 
     def clear_input_buffer(self):
         self.com.read(10000)
@@ -257,7 +263,7 @@ class VirtualLambdaAtCom:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        com_port = 'COM5'
+        com_port = 'COM6'
     else:
         com_port = sys.argv[1]
     if len(sys.argv) < 3:
@@ -272,10 +278,13 @@ if __name__ == "__main__":
     if len(addresses) <= 0:
         logger.critical('Wrong command line parameters. Use: COMxx ADR1 ADR2 ...')
         exit(-10)
-    dev1 = VirtualLambdaAtCom(com_port, addresses[0])
-    for ad in addresses[1:]:
-        VirtualLambdaAtCom(com_port, ad)
+    devices = []
+    for a in addresses:
+        devices.append(VirtualLambdaAtCom(com_port, a))
+    if len(devices) <= 0:
+        logger.critical('Wrong command line parameters. Use: COMxx ADR1 ADR2 ...')
+        exit(-10)
     t0 = time.time()
     while True:
-        dev1.read()
-        time.sleep(0.1)
+        devices[0].read()
+        #time.sleep(0.01)

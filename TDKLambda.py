@@ -144,7 +144,11 @@ class ComPort:
 
     def reset_input_buffer(self):
         if self.ready:
-            return self._device.reset_input_buffer()
+            try:
+                self._device.reset_input_buffer()
+                return True
+            except:
+                return False
         else:
             return True
 
@@ -430,7 +434,7 @@ class TDKLambda:
         try:
             # reset input buffer
             if not self.com.reset_input_buffer():
-                return 0
+                return False
             # write command
             length = self.com.write(cmd)
             if len(cmd) == length:
@@ -655,7 +659,7 @@ class TDKLambda:
 
 if __name__ == "__main__":
     pd1 = TDKLambda("FAKE6", 6)
-    pd2 = TDKLambda("COMn6", 7)
+    pd2 = TDKLambda("COM9", 7)
     for i in range(5):
         t_0 = time.time()
         v1 = pd1.read_float("PC?")
