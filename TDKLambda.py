@@ -55,8 +55,8 @@ class ComPort:
     _devices = {}
 
     class UninitializedDevice:
-        def __init__(self, *args, **kwargs):
-            pass
+        def __init__(self, port, *args, **kwargs):
+            self.port = port
 
         def read(self, *args, **kwargs):
             return b''
@@ -86,22 +86,49 @@ class ComPort:
         self.current_addr = -1
         self.lock = Lock()
         self._ex = None
-        self._device = ComPort.UninitializedDevice(port, *args, **kwargs)
+
+        logger = logging.getLogger(str(self))
+        logger.propagate = False
+        level = logging.DEBUG
+        logger.setLevel(level)
+        f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
+                '%(funcName)s(%(lineno)s) ' + '%s' % self.port + ' - %(message)s'
+        log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(log_formatter)
+        if not logger.hasHandlers():
+            logger.addHandler(console_handler)
+        self.logger = logger
+        # default device
+        self._device = ComPort.UninitializedDevice(port)
+        # use existed device
         if port in ComPort._devices:
             self._device = ComPort._devices[port]
+            self.logger.debug('Using existent port')
             return
-        if port.startswith('FAKE'):
-            self._device = FakeComPort(port, *args, **kwargs)
+        self.init()
+
+    def init(self):
+        if self.lock.locked():
+            self.logger.warning('Init on locked port')
+            self.lock.release()
+        # initialize real device
+        if self.port.startswith('FAKE'):
+            self._device = FakeComPort(self.port, *self.args, **self.kwargs)
         else:
             try:
-                self._device = serial.Serial(port, *args, timeout=0.0, write_timeout=0.0, **kwargs)
+                self._device = serial.Serial(self.port, *self.args, timeout=0.0, write_timeout=0.0, **self.kwargs)
             except Exception as ex:
                 self._ex = [ex]
-                try:
-                    self._device = MoxaTCPComPort(port, *args, **kwargs)
-                except Exception as ex:
-                    self._ex.append(ex)
-        ComPort._devices[port] = self._device
+                if not (self.port.upper().startswith('COM')
+                        or self.port.startswith('tty')
+                        or self.port.startswith('/dev')
+                        or self.port.startswith('cua')):
+                    try:
+                        self._device = MoxaTCPComPort(self.port, *self.args, **self.kwargs)
+                    except Exception as ex:
+                        self._ex.append(ex)
+        ComPort._devices[self.port] = self._device
 
     def read(self, *args, **kwargs):
         if self.ready:
@@ -215,6 +242,7 @@ class TDKLambda:
         return self.com
 
     def init(self):
+        self.unsuspend()
         if not self.com.ready:
             self.suspend()
             return
@@ -240,6 +268,7 @@ class TDKLambda:
                 except:
                     pass
         else:
+            self.suspend()
             msg = 'TDKLambda: device was not initialized properly'
             self.logger.info(msg)
             return
@@ -277,8 +306,7 @@ class TDKLambda:
             self.com.close()
         except:
             pass
-        self.com.initialized = False
-        self.suspend()
+        # suspend all devices with same port
         for d in TDKLambda.devices:
             if d.port == self.port:
                 d.suspend()
@@ -306,13 +334,11 @@ class TDKLambda:
             return True
         else:                               # suspension expires
             if self.suspend_flag:           # if it was suspended and expires
+                self.suspend_flag = False
                 self.reset()
-                if not self.com.ready:        # if initialization was not successful
-                    # suspend again
-                    self.suspend()
+                if self.suspend_flag:       # was suspended during resset()
                     return True
-                else:                       # initialization was successful
-                    self.unsuspend()
+                else:
                     return False
             else:                           # it was not suspended
                 return False
@@ -588,22 +614,39 @@ class TDKLambda:
 
     def reset(self):
         self.logger.debug('Resetting')
+        # if por was not initialized
         if not self.com.ready:
-            self.create_com_port()
-            self.init()
+            self.com.close()
+            self.com.init()
+            if self.com.ready:
+                # init all devices on same port
+                for d in TDKLambda.devices:
+                    if d.port == self.port:
+                        d.init()
+            else:
+                # suspend all devices on same port
+                for d in TDKLambda.devices:
+                    if d.port == self.port:
+                        d.suspend()
             return
-        # check working devices on same port
+        # port is OK, find working devices on same port
         for d in TDKLambda.devices:
             if d != self and d.port == self.port and d.initialized():
                 self.init()
                 return
         # no working devices on same port so try to recreate com port
-        self.close_com_port()
-        self.create_com_port()
-        self.init()
-        for d in TDKLambda.devices:
-            if d != self and d.port == self.port:
-                d.com = self.com
+        self.com.close()
+        self.com.init()
+        if self.com.ready:
+            # init all devices on same port
+            for d in TDKLambda.devices:
+                if d.port == self.port:
+                    d.init()
+        else:
+            # suspend all devices on same port
+            for d in TDKLambda.devices:
+                if d.port == self.port:
+                    d.suspend()
         return
 
     def initialized(self):
@@ -612,7 +655,7 @@ class TDKLambda:
 
 if __name__ == "__main__":
     pd1 = TDKLambda("FAKE6", 6)
-    pd2 = TDKLambda("aFAKE6", 7)
+    pd2 = TDKLambda("COMn6", 7)
     for i in range(5):
         t_0 = time.time()
         v1 = pd1.read_float("PC?")
