@@ -17,7 +17,8 @@ from PyQt5.QtCore import QPoint
 
 NaN = float('nan')
 
-def config_logger(name: str=__name__, level: int=logging.DEBUG):
+
+def config_logger(name=__name__, level=logging.DEBUG):
     logger = logging.getLogger(name)
     if not logger.hasHandlers():
         logger.propagate = False
@@ -29,6 +30,7 @@ def config_logger(name: str=__name__, level: int=logging.DEBUG):
         console_handler.setFormatter(log_formatter)
         logger.addHandler(console_handler)
     return logger
+
 
 def get_all_widgets(obj: QtWidgets.QWidget):
     wgts = []
@@ -45,6 +47,7 @@ def get_all_widgets(obj: QtWidgets.QWidget):
                     wgts.append(wgt1)
     return wgts
 
+
 def checkBox_set_bg_color(cb: QCheckBox, m, colors=('green', 'red', 'white')):
     if isinstance(m, bool):
         if m:
@@ -55,6 +58,7 @@ def checkBox_set_bg_color(cb: QCheckBox, m, colors=('green', 'red', 'white')):
         cb.setStyleSheet('QCheckBox::indicator { background: ' + m + ';}')
     elif isinstance(m, int):
         cb.setStyleSheet('QCheckBox::indicator { background: ' + colors[m] + ';}')
+
 
 def get_widget_state(obj, config, name=None):
     try:
@@ -73,6 +77,7 @@ def get_widget_state(obj, config, name=None):
             config[name] = obj.value()
     except:
         return
+
 
 def set_widget_state(obj, config, name=None):
     try:
@@ -102,6 +107,7 @@ def set_widget_state(obj, config, name=None):
     except:
         return
 
+
 def restore_settings(self, widgets=(), file_name='config.json'):
     self.config = {}
     try :
@@ -124,6 +130,7 @@ def restore_settings(self, widgets=(), file_name='config.json'):
         self.logger.log(logging.DEBUG, 'Exception:', exc_info=True)
     return self.config
 
+
 def save_settings(self, widgets=(), file_name='config.json'):
     try:
         # Save window size and position
@@ -141,6 +148,7 @@ def save_settings(self, widgets=(), file_name='config.json'):
         self.logger.log(logging.DEBUG, 'Exception:', exc_info=True)
         return False
 
+
 def read_folder(folder, mask='.py'):
     # read al files in the folder
     all_files = os.listdir(folder)
@@ -148,11 +156,14 @@ def read_folder(folder, mask='.py'):
     filtered_files = [f for f in all_files if f.endswith(mask)]
     return filtered_files
 
+
 def time_ms():
     t = time.time()
     return time.strftime('%H:%M:%S')+(',%3d' % int((t-int(t))*1000.0))
 
+
 channels = ['channel_state'+str(k) for k in range(12)]
+
 
 def check_timer_state(timer_device):
         if timer_device is None:

@@ -5,12 +5,11 @@ import logging
 import socket
 import time
 from threading import Lock
-import asyncio
 
 import serial
 from serial import *
-from EmulatedLambda import FakeComPort
 
+from EmulatedLambda import FakeComPort
 from Counter import Counter
 from TDKLambdaExceptions import *
 from Async.AsyncSerial import Timeout
@@ -180,7 +179,7 @@ class TDKLambda:
     SUSPEND_TIME = 5.0
     devices = []
 
-    def __init__(self, port: str, addr: int, checksum=False, baud_rate=9600, logger=None, **kwargs):
+    def __init__(self, port, addr, checksum=False, baud_rate=9600, logger=None, **kwargs):
         # check device address
         if addr <= 0:
             raise wrongAddressException
@@ -461,7 +460,7 @@ class TDKLambda:
             self.logger.debug("", exc_info=True)
             return False
 
-    def _send_command(self, cmd: bytes):
+    def _send_command(self, cmd):
         self.command = cmd
         self.response = b''
         if not cmd.endswith(b'\r'):
@@ -577,7 +576,7 @@ class TDKLambda:
         self.check_response(response=b'Not boolean:' + response)
         return False
 
-    def write_value(self, cmd: bytes, value, expect=b'OK'):
+    def write_value(self, cmd, value, expect=b'OK'):
         cmd = cmd.upper().strip() + b' ' + str.encode(str(value))[:10] + b'\r'
         if self.send_command(cmd):
             return self.check_response(expect)

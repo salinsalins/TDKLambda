@@ -2,11 +2,8 @@
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
 
-import logging
-import time
-from threading import Thread, Lock
+from threading import Lock
 from math import isnan
-import asyncio
 
 import tango
 from tango import AttrQuality, AttrWriteType, DispLevel
@@ -28,7 +25,7 @@ logger = config_logger(level=logging.DEBUG)
 
 
 class TDKLambda_Server(Device):
-    READING_VALID_TIME = 0.7
+    READING_VALID_TIME = 1.0
     devices = []
 
     port = attribute(label="Port", dtype=str,
@@ -83,7 +80,7 @@ class TDKLambda_Server(Device):
                                    min_value=0.0,
                                    doc="Programmed current")
 
-    def get_device_property(self, prop: str, default=None):
+    def get_device_property(self, prop, default=None):
         name = self.get_name()
         if not hasattr(self, 'dp'):
             # device proxy
