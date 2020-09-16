@@ -9,7 +9,7 @@ import serial
 
 logger = logging.getLogger(__name__)
 logger.propagate = False
-logger.setLevel(level=logging.DEBUG)
+logger.setLevel(level=logging.INFO)
 f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s %(filename)s %(funcName)s(%(lineno)s) %(message)s'
 log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
 console_handler = logging.StreamHandler()
@@ -107,7 +107,7 @@ class VirtualLambdaAtCom:
         if len(data) <= 0:
             return
         while len(data) > 0:
-            logger.debug('Received %s', data)
+            logger.debug('read %s', data)
             self.input += data
             data = self.com.read(10000)
         # check for CR
@@ -118,7 +118,7 @@ class VirtualLambdaAtCom:
         if b'\r' not in self.input:
             #logger.warning('Read %s without CR - ignored', self.input)
             return
-        logger.debug('Processing %s', self.input)
+        logger.info('Received %s', self.input)
         # interpret command
         commands = self.input.split(b'\r')
         # logger.debug('Commands %s' % commands)
@@ -129,7 +129,7 @@ class VirtualLambdaAtCom:
 
     def execute_command(self, cmd):
         cmd = cmd.upper().replace(b'\n', b'').replace(b'\r', b'')
-        logger.debug('Executing %s' % cmd)
+        logger.info('Executing %s' % cmd)
         if len(cmd) == 0:  # empty command just CR
             self.write(b'OK\r')
             return
@@ -248,7 +248,7 @@ class VirtualLambdaAtCom:
         time.sleep(self.delay)
         logger.debug('Pause %s s', self.delay)
         n = self.com.write(st)
-        logger.debug('Writing    %s   %s bytes', st, n)
+        logger.info('Writing    %s   %s bytes', st, n)
 
     def clear_input_buffer(self):
         self.com.read(10000)

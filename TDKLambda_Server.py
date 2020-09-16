@@ -31,6 +31,18 @@ class TDKLambda_Server(Device):
     READING_VALID_TIME = 0.7
     devices = []
 
+    port = attribute(label="Port", dtype=str,
+                     display_level=DispLevel.OPERATOR,
+                     access=AttrWriteType.READ,
+                     unit="", format="%s",
+                     doc="TDKLambda port")
+
+    address = attribute(label="Address", dtype=str,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="", format="%s",
+                        doc="TDKLambda address")
+
     device_type = attribute(label="PS Type", dtype=str,
                             display_level=DispLevel.OPERATOR,
                             access=AttrWriteType.READ,
@@ -105,27 +117,20 @@ class TDKLambda_Server(Device):
             addr = self.get_device_property('addr', 6)
             # create TDKLambda device
             self.tdk = TDKLambda(port, addr)
-            self.tdk.init()
+            # self.tdk.init()
             # check if device OK
-            if self.tdk.com is None:
-                msg = '%s TDKLambda device creation error' % self
-                logger.error(msg)
-                self.error_stream(msg)
-                self.set_state(DevState.FAULT)
-                return
-            # add device to list
-            TDKLambda_Server.devices.append(self)
-            if self.tdk.id is not None and self.tdk.id != b'':
+            if self.tdk.initialized():
+                # add device to list
+                TDKLambda_Server.devices.append(self)
                 # set state to running
                 self.set_state(DevState.RUNNING)
                 msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
                 logger.info(msg)
-                self.info_stream(msg)
+                # self.info_stream(msg)
             else:
-                # unknown device id
                 msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
                 logger.error(msg)
-                self.error_stream(msg)
+                # self.error_stream(msg)
                 self.set_state(DevState.FAULT)
 
     def delete_device(self):
@@ -135,21 +140,27 @@ class TDKLambda_Server(Device):
                 self.tdk.__del__()
                 msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
                 logger.info(msg)
-                self.info_stream(msg)
+                # self.info_stream(msg)
+
+    def read_port(self):
+        if self.tdk.initialized():
+            return self.tdk.port
+        return "Unknown"
+
+    def read_address(self):
+        if self.tdk.initialized():
+            return str(self.tdk.addr)
+        return "-1"
 
     def read_device_type(self):
         with _lock:
-            if self.tdk.com is None:
-                return "Uninitialized"
-            return self.tdk.id
+            if self.tdk.initialized():
+                return self.tdk.id
+            return "Uninitialized"
 
     def read_output_state(self):
         with _lock:
-            if self.tdk.com is None:
-                value = False
-                qual = AttrQuality.ATTR_INVALID
-                self.set_fault()
-            else:
+            if self.tdk.initialized():
                 value = self.tdk.read_output()
                 if value is not None:
                     qual = AttrQuality.ATTR_VALID
@@ -161,6 +172,10 @@ class TDKLambda_Server(Device):
                     qual = AttrQuality.ATTR_INVALID
                     value = False
                     self.set_fault()
+            else:
+                value = False
+                qual = AttrQuality.ATTR_INVALID
+                self.set_fault()
             self.output_state.set_quality(qual)
             return value
 
