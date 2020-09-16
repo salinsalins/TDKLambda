@@ -22,7 +22,7 @@ class VirtualLambdaAtCom:
     devices = {}
     current_address = -1
 
-    def __init__(self, port, addr, checksum=False, baud_rate=9600, delay=0.035):
+    def __init__(self, port, addr, checksum=False, baud_rate=9600, delay=0.00):
         # input parameters
         self.port = port.strip()
         self.addr = addr
@@ -78,8 +78,9 @@ class VirtualLambdaAtCom:
     def init_com_port(self):
         if len(VirtualLambdaAtCom.devices) > 0:
             self.com = next(iter(VirtualLambdaAtCom.devices.values())).com
-            logger.debug('Using existing %s' % self.port)
-            return True
+            if self.com.isOpen():
+                logger.debug('Using existing %s' % self.port)
+                return True
         self.close_com_port()
         try:
             self.com = serial.Serial(self.port, baudrate=self.baud, timeout=0)
@@ -87,11 +88,13 @@ class VirtualLambdaAtCom:
             self.writeTimeout = 0
             self.com._current_addr = -1
             logger.debug('%s port is used' % self.port)
-            return True
         except:
             logger.error('COM port %s creation error' % self.port)
             logger.debug('', exc_info=True)
             return False
+        for d in VirtualLambdaAtCom.devices:
+            VirtualLambdaAtCom.devices[d].com = self.com
+        return True
 
     def close_com_port(self):
         try:
@@ -100,23 +103,22 @@ class VirtualLambdaAtCom:
             pass
 
     def read(self):
-        self.input = b''
         data = self.com.read(10000)
         if len(data) <= 0:
             return
         while len(data) > 0:
+            logger.debug('Received %s', data)
             self.input += data
             data = self.com.read(10000)
-            logger.debug('Received %s', data)
-        logger.debug('Processing %s', self.input)
         # check for CR
         if b'\r' in self.input:
             self.input = self.input.replace(b'\n', b'')
         if b'\n' in self.input:
             self.input = self.input.replace(b'\n', b'\r')
         if b'\r' not in self.input:
-            logger.warning('Read %s without CR - ignored', self.input)
+            #logger.warning('Read %s without CR - ignored', self.input)
             return
+        logger.debug('Processing %s', self.input)
         # interpret command
         commands = self.input.split(b'\r')
         # logger.debug('Commands %s' % commands)
@@ -286,5 +288,10 @@ if __name__ == "__main__":
         exit(-10)
     t0 = time.time()
     while True:
-        devices[0].read()
+        try:
+            devices[0].read()
+        except:
+            logger.debug('Exception', exc_info=True)
+            devices[0].close_com_port()
+            devices[0].init_com_port()
         #time.sleep(0.01)

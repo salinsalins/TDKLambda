@@ -129,6 +129,7 @@ class ComPort:
                     except Exception as ex:
                         self._ex.append(ex)
         ComPort._devices[self.port] = self._device
+        self.logger.debug('Port %s has been initialized', self.port)
 
     def read(self, *args, **kwargs):
         if self.ready:
@@ -323,7 +324,7 @@ class TDKLambda:
         result = str.encode(hex(s)[-2:].upper())
         return result
 
-    def suspend(self, duration=0.0):
+    def suspend(self, duration=1.0):
         self.suspend_to = time.time() + duration
         self.suspend_flag = True
         self.logger.info('Suspended for %5.2f sec', duration)
@@ -658,29 +659,29 @@ class TDKLambda:
 
 
 if __name__ == "__main__":
-    pd1 = TDKLambda("FAKE6", 6)
+    #pd1 = TDKLambda("COM9", 6)
     pd2 = TDKLambda("COM9", 7)
-    for i in range(5):
+    for i in range(500):
         t_0 = time.time()
-        v1 = pd1.read_float("PC?")
+        #v1 = pd1.read_float("PC?")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print(pd1.port, pd1.addr, 'PC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
+        #print(pd1.port, pd1.addr, 'PC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
-        v1 = pd1.read_float("MV?")
+        #v1 = pd1.read_float("MV?")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print(pd1.port, pd1.addr, 'MV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
+        #print(pd1.port, pd1.addr, 'MV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
-        v1 = pd1.send_command("PV 1.0")
+        #v1 = pd1.send_command("PV 1.0")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
+        #print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
-        v1 = pd1.read_float("PV?")
+        #v1 = pd1.read_float("PV?")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
+        #print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
-        v1 = pd1.read_all()
+        #v1 = pd1.read_all()
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
-        print(pd1.port, pd1.addr, 'DVC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
+        #print(pd1.port, pd1.addr, 'DVC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v1 = pd2.read_float("PC?")
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
@@ -689,6 +690,6 @@ if __name__ == "__main__":
         v1 = pd2.read_all()
         dt1 = int((time.time() - t_0) * 1000.0)    # ms
         print(pd2.port, pd2.addr, 'DVC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd2.read_timeout)
-        #time.sleep(0.1)
+        time.sleep(0.5)
         #pd1.reset()
         #pd2.reset()
