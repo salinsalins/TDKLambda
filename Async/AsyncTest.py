@@ -107,6 +107,7 @@ if __name__ == "__main__":
     console_handler.setFormatter(log_formatter)
     logger.addHandler(console_handler)
 
+
     t0 = time.time()
 
     asyncio.run(main(), debug=True)
