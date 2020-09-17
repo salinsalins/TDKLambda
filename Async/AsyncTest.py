@@ -4,6 +4,7 @@ import time
 import logging
 import asyncio
 from asyncio import InvalidStateError
+from threading import Thread
 
 
 async def looper(delay=0.5):
