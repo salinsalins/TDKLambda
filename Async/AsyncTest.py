@@ -26,6 +26,10 @@ async def looper(delay=0.5):
             # print(task.get_name())
         # print(time.time() - t0, loop.is_running(), len(tasks))
         logger.debug("\n")
+        if len(tasks) <= 1:
+            logger.debug("Closing loop")
+            loop.stop()
+            loop.close()
         await asyncio.sleep(delay)
 
 
@@ -57,7 +61,7 @@ def benchmark(func):
         start = time.time()
         await func(*args, **kwargs)
         end = time.time()
-        print('Время выполнения %s %s секунд' % (func,end-start))
+        print('Время выполнения %s %s секунд' % (func, end-start))
     return wrapper
 
 
@@ -68,13 +72,30 @@ def enterexit(func):
         await func(*args, **kwargs)
         print('Exit ', func)
         end = time.time()
-        print('Время выполнения %s %s секунд' % (func,end-start))
+        print('Время выполнения %s %s секунд' % (func, end-start))
     return wrapper
 
 
 @enterexit
 async def wait(task):
     await task
+
+
+def start_loop(loop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+
+def more_work(x):
+    print("More work %s" % x)
+    time.sleep(x)
+    print("Finished more work %s" % x)
+
+
+async def do_some_work(x):
+    print("Waiting " + str(x))
+    await asyncio.sleep(x)
+    print("Waiting " + str(x) + ' finished')
 
 
 async def main():
@@ -107,7 +128,21 @@ if __name__ == "__main__":
     console_handler.setFormatter(log_formatter)
     logger.addHandler(console_handler)
 
-
     t0 = time.time()
 
-    asyncio.run(main(), debug=True)
+    # asyncio.run(main(), debug=True)
+
+    #new_loop = asyncio.new_event_loop()
+    new_loop = asyncio.get_event_loop()
+    t = Thread(target=start_loop, args=(new_loop,))
+    t.start()
+    #new_loop.call_soon_threadsafe(more_work, 6)
+    #new_loop.call_soon_threadsafe(more_work, 3)
+
+    asyncio.run_coroutine_threadsafe(do_some_work(5), new_loop)
+    asyncio.run_coroutine_threadsafe(do_some_work(3), new_loop)
+    asyncio.run_coroutine_threadsafe(looper(), new_loop)
+
+
+
+

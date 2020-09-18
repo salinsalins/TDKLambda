@@ -14,7 +14,6 @@ from Counter import Counter
 from TDKLambdaExceptions import *
 from Async.AsyncSerial import Timeout
 
-
 CR = b'\r'
 
 
@@ -24,7 +23,7 @@ class MoxaTCPComPort:
             n = host.find(':')
             self.host = host[:n].strip()
             try:
-                self.port = int(host[n+1:].strip())
+                self.port = int(host[n + 1:].strip())
             except:
                 self.port = port
         else:
@@ -125,15 +124,15 @@ class ComPort:
                 self._ex = [ex]
                 result = False
             if not (self.port.upper().startswith('COM')
-                        or self.port.startswith('tty')
-                        or self.port.startswith('/dev')
-                        or self.port.startswith('cua')):
-                    try:
-                        self._device = MoxaTCPComPort(self.port, *self.args, **self.kwargs)
-                        result = True
-                    except Exception as ex:
-                        self._ex.append(ex)
-                        result = False
+                    or self.port.startswith('tty')
+                    or self.port.startswith('/dev')
+                    or self.port.startswith('cua')):
+                try:
+                    self._device = MoxaTCPComPort(self.port, *self.args, **self.kwargs)
+                    result = True
+                except Exception as ex:
+                    self._ex.append(ex)
+                    result = False
         ComPort._devices[self.port] = self
         self.time = time.time()
         self.logger.debug('Port %s has been initialized', self.port)
@@ -175,7 +174,7 @@ class ComPort:
 class TDKLambda:
     LOG_LEVEL = logging.DEBUG
     max_timeout = 0.8  # sec
-    min_timeout = 0.15 # sec
+    min_timeout = 0.15  # sec
     SUSPEND_TIME = 5.0
     devices = []
 
@@ -269,8 +268,8 @@ class TDKLambda:
             n2 = self.id.find('-')
             if 0 <= n1 < n2:
                 try:
-                    self.max_voltage = float(self.id[n1+3:n2])
-                    self.max_current = float(self.id[n2+1:])
+                    self.max_voltage = float(self.id[n1 + 3:n2])
+                    self.max_current = float(self.id[n2 + 1:])
                 except:
                     pass
         else:
@@ -338,17 +337,17 @@ class TDKLambda:
 
     # check if suspended and try to reset
     def is_suspended(self):
-        if time.time() < self.suspend_to:   # if suspension does not expire
+        if time.time() < self.suspend_to:  # if suspension does not expire
             return True
-        else:                               # suspension expires
-            if self.suspend_flag:           # if it was suspended and expires
+        else:  # suspension expires
+            if self.suspend_flag:  # if it was suspended and expires
                 self.suspend_flag = False
                 self.reset()
-                if self.suspend_flag:       # was suspended during resset()
+                if self.suspend_flag:  # was suspended during resset()
                     return True
                 else:
                     return False
-            else:                           # it was not suspended
+            else:  # it was not suspended
                 return False
 
     def _read(self, size=1, timeout=None):
@@ -414,7 +413,7 @@ class TDKLambda:
             return False
         else:
             cs = self.checksum(result[:m])
-            if result[m+1:] != cs:
+            if result[m + 1:] != cs:
                 self.logger.error('Incorrect checksum')
                 self.error_count.inc()
                 return False
@@ -476,44 +475,47 @@ class TDKLambda:
         return result
 
     def send_command(self, cmd):
-        if self.is_suspended():
-            self.command = cmd
-            self.response = b''
-            self.logger.debug('Command %s to suspended device ignored', cmd)
-            return False
-        try:
-            # unify command
-            cmd = cmd.upper().strip()
-            # convert str to bytes
-            if isinstance(cmd, str):
-                cmd = str.encode(cmd)
-            # add checksum
-            if self.check:
-                cs = self.checksum(cmd[:-1])
-                cmd = b'%s$%s\r' % (cmd[:-1], cs)
-            if self.com.current_addr != self.addr:
-                result = self.set_addr()
-                if not result:
-                    self.suspend()
-                    self.response = b''
-                    return False
-            result = self._send_command(cmd)
-            if result:
-                return True
-            self.logger.warning('Error, repeat command %s' % cmd)
-            result = self._send_command(cmd)
-            if result:
-                return True
-            self.logger.error('Repeated command %s error' % cmd)
-            self.suspend()
-            self.response = b''
-            return False
-        except:
-            self.logger.error('Unexpected exception %s', sys.exc_info()[0])
-            self.logger.debug("", exc_info=True)
-            self.suspend()
-            self.response = b''
-            return False
+        #self.logger.debug('Before the lock ---------------------------')
+        with self.com.lock:
+            #self.logger.debug('In the lock +++++++++++++++++++++++++++++++')
+            if self.is_suspended():
+                self.command = cmd
+                self.response = b''
+                self.logger.debug('Command %s to suspended device ignored', cmd)
+                return False
+            try:
+                # unify command
+                cmd = cmd.upper().strip()
+                # convert str to bytes
+                if isinstance(cmd, str):
+                    cmd = str.encode(cmd)
+                # add checksum
+                if self.check:
+                    cs = self.checksum(cmd[:-1])
+                    cmd = b'%s$%s\r' % (cmd[:-1], cs)
+                if self.com.current_addr != self.addr:
+                    result = self.set_addr()
+                    if not result:
+                        self.suspend()
+                        self.response = b''
+                        return False
+                result = self._send_command(cmd)
+                if result:
+                    return True
+                self.logger.warning('Error, repeat command %s' % cmd)
+                result = self._send_command(cmd)
+                if result:
+                    return True
+                self.logger.error('Repeated command %s error' % cmd)
+                self.suspend()
+                self.response = b''
+                return False
+            except:
+                self.logger.error('Unexpected exception %s', sys.exc_info()[0])
+                self.logger.debug("", exc_info=True)
+                self.suspend()
+                self.response = b''
+                return False
 
     def set_addr(self):
         a0 = self.com.current_addr
@@ -662,37 +664,37 @@ class TDKLambda:
 
 
 if __name__ == "__main__":
-    pd1 = TDKLambda("COM7", 6)
-    pd2 = TDKLambda("COM7", 7)
-    for i in range(500):
+    pd1 = TDKLambda("FAKECOM7", 6)
+    pd2 = TDKLambda("FAKECOM7", 7)
+    for i in range(5):
         t_0 = time.time()
         v1 = pd1.read_float("PC?")
-        dt1 = int((time.time() - t_0) * 1000.0)    # ms
+        dt1 = int((time.time() - t_0) * 1000.0)  # ms
         print(pd1.port, pd1.addr, 'PC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v1 = pd1.read_float("MV?")
-        dt1 = int((time.time() - t_0) * 1000.0)    # ms
+        dt1 = int((time.time() - t_0) * 1000.0)  # ms
         print(pd1.port, pd1.addr, 'MV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v1 = pd1.send_command("PV 1.0")
-        dt1 = int((time.time() - t_0) * 1000.0)    # ms
+        dt1 = int((time.time() - t_0) * 1000.0)  # ms
         print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v1 = pd1.read_float("PV?")
-        dt1 = int((time.time() - t_0) * 1000.0)    # ms
+        dt1 = int((time.time() - t_0) * 1000.0)  # ms
         print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v1 = pd1.read_all()
-        dt1 = int((time.time() - t_0) * 1000.0)    # ms
+        dt1 = int((time.time() - t_0) * 1000.0)  # ms
         print(pd1.port, pd1.addr, 'DVC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd1.read_timeout)
         t_0 = time.time()
         v1 = pd2.read_float("PC?")
-        dt1 = int((time.time() - t_0) * 1000.0)    # ms
+        dt1 = int((time.time() - t_0) * 1000.0)  # ms
         print(pd2.port, pd2.addr, 'PC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd2.read_timeout)
         t_0 = time.time()
         v1 = pd2.read_all()
-        dt1 = int((time.time() - t_0) * 1000.0)    # ms
+        dt1 = int((time.time() - t_0) * 1000.0)  # ms
         print(pd2.port, pd2.addr, 'DVC? ->', v1, '%4d ms ' % dt1, 'to=', '%5.3f' % pd2.read_timeout)
-        #time.sleep(0.5)
-        #pd1.reset()
-        #pd2.reset()
+        # time.sleep(0.5)
+        # pd1.reset()
+        # pd2.reset()
