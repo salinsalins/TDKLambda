@@ -641,7 +641,7 @@ class TDKLambda:
             return
         # port is OK, find working devices on same port
         for d in TDKLambda.devices:
-            if d != self and d.port == self.port and d.initialized():
+            if d != self and d.port == self.port and d.alive():
                 self.init()
                 return
         # no working devices on same port so try to recreate com port
@@ -661,6 +661,9 @@ class TDKLambda:
 
     def initialized(self):
         return self.com.ready and self.id.find('LAMBDA') > 0
+
+    def alive(self):
+        return self.read_serial_number() > 0
 
 
 if __name__ == "__main__":

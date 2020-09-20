@@ -5,6 +5,7 @@ from Async.AsyncTDKLambda import AsyncTDKLambda
 import logging
 import time
 from math import isnan
+import sys
 import asyncio
 from asyncio import InvalidStateError
 import threading
@@ -304,7 +305,6 @@ class Async_TDKLambda_Server(Device):
                     await self.task
                     self.logger.debug('============Awaited 1')
                 self.task = asyncio.create_task(self.tdk.write_value(cmd, value))
-                #done, pending = await asyncio.wait({self.task})
                 self.logger.debug('============Awaiting task 2 %s', self.task)
                 await self.task
                 self.logger.debug('============Awaited 2')
@@ -315,7 +315,6 @@ class Async_TDKLambda_Server(Device):
                     self.logger.warning('Exception %s executing Task %s', ex, self.task)
                     raise ex
                 result = self.task.result()
-                #result = await self.tdk.write_value(cmd, value)
             if result:
                 attrib.set_quality(tango.AttrQuality.ATTR_VALID)
                 self.set_running()
@@ -327,12 +326,12 @@ class Async_TDKLambda_Server(Device):
                 self.set_fault()
             return result
         except:
-            self.logger.warning('Exception %s Task %s', ex, self.task)
+            self.logger.warning('Exception %s Task %s', sys.exc_info()[0], self.task)
             attrib.set_quality(tango.AttrQuality.ATTR_INVALID)
             msg = ('%s ' + message) % self
             self.logger.warning(msg)
             self.info_stream(msg)
-            self.logger.debug("", exc_info=True)
+            self.logger.debug(" ", exc_info=True)
             self.set_fault()
             return result
 
