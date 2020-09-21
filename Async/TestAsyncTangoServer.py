@@ -34,7 +34,7 @@ class AsyncioDevice(Device):
         await asyncio.sleep(1)
         return self.value
 
-    @test_attribute.setter
+    @test_attribute.write
     async def write_test_attribute(self, value):
         self.value = value
         await asyncio.sleep(0.1)
