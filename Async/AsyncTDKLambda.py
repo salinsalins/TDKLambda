@@ -114,34 +114,6 @@ class AsyncTDKLambda(TDKLambda):
     LOG_LEVEL = logging.DEBUG
     tasks = []
 
-    def create_com_port(self):
-        # if com port already exists
-        for d in TDKLambda.devices:
-            if d.port == self.port and d.com is not None:
-                self.com = d.com
-                return self.com
-        # create new port
-        try:
-            if self.EMULATE:
-                self.com = FakeAsyncComPort(self.port)
-            else:
-                if self.port.upper().startswith('COM'):
-                    self.com = AsyncSerial(self.port, baudrate=self.baud, timeout=0.0, write_timeout=0.0)
-                else:
-                    self.com = MoxaTCPComPort(self.port)
-            self.com._current_addr = -1
-            self.com._lock = Lock()
-            self.logger.debug('%s created' % self.port)
-        except:
-            self.logger.error('%s creation error' % self.port)
-            self.logger.debug('', exc_info=True)
-            self.com = None
-        # update com for other devices with the same port
-        for d in TDKLambda.devices:
-            if d.port == self.port:
-                d.com = self.com
-        return self.com
-
     async def init(self):
         if self.com is None:
             self.suspend()

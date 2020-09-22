@@ -1,5 +1,6 @@
 """Demo Tango Device Server using asyncio green mode"""
 
+import logging
 import asyncio
 from tango import DevState, GreenMode
 from tango.server import Device, command, attribute
@@ -31,15 +32,29 @@ class AsyncioDevice(Device):
 
     @attribute
     async def test_attribute(self):
-        await asyncio.sleep(1)
+        logger.info('Entry')
+        await asyncio.sleep(2)
+        logger.info('Exit')
         return self.value
 
-    @test_attribute.setter
+    @test_attribute.write
     async def write_test_attribute(self, value):
+        logger.info('Entry')
         self.value = value
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.5)
+        logger.info('Exit')
 
 
 if __name__ == '__main__':
+    logger = logging.getLogger(__name__)
+    logger.propagate = False
+    logger.setLevel(logging.DEBUG)
+    f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
+            '%(funcName)s(%(lineno)s) %(message)s'
+    log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(log_formatter)
+    logger.addHandler(console_handler)
+
     AsyncioDevice.run_server()
 
