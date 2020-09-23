@@ -5,6 +5,8 @@ import logging
 import socket
 import time
 from threading import Lock, Thread
+from collections import deque
+import asyncio
 
 import serial
 from serial import *
@@ -15,6 +17,32 @@ from TDKLambdaExceptions import *
 from Async.AsyncSerial import Timeout
 
 CR = b'\r'
+
+
+class Command:
+    def __init__(self, cmd, port='', address=None):
+        self.command = cmd
+        self.port = port
+        self.addr = address
+        self.time_start = time.time()
+        self.time_end = 0.0
+        self.callback = None
+        self.state = 0          # 0 - created; 1 - queued; 2 - executing; 3 - completed
+        self.task = None
+        self.result = b''
+        self.exception = None
+
+    @property
+    def completed(self):
+        return self.state >= 3
+
+    @property
+    def queued(self):
+        return self.state == 1
+
+    @property
+    def executing(self):
+        return self.state == 2
 
 
 class MoxaTCPComPort:
@@ -177,6 +205,10 @@ class TDKLambda:
     min_timeout = 0.15  # sec
     SUSPEND_TIME = 5.0
     devices = []
+    loop = None
+    thread = None
+    commands = deque()
+    completed_commands = deque()
 
     def __init__(self, port, addr, checksum=False, baud_rate=9600, logger=None, **kwargs):
         # check device address
@@ -220,6 +252,33 @@ class TDKLambda:
     def __del__(self):
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
+
+    @staticmethod
+    def dispatcher():
+        for cmd in TDKLambda.commands:
+            if cmd.queued():
+                cmd.task = asyncio.create_task()
+                pass
+            if cmd.task.done():
+                cmd.state = 3
+                cmd.exception = cmd.task.exception()
+                if cmd.exception is None:
+                    cmd.result = cmd.task.result()
+                else:
+                    cmd.result = b''
+                TDKLambda.commands.remove(cmd)
+                TDKLambda.completed_commands.insert(cmd)
+
+    def start_loop(self):
+        if TDKLambda.loop is not None:
+            return
+        TDKLambda.loop = None
+
+    def init_thread(self):
+        if TDKLambda.thread is not None:
+            return
+        TDKLambda.thread = Thread(target=TDKLambda.start_loop(), args=())
+        TDKLambda.thread.start()
 
     def configure_logger(self, level=None):
         logger = logging.getLogger(str(self))
@@ -665,13 +724,8 @@ class TDKLambda:
     def alive(self):
         return self.read_serial_number() > 0
 
-    def ping(self):
-        t0 = time.time()
-        sn = self.read_serial_number() > 0
-        if sn > 0:
-            return time.time() - t0
-        else:
-            return -1.0
+    async def _send_command_async(self, cmd):
+        return b''
 
 
 if __name__ == "__main__":

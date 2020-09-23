@@ -3,7 +3,7 @@ import sys
 import time
 import tango
 
-dn1 = 'binp/nbi/TDKLambda1'
+dn1 = 'bint/taet/lambda1'
 #dn1 = 'bip/nbi/AsyncLambda'
 #dn2 = 'binp/nbi/TDKLambda2'
 dp1 = tango.DeviceProxy(dn1)
