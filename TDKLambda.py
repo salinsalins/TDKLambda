@@ -4,7 +4,7 @@
 import logging
 import socket
 import time
-from threading import Lock
+from threading import Lock, Thread
 
 import serial
 from serial import *
@@ -664,6 +664,14 @@ class TDKLambda:
 
     def alive(self):
         return self.read_serial_number() > 0
+
+    def ping(self):
+        t0 = time.time()
+        sn = self.read_serial_number() > 0
+        if sn > 0:
+            return time.time() - t0
+        else:
+            return -1.0
 
 
 if __name__ == "__main__":
