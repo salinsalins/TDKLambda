@@ -256,8 +256,21 @@ class TDKLambda:
         while True:
             for cmd in TDKLambda.commands:
                 if cmd.queued():
-                    cmd.task = asyncio.create_task(cmd.device._send_command(cmd.command))
-                if cmd.task.done():
+                    # check if it is repeated command
+                    flag = False
+                    cmd1 = cmd.command[:4]
+                    for cmd2 in TDKLambda.commands:
+                        if cmd2.state != 2:
+                            continue
+                        if cmd2.command[:4] == cmd1:
+                            flag = True
+                            break
+                    if flag:
+                        TDKLambda.commands.remove(cmd)
+                    else:
+                        cmd.task = asyncio.create_task(cmd.device._send_command(cmd.command))
+                        cmd.state = 2
+                elif cmd.task.done():
                     cmd.state = 3
                     cmd.exception = cmd.task.exception()
                     if cmd.exception is None:
@@ -265,7 +278,8 @@ class TDKLambda:
                     else:
                         cmd.result = b''
                     TDKLambda.commands.remove(cmd)
-                    TDKLambda.completed_commands.insert(cmd)
+                    TDKLambda.completed_commands.append(cmd)
+            await asyncio.sleep(0)
 
     @staticmethod
     def start_loop(self):
