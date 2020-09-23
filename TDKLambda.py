@@ -5,6 +5,7 @@ import logging
 import socket
 import time
 from threading import Lock, Thread
+from collections import deque
 import asyncio
 
 import serial
@@ -24,12 +25,24 @@ class Command:
         self.port = port
         self.addr = address
         self.time_start = time.time()
-        self.state = 0
+        self.time_end = 0.0
+        self.callback = None
+        self.state = 0          # 0 - created; 1 - queued; 2 - executing; 3 - completed
+        self.task = None
+        self.result = b''
         self.exception = None
 
     @property
     def completed(self):
-        return self.state == 4
+        return self.state >= 3
+
+    @property
+    def queued(self):
+        return self.state == 1
+
+    @property
+    def executing(self):
+        return self.state == 2
 
 
 class MoxaTCPComPort:
@@ -194,6 +207,8 @@ class TDKLambda:
     devices = []
     loop = None
     thread = None
+    commands = deque()
+    completed_commands = deque()
 
     def __init__(self, port, addr, checksum=False, baud_rate=9600, logger=None, **kwargs):
         # check device address
@@ -237,6 +252,22 @@ class TDKLambda:
     def __del__(self):
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
+
+    @staticmethod
+    def dispatcher():
+        for cmd in TDKLambda.commands:
+            if cmd.queued():
+                cmd.task = asyncio.create_task()
+                pass
+            if cmd.task.done():
+                cmd.state = 3
+                cmd.exception = cmd.task.exception()
+                if cmd.exception is None:
+                    cmd.result = cmd.task.result()
+                else:
+                    cmd.result = b''
+                TDKLambda.commands.remove(cmd)
+                TDKLambda.completed_commands.insert(cmd)
 
     def start_loop(self):
         if TDKLambda.loop is not None:
@@ -692,6 +723,9 @@ class TDKLambda:
 
     def alive(self):
         return self.read_serial_number() > 0
+
+    async def _send_command_async(self, cmd):
+        return b''
 
 
 if __name__ == "__main__":
