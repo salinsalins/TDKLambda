@@ -20,17 +20,15 @@ CR = b'\r'
 
 
 class Command:
-    def __init__(self, cmd, port='', address=None):
+    def __init__(self, cmd, device, callback=None):
         self.command = cmd
-        self.port = port
-        self.addr = address
+        self.device = device
         self.time_start = time.time()
         self.time_end = 0.0
-        self.callback = None
+        self.callback = callback
         self.state = 0          # 0 - created; 1 - queued; 2 - executing; 3 - completed
         self.task = None
         self.result = b''
-        self.exception = None
 
     @property
     def completed(self):
@@ -254,30 +252,33 @@ class TDKLambda:
             TDKLambda.devices.remove(self)
 
     @staticmethod
-    def dispatcher():
-        for cmd in TDKLambda.commands:
-            if cmd.queued():
-                cmd.task = asyncio.create_task()
-                pass
-            if cmd.task.done():
-                cmd.state = 3
-                cmd.exception = cmd.task.exception()
-                if cmd.exception is None:
-                    cmd.result = cmd.task.result()
-                else:
-                    cmd.result = b''
-                TDKLambda.commands.remove(cmd)
-                TDKLambda.completed_commands.insert(cmd)
+    async def dispatcher():
+        while True:
+            for cmd in TDKLambda.commands:
+                if cmd.queued():
+                    cmd.task = asyncio.create_task(cmd.device._send_command(cmd.command))
+                if cmd.task.done():
+                    cmd.state = 3
+                    cmd.exception = cmd.task.exception()
+                    if cmd.exception is None:
+                        cmd.result = cmd.task.result()
+                    else:
+                        cmd.result = b''
+                    TDKLambda.commands.remove(cmd)
+                    TDKLambda.completed_commands.insert(cmd)
 
+    @staticmethod
     def start_loop(self):
         if TDKLambda.loop is not None:
             return
-        TDKLambda.loop = None
+        TDKLambda.loop = asyncio.get_running_loop()
+        asyncio.run(TDKLambda.dispatcher())
 
+    @staticmethod
     def init_thread(self):
         if TDKLambda.thread is not None:
             return
-        TDKLambda.thread = Thread(target=TDKLambda.start_loop(), args=())
+        TDKLambda.thread = Thread(target=TDKLambda.start_loop, args=())
         TDKLambda.thread.start()
 
     def configure_logger(self, level=None):
