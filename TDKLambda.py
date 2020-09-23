@@ -4,7 +4,8 @@
 import logging
 import socket
 import time
-from threading import Lock
+from threading import Lock, Thread
+import asyncio
 
 import serial
 from serial import *
@@ -15,6 +16,20 @@ from TDKLambdaExceptions import *
 from Async.AsyncSerial import Timeout
 
 CR = b'\r'
+
+
+class Command:
+    def __init__(self, cmd, port='', address=None):
+        self.command = cmd
+        self.port = port
+        self.addr = address
+        self.time_start = time.time()
+        self.state = 0
+        self.exception = None
+
+    @property
+    def completed(self):
+        return self.state == 4
 
 
 class MoxaTCPComPort:
@@ -177,6 +192,8 @@ class TDKLambda:
     min_timeout = 0.15  # sec
     SUSPEND_TIME = 5.0
     devices = []
+    loop = None
+    thread = None
 
     def __init__(self, port, addr, checksum=False, baud_rate=9600, logger=None, **kwargs):
         # check device address
@@ -220,6 +237,17 @@ class TDKLambda:
     def __del__(self):
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
+
+    def start_loop(self):
+        if TDKLambda.loop is not None:
+            return
+        TDKLambda.loop = None
+
+    def init_thread(self):
+        if TDKLambda.thread is not None:
+            return
+        TDKLambda.thread = Thread(target=TDKLambda.start_loop(), args=())
+        TDKLambda.thread.start()
 
     def configure_logger(self, level=None):
         logger = logging.getLogger(str(self))
