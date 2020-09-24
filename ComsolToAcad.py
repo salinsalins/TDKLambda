@@ -48,32 +48,13 @@ with open(file_name) as f:
 print('Columns:', titles, 'Rows:', len(data[titles[0]]))
 
 
-import ezdxf
-drawing = ezdxf.new(dxfversion='AC1024')
-modelspace = drawing.modelspace()
-modelspace.add_line((0, 0), (10, 0), dxfattribs={'color': 7})
-#drawing.layers.create('TEXTLAYER', dxfattribs={'color': 2})
-#modelspace.add_text('Test', dxfattribs={'insert': (0, 0.2), 'layer': 'TEXTLAYER'})
-p1 = (0, 0)
-particle = -1
-total = len(data['x'])
-for i in range(total):
-    if (i*100/total+1) % 10 == 0:
-        print('Completed', i*100/total, '%')
-    x = data['z'][i]
-    y = data['x'][i]
-    p2 = (x, y)
-    if data['Particle'][i] == particle:
-        modelspace.add_line(p1, p2, dxfattribs={'color': 7})
-    else:
-        particle = data['Particle'][i]
-    p1 = p2
-drawing.saveas('test.dxf')
-
-
-
-#
-# p1 = APoint(0, 0)
+# import ezdxf
+# drawing = ezdxf.new(dxfversion='AC1024')
+# modelspace = drawing.modelspace()
+# modelspace.add_line((0, 0), (10, 0), dxfattribs={'color': 7})
+# #drawing.layers.create('TEXTLAYER', dxfattribs={'color': 2})
+# #modelspace.add_text('Test', dxfattribs={'insert': (0, 0.2), 'layer': 'TEXTLAYER'})
+# p1 = (0, 0)
 # particle = -1
 # total = len(data['x'])
 # for i in range(total):
@@ -81,12 +62,31 @@ drawing.saveas('test.dxf')
 #         print('Completed', i*100/total, '%')
 #     x = data['z'][i]
 #     y = data['x'][i]
-#     p2 = APoint(x, y)
+#     p2 = (x, y)
 #     if data['Particle'][i] == particle:
-#         acad.model.AddLine(p1, p2)
+#         modelspace.add_line(p1, p2, dxfattribs={'color': 7})
 #     else:
 #         particle = data['Particle'][i]
 #     p1 = p2
+# drawing.saveas('test.dxf')
+
+
+
+
+p1 = APoint(0, 0)
+particle = -1
+total = len(data['x'])
+for i in range(total):
+    if (i*100/total+1) % 10 == 0:
+        print('Completed', i*100/total, '%')
+    x = data['z'][i]
+    y = data['x'][i]
+    p2 = APoint(x, y)
+    if data['Particle'][i] == particle:
+        acad.model.AddLine(p1, p2)
+    else:
+        particle = data['Particle'][i]
+    p1 = p2
 #
 # #
 # # p1 = APoint(0, 0)
