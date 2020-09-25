@@ -8,11 +8,16 @@ import ezdxf
 # print(acad.doc.Name)
 
 data_file_name = "d:\Your files\Sanin\Documents\COMSOL\SIBA3 and Crocodile\Толстое кольцо\Trajectories.txt"
+dxf_file_name = 'test.dxf'
 
-
+print('Processing data file', data_file_name)
+print('')
+t0 = time.time()
+t1 = time.time()
 data = {}
 titles = []
 parameters = {}
+n = 0
 with open(data_file_name) as f:
     while True:
         line = f.readline()
@@ -57,9 +62,13 @@ with open(data_file_name) as f:
                 key = titles[i]
                 data[key].append(value)
                 i += 1
-print('Processed', len(data[titles[0]]), 'rows')
+        if (time.time() - t1) > 1:
+            t1 = time.time()
+            print('Processing line', n, line)
+        n += 1
+print('Processed', len(data[titles[0]]), 'rows in %6.1f' % (time.time() - t0), 'seconds')
 
-
+print('Generating GXF file', dxf_file_name)
 drawing = ezdxf.new(dxfversion='AC1024')
 modelspace = drawing.modelspace()
 modelspace.add_line((0, 0), (10, 0), dxfattribs={'color': 7})
@@ -87,7 +96,7 @@ for i in range(total):
         print('Completed %5.2f' % percents, '%')
 print('Completed', 100, '%')
 
-drawing.saveas('test.dxf')
+drawing.saveas(dxf_file_name)
 
 
 # x0 = 8320.18
