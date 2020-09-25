@@ -1,5 +1,6 @@
 import time
 from pyautocad import Autocad, APoint
+import ezdxf
 
 
 # acad = Autocad()
@@ -59,7 +60,6 @@ with open(data_file_name) as f:
 print('Processed', len(data[titles[0]]), 'rows')
 
 
-import ezdxf
 drawing = ezdxf.new(dxfversion='AC1024')
 modelspace = drawing.modelspace()
 modelspace.add_line((0, 0), (10, 0), dxfattribs={'color': 7})
