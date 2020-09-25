@@ -72,15 +72,16 @@ print('Columns:', titles, 'Rows:', len(data[titles[0]]))
 
 
 
-
+x0 = 8320.18
+y0 = -3537.64 - 4.13
 p1 = APoint(0, 0)
 particle = -1
 total = len(data['x'])
 for i in range(total):
     if (i*100/total+1) % 10 == 0:
         print('Completed', i*100/total, '%')
-    x = data['z'][i]
-    y = data['x'][i]
+    x = data['z'][i] + x0
+    y = data['x'][i] + y0
     p2 = APoint(x, y)
     if data['Particle'][i] == particle:
         acad.model.AddLine(p1, p2)
