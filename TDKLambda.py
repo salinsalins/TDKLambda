@@ -197,6 +197,10 @@ class ComPort:
         return self._device.isOpen()
 
 
+def ms(t0):
+    return (time.perf_counter() - t0) * 1000.0
+
+
 class TDKLambda:
     LOG_LEVEL = logging.DEBUG
     max_timeout = 0.8  # sec
@@ -426,14 +430,13 @@ class TDKLambda:
 
     def _read(self, size=1, timeout=None):
         result = b''
-        to = Timeout(timeout)
+        t0 = time.perf_counter()
         while len(result) < size:
             r = self.com.read(1)
             if len(r) > 0:
                 result += r
-                to.restart(timeout)
             else:
-                if to.expired():
+                if time.perf_counter() - t0 > self.read_timeout:
                     self.logger.info('Reading timeout')
                     raise SerialTimeoutException('Reading timeout')
         return result
@@ -451,12 +454,12 @@ class TDKLambda:
         except:
             self.read_timeout = min(1.5 * self.read_timeout, self.max_timeout)
             self.logger.info('Unexpected exception %s', sys.exc_info()[0])
-            self.logger.debug('Unexpected exception', exc_info=True)
+            self.logger.debug('Exception', exc_info=True)
         return result
 
     def read_until(self, terminator=b'\r', size=None):
         result = b''
-        t0 = time.time()
+        t0 = time.perf_counter()
         while terminator not in result and not self.is_suspended():
             r = self.read(1)
             if len(r) <= 0:
@@ -465,8 +468,7 @@ class TDKLambda:
             result += r
             if size is not None and len(result) >= size:
                 break
-        dt = (time.time() - t0) * 1000.0
-        self.logger.debug('%s %s bytes in %4.0f ms', result, len(result), dt)
+        self.logger.debug('%s %s bytes in %4.0f ms', result, len(result), ms(t0))
         return result
 
     def read_response(self):
@@ -536,11 +538,10 @@ class TDKLambda:
     def _send_command(self, cmd):
         self.command = cmd
         self.response = b''
-        if not cmd.endswith(b'\r'):
-            cmd += b'\r'
         t0 = time.perf_counter()
         # write command
         if not self.write(cmd):
+            self.logger.debug('Error during write')
             return False
         # read response (to CR by default)
         result = self.read_response()
