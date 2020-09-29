@@ -8,7 +8,9 @@ import ezdxf
 # print(acad.doc.Name)
 
 data_file_name = "d:\Your files\Sanin\Documents\COMSOL\SIBA3 and Crocodile\Толстое кольцо\Trajectories.txt"
-dxf_file_name = 'test.dxf'
+data_file_name = "d:\Particles_2.txt"
+dxf_file_name = data_file_name.replace('txt', 'dxf')
+
 
 print('Processing data file', data_file_name)
 print('')
@@ -75,7 +77,9 @@ modelspace.add_line((0, 0), (10, 0), dxfattribs={'color': 7})
 #drawing.layers.create('TEXTLAYER', dxfattribs={'color': 2})
 #modelspace.add_text('Test', dxfattribs={'insert': (0, 0.2), 'layer': 'TEXTLAYER'})
 x0 = 8320.18
+x0 = 91.5
 y0 = -3537.64 - 4.13
+y0 = 342.3
 p1 = (0, 0)
 particle = -1
 total = len(data['x'])

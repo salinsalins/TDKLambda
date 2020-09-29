@@ -328,7 +328,7 @@ class TDKLambda:
             self.suspend()
             return
         # set device address
-        response = self.set_addr()
+        response = self._set_addr()
         if not response:
             self.suspend()
             msg = 'TDKLambda: device was not initialized properly'
@@ -415,16 +415,16 @@ class TDKLambda:
     def is_suspended(self):
         if time.time() < self.suspend_to:  # if suspension does not expire
             return True
-        else:  # suspension expires
-            if self.suspend_flag:  # if it was suspended and expires
-                self.suspend_flag = False
-                self.reset()
-                if self.suspend_flag:  # was suspended during resset()
-                    return True
-                else:
-                    return False
-            else:  # it was not suspended
+        # suspension expires
+        if self.suspend_flag:  # if it was suspended and expires
+            self.suspend_flag = False
+            self.reset()
+            if self.suspend_flag:  # was suspended during reset()
+                return True
+            else:
                 return False
+        else:  # it was not suspended
+            return False
 
     def _read(self, size=1, timeout=None):
         result = b''
@@ -564,7 +564,7 @@ class TDKLambda:
                     cs = self.checksum(cmd[:-1])
                     cmd = b'%s$%s\r' % (cmd[:-1], cs)
                 if self.auto_addr and self.com.current_addr != self.addr:
-                    result = self.set_addr()
+                    result = self._set_addr()
                     if not result:
                         self.suspend()
                         self.response = b''
@@ -587,7 +587,7 @@ class TDKLambda:
                 self.response = b''
                 return False
 
-    def set_addr(self):
+    def _set_addr(self):
         a0 = self.com.current_addr
         result = self._send_command(b'ADR %d' % self.addr)
         if result and self.check_response(b'OK'):
@@ -693,16 +693,12 @@ class TDKLambda:
 
     def reset(self):
         self.logger.debug('Resetting')
-        # if por was not initialized
-        self.com.current_addr = -1
+        # if port was not initialized
         if not self.com.ready:
             self.com.close()
             self.com.init()
             if self.com.ready:
-                # init all devices on same port
-                for d in TDKLambda.devices:
-                    if d.port == self.port:
-                        d.init()
+                self.init()
             else:
                 # suspend all devices on same port
                 for d in TDKLambda.devices:
@@ -718,10 +714,7 @@ class TDKLambda:
         self.com.close()
         self.com.init()
         if self.com.ready:
-            # init all devices on same port
-            for d in TDKLambda.devices:
-                if d.port == self.port:
-                    d.init()
+            self.init()
         else:
             # suspend all devices on same port
             for d in TDKLambda.devices:

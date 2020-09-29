@@ -119,7 +119,7 @@ class AsyncTDKLambda(TDKLambda):
             self.suspend()
             return
         # set device address
-        response = await self.set_addr()
+        response = await self._set_addr()
         if not response:
             msg = 'Uninitialized TDKLambda device has been added to list'
             self.logger.info(msg)
@@ -164,7 +164,7 @@ class AsyncTDKLambda(TDKLambda):
         except:
             return -1
 
-    async def set_addr(self):
+    async def _set_addr(self):
         if self.com is None:
             self.logger.warning('%s port is not configured' % self.port)
             return False
@@ -247,7 +247,7 @@ class AsyncTDKLambda(TDKLambda):
                 cs = self.checksum(cmd[:-1])
                 cmd = b'%s$%s\r' % (cmd[:-1], cs)
             if self.com._current_addr != self.addr:
-                result = await self.set_addr()
+                result = await self._set_addr()
                 if not result:
                     self.suspend()
                     self.response = b''
