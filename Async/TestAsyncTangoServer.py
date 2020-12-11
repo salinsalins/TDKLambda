@@ -4,6 +4,7 @@ import logging
 import asyncio
 import time
 from asyncio import InvalidStateError
+from asyncio import CancelledError
 
 from tango import DevState, GreenMode
 from tango.server import Device, command, attribute
@@ -18,7 +19,7 @@ class AsyncioDevice(Device):
         self.value = 0.0
         self.set_state(DevState.RUNNING)
         if AsyncioDevice.loop_task is None:
-            AsyncioDevice.loop_task = asyncio.create_task(loop_tasks(0.0))
+            AsyncioDevice.loop_task = asyncio.create_task(loop_tasks(0.0, False, 10, True, True))
 
     @command
     async def long_running_command(self):
@@ -38,9 +39,12 @@ class AsyncioDevice(Device):
 
     @attribute
     async def test_attribute(self):
+        t0 = time.time()
         logger.info('Read entry %s', self)
         await asyncio.sleep(0.5)
         logger.info('Read exit %s', self)
+        if time.time() - t0 > 2.5:
+            logger.info('Long write!!!!!!!!!!!!!!!!!!! %s', self)
         return self.value
 
     @test_attribute.write
@@ -53,34 +57,53 @@ class AsyncioDevice(Device):
         # time.sleep(0.5)
         await asyncio.sleep(0.5)
         logger.info('Write exit %s', self)
+        return('Write of %s finished' % value)
 
 
 n=0
 
 
-async def loop_tasks(delay=0.5):
-    loop = asyncio.get_running_loop()
-    tasks = asyncio.all_tasks()
-    logger.debug("********************\nTasks in loop: %s" % len(tasks))
-    for task in tasks:
-        logger.debug("%s" % task)
-        # try:
-        #     # print(task.exception())
-        #     ex = task.exception()
-        #     logger.debug("Exception %s" % ex)
-        # except InvalidStateError:
-        #     pass
-        #     # logger.debug("InvalidStateError: Exception is not set.")
-        # except:
-        #     logger.debug("Exception", exc_info=True)
-        # # print(task.get_name())
-    # print(time.time() - t0, loop.is_running(), len(tasks))
-    logger.debug("********************\n")
-    # if len(tasks) <= 1:
-    #     logger.debug("Closing loop")
-    #     loop.stop()
-    #     loop.close()
-    await asyncio.sleep(delay)
+async def loop_tasks(delay=0.0, verbose=True, threshold=2, delta=True, exc=False):
+    tasks = []
+    n = 0
+    while True:
+        last_tasks = tasks
+        tasks = asyncio.all_tasks()
+        n1 = n
+        n = len(tasks)
+        delta_flag = False
+        if delta:
+            for task in last_tasks:
+                if task not in tasks:
+                    delta_flag = True
+            for task in tasks:
+                if task not in last_tasks:
+                    delta_flag = True
+        if n > threshold or delta_flag:
+            logger.debug("********************  Tasks in loop: %s (%s)", n, n1)
+            if verbose:
+                for task in tasks:
+                    logger.debug("%s" % task)
+                logger.debug("********************")
+            if delta:
+                for task in last_tasks:
+                    if task not in tasks:
+                        logger.debug('- %s', task)
+                    if exc:
+                        try:
+                            ex = task.exception()
+                            if ex is not None:
+                                raise ex
+                        except InvalidStateError:
+                            # task is not done yet
+                            pass
+                        except:
+                            logger.debug("Exception in the task", exc_info=True)
+                for task in tasks:
+                    if task not in last_tasks:
+                        logger.debug('+ %s', task)
+            logger.debug("********************\n")
+        await asyncio.sleep(delay)
 
 
 if __name__ == '__main__':
