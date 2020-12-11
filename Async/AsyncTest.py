@@ -33,24 +33,6 @@ async def looper(delay=0.5):
         await asyncio.sleep(delay)
 
 
-async def printer(delay=0.5):
-    global task3
-    loop = asyncio.get_running_loop()
-    while True:
-        #print(time.time() - t0, loop.is_running())
-        #logger.debug("Loop_is_Running = %s\n" % loop.is_running())
-        try:
-            pass
-            ex = task3.exception()
-            logger.debug("Exception %s" % ex)
-        except InvalidStateError:
-            pass
-            # logger.debug("InvalidStateError: Exception is not set.")
-        except:
-            logger.debug("", exc_info=True)
-        await asyncio.sleep(delay)
-
-
 async def interrupter(delay=0.7):
     await asyncio.sleep(delay)
     raise Exception('Test')
@@ -70,8 +52,8 @@ def enterexit(func):
         start = time.time()
         print('Enter ', func)
         await func(*args, **kwargs)
-        print('Exit ', func)
         end = time.time()
+        print('Exit ', func)
         print('Время выполнения %s %s секунд' % (func, end-start))
     return wrapper
 
@@ -101,7 +83,6 @@ async def do_some_work(x):
 async def main():
     global task3
     task1 = asyncio.create_task(looper())
-    task2 = asyncio.create_task(printer(1))
     task3 = asyncio.create_task(interrupter(1.2))
     task4 = asyncio.create_task(asyncio.sleep(3))
     task5 = asyncio.create_task(wait(task4))
