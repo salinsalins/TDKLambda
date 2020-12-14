@@ -19,7 +19,9 @@ class AsyncioDevice(Device):
         self.value = 0.0
         self.set_state(DevState.RUNNING)
         if AsyncioDevice.loop_task is None:
-            AsyncioDevice.loop_task = asyncio.create_task(loop_tasks(0.0, False, 10, True, True))
+            AsyncioDevice.loop_task = asyncio.create_task(loop_tasks(0.0, True, 10, True, False))
+            asyncio.get_event_loop().set_debug(True)
+            logging.getLogger("asyncio").setLevel(logging.DEBUG)
 
     @command
     async def long_running_command(self):
@@ -39,17 +41,15 @@ class AsyncioDevice(Device):
 
     @attribute
     async def test_attribute(self):
-        t0 = time.time()
         logger.info('Read entry %s', self)
         await asyncio.sleep(0.5)
         logger.info('Read exit %s', self)
-        if time.time() - t0 > 2.5:
-            logger.info('Long write!!!!!!!!!!!!!!!!!!! %s', self)
         return self.value
 
     @test_attribute.write
     async def write_test_attribute(self, value):
         global n
+        t0 = time.time()
         n1 = n
         n += 1
         logger.info('Write entry %s', self)
@@ -57,20 +57,22 @@ class AsyncioDevice(Device):
         # time.sleep(0.5)
         await asyncio.sleep(0.5)
         logger.info('Write exit %s', self)
+        if time.time() - t0 > 2.5:
+            logger.info('Long write!!!!!!!!!!!!!!!!!!! %s', self)
         return('Write of %s finished' % value)
 
 
 n=0
 
 
-async def loop_tasks(delay=0.0, verbose=True, threshold=2, delta=True, exc=False):
+async def loop_tasks(delay=0.0, verbose=False, threshold=0, delta=True, exc=False, stack=True):
     tasks = []
-    n = 0
+    n0 = 0
     while True:
         last_tasks = tasks
         tasks = asyncio.all_tasks()
-        n1 = n
-        n = len(tasks)
+        n1 = n0
+        n0 = len(tasks)
         delta_flag = False
         if delta:
             for task in last_tasks:
@@ -79,16 +81,12 @@ async def loop_tasks(delay=0.0, verbose=True, threshold=2, delta=True, exc=False
             for task in tasks:
                 if task not in last_tasks:
                     delta_flag = True
-        if n > threshold or delta_flag:
-            logger.debug("********************  Tasks in loop: %s (%s)", n, n1)
-            if verbose:
-                for task in tasks:
-                    logger.debug("%s" % task)
-                logger.debug("********************")
-            if delta:
+        if n0 > threshold or delta_flag:
+            logger.debug("********************  Tasks in loop: %s (%s)", n0, n1)
+            if delta_flag:
                 for task in last_tasks:
                     if task not in tasks:
-                        logger.debug('- %s', task)
+                        logger.debug(' - %s', task)
                     if exc:
                         try:
                             ex = task.exception()
@@ -99,9 +97,16 @@ async def loop_tasks(delay=0.0, verbose=True, threshold=2, delta=True, exc=False
                             pass
                         except:
                             logger.debug("Exception in the task", exc_info=True)
-                for task in tasks:
-                    if task not in last_tasks:
-                        logger.debug('+ %s', task)
+            for task in tasks:
+                if task not in last_tasks:
+                    if delta_flag:
+                        logger.debug(' + %s', task)
+                        if stack:
+                            task.print_stack()
+                    elif verbose:
+                        logger.debug("   %s" % task)
+                elif verbose:
+                    logger.debug("   %s" % task)
             logger.debug("********************\n")
         await asyncio.sleep(delay)
 
