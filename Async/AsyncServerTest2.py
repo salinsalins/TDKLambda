@@ -7,9 +7,9 @@ import logging
 
 dn = 'binp/test/asyncdemo'
 dp = tango.DeviceProxy(dn)
+
 ping = dp.ping()
 print(dn, 'ping', ping, 's')
-an = 'test_attribute'
 
 
 def read(a):
@@ -24,6 +24,33 @@ def write(a, value):
     dp.write_attribute(a, value)
     dt = (time.time() - t0) * 1000.0
     print('write', dn, a, int(dt), 'ms')
+
+
+
+async def read_async(a):
+    t0 = time.time()
+    id = dp.read_attribute_asynch(a)
+    while True:
+        try:
+            v = dp.read_attribute_reply(id)
+            break
+        except:
+            await asyncio.sleep(0)
+    dt = (time.time() - t0) * 1000.0
+    print('read_async', dn, a, v.value, int(dt), 'ms')
+
+
+async def write_async(a, v):
+    t0 = time.time()
+    id = dp.write_attribute_asynch(a, v)
+    while True:
+        try:
+            dp.write_attribute_reply(id)
+            break
+        except:
+            await asyncio.sleep(0)
+    dt = (time.time() - t0) * 1000.0
+    print('write_async', dn, a, v, int(dt), 'ms')
 
 
 async def loop_tasks(delay=0.0, verbose=False, threshold=0, delta=True, exc=False, stack=True, no_self=True):
@@ -79,7 +106,7 @@ async def loop_tasks(delay=0.0, verbose=False, threshold=0, delta=True, exc=Fals
 
 def main():
     while True:
-        #read(an)
+        #read('test_attribute')
         read('state')
         write('test_attribute', 1.0)
         #read('status')
