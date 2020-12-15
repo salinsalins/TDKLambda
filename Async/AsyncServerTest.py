@@ -84,11 +84,11 @@ async def loop_tasks(delay=0.0, verbose=False, threshold=0, delta=True, exc=Fals
 
 
 async def main():
-    task1 = asyncio.create_task(read(an))
+    task1 = asyncio.create_task(write(an, 1.0))
     #task2 = asyncio.create_task(write(an, 1.0))
     while True:
         await task1
-        task1 = asyncio.create_task(read(an))
+        task1 = asyncio.create_task(write(an, 1.0))
         await asyncio.sleep(0)
         #await task2
         #task2 = asyncio.create_task(write(an, 1.0))

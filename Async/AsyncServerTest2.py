@@ -79,7 +79,10 @@ async def loop_tasks(delay=0.0, verbose=False, threshold=0, delta=True, exc=Fals
 
 def main():
     while True:
-        read(an)
+        #read(an)
+        read('state')
+        write('test_attribute', 1.0)
+        #read('status')
 
 
 if __name__ == "__main__":

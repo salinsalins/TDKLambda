@@ -46,11 +46,11 @@ class AsyncioDevice(Device):
         logger.info('Read exit %s', self)
         return self.value
 
-    @attribute
-    async def state(self):
-        logger.info('state entry %s', self)
-        logger.info('state exit %s', self)
-        return self.get_state()
+    # @attribute
+    # async def state(self):
+    #     logger.info('state entry %s', self)
+    #     logger.info('state exit %s', self)
+    #     return self.get_state()
 
     @test_attribute.write
     async def write_test_attribute(self, value):
@@ -91,7 +91,7 @@ async def loop_tasks(delay=0.0, verbose=False, threshold=-1, delta=True, exc=Fal
             if delta_flag:
                 for task in last_tasks:
                     if task not in tasks:
-                        logger.debug(' - %s', task)
+                        logger.debug(' - %s %s', id(task), task)
                     if exc:
                         try:
                             ex = task.exception()
@@ -105,13 +105,13 @@ async def loop_tasks(delay=0.0, verbose=False, threshold=-1, delta=True, exc=Fal
             for task in tasks:
                 if task not in last_tasks:
                     if delta_flag:
-                        logger.debug(' + %s', task)
+                        logger.debug(' + %s %s', id(task), task)
                         if stack:
                             logger.debug(str(task.get_stack()))
                     elif verbose:
-                        logger.debug("   %s" % task)
+                        logger.debug("   %s %s", id(task), task)
                 elif verbose:
-                    logger.debug("   %s" % task)
+                    logger.debug("   %s %s", id(task), task)
             logger.debug("********************\n")
         await asyncio.sleep(delay)
 
