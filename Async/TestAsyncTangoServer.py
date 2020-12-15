@@ -42,15 +42,9 @@ class AsyncioDevice(Device):
     @attribute
     async def test_attribute(self):
         logger.info('Read entry %s', self)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.25)
         logger.info('Read exit %s', self)
         return self.value
-
-    # @attribute
-    # def my_state(self):
-    #     logger.info('state entry %s', self)
-    #     logger.info('state exit %s', self)
-    #     return self.get_state()
 
     @test_attribute.write
     async def write_test_attribute(self, value):

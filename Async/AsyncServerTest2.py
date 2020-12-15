@@ -7,6 +7,7 @@ import logging
 
 dn = 'binp/test/asyncdemo'
 dp = tango.DeviceProxy(dn)
+an = 'test_attribute'
 
 ping = dp.ping()
 print(dn, 'ping', ping, 's')
@@ -19,12 +20,11 @@ def read(a):
     print('read', dn, a, v.value, int(dt), 'ms')
 
 
-def write(a, value):
+def write(a, v):
     t0 = time.time()
-    dp.write_attribute(a, value)
+    dp.write_attribute(a, v)
     dt = (time.time() - t0) * 1000.0
     print('write', dn, a, int(dt), 'ms')
-
 
 
 async def read_async(a):
@@ -107,19 +107,25 @@ async def loop_tasks(delay=0.0, verbose=False, threshold=0, delta=True, exc=Fals
 def main():
     while True:
         #read('test_attribute')
-        read('my_state')
+        read('state')
         #write('test_attribute', 1.0)
         #read('status')
 
 
-if __name__ == "__main__":
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
-            '%(funcName)s(%(lineno)s) ' + '%(message)s'
-    log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(log_formatter)
-    logger.addHandler(console_handler)
+async def main_async():
+    task1 = asyncio.create_task(write_async(an, 1.0))
+    task2 = asyncio.create_task(read_async(an))
+    #task3 = asyncio.create_task(read_async('state'))
+    while True:
+        if task1.done():
+            task1 = asyncio.create_task(write_async(an, 1.0))
+        if task2.done():
+            task2 = asyncio.create_task(read_async(an))
+        #if task3.done():
+        #    task3 = asyncio.create_task(read_async('state'))
+        await asyncio.sleep(0)
 
-    main()
+
+if __name__ == "__main__":
+    #main()
+    asyncio.run(main_async())
