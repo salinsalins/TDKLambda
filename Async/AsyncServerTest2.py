@@ -107,8 +107,8 @@ async def loop_tasks(delay=0.0, verbose=False, threshold=0, delta=True, exc=Fals
 def main():
     while True:
         #read('test_attribute')
-        read('state')
-        write('test_attribute', 1.0)
+        read('my_state')
+        #write('test_attribute', 1.0)
         #read('status')
 
 

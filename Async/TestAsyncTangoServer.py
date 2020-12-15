@@ -47,7 +47,7 @@ class AsyncioDevice(Device):
         return self.value
 
     # @attribute
-    # async def state(self):
+    # def my_state(self):
     #     logger.info('state entry %s', self)
     #     logger.info('state exit %s', self)
     #     return self.get_state()
