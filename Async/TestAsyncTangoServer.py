@@ -19,7 +19,7 @@ class AsyncioDevice(Device):
         self.value = 0.0
         self.set_state(DevState.RUNNING)
         if AsyncioDevice.loop_task is None:
-            AsyncioDevice.loop_task = asyncio.create_task(loop_tasks(0.0, False, 10, True, False))
+            # AsyncioDevice.loop_task = asyncio.create_task(loop_tasks(0.0, False, 10, True, False))
             asyncio.get_event_loop().set_debug(True)
             logging.getLogger("asyncio").setLevel(logging.DEBUG)
 
@@ -53,10 +53,11 @@ class AsyncioDevice(Device):
         self.value = value
         # time.sleep(0.5)
         await asyncio.sleep(0.5)
+        dt = (time.time() - t0) * 1000.0
         logger.info('Write exit %s', self)
-        if time.time() - t0 > 2.5:
+        if dt > 2500.0:
             logger.info('Long write!!!!!!!!!!!!!!!!!!! %s', self)
-        return('Write of %s finished' % value)
+        return('Write of %s finished in %d ms' % (value, dt))
 
 
 async def loop_tasks(delay=0.0, verbose=False, threshold=-1, delta=True, exc=False, stack=True, no_self=True):
@@ -121,6 +122,8 @@ if __name__ == '__main__':
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(log_formatter)
     logger.addHandler(console_handler)
+    logging.getLogger("tango").addHandler(console_handler)
+    logging.getLogger("tango").setLevel(logging.DEBUG)
 
     # run server
     AsyncioDevice.run_server()
