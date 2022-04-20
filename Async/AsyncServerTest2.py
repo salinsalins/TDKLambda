@@ -64,14 +64,14 @@ def main():
 async def main_async():
     task1 = asyncio.create_task(write_async(an, 1.0))
     task2 = asyncio.create_task(read_async(an))
-    #task3 = asyncio.create_task(read_async('state'))
+    task3 = asyncio.create_task(read_async('state'))
     while True:
         if task1.done():
             task1 = asyncio.create_task(write_async(an, 1.0))
         if task2.done():
             task2 = asyncio.create_task(read_async(an))
-        #if task3.done():
-        #    task3 = asyncio.create_task(read_async('state'))
+        if task3.done():
+            task3 = asyncio.create_task(read_async('state'))
         await asyncio.sleep(0)
 
 
