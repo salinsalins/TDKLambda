@@ -13,10 +13,14 @@ from serial import *
 
 from EmulatedLambda import FakeComPort
 from Counter import Counter
+from TDKLambda import ms
 from TDKLambdaExceptions import *
 from Async.AsyncSerial import Timeout
 
 CR = b'\r'
+DEVICE_NAME = 'IT6900'
+DEVICE_FAMILY = 'IT6900 family Power Supply'
+SUSPEND_TIME = 3.0
 
 
 class IT6900Exception(Exception):
@@ -25,13 +29,17 @@ class IT6900Exception(Exception):
 
 class IT6900:
 
-    def __init__(self, port: str, addr=0, logger=None, **kwargs):
+    def __init__(self, port: str, *args, logger=None, **kwargs):
         # configure logger
-#        self.configure_logger()
+        #        self.configure_logger()
         # parameters
+        self.read_count = 0
+        self.avg_read_time = 0.0
+        self.max_read_time = 0.0
+        self.ready = False
         self.port = port.strip()
-        self.addr = addr
         self.logger = logger
+        self.args = args
         self.kwargs = kwargs
         # create variables
         self.command = b''
@@ -46,12 +54,13 @@ class IT6900:
         self.sn = 0
         self.max_voltage = float('inf')
         self.max_current = float('inf')
-        # create COM port
+        # create and open COM port
         self.com = self.create_com_port()
         # further initialization (for possible async use)
         self.init()
 
     def create_com_port(self):
+        # COM port will be openet automatically after creation
         self.com = serial.Serial(self.port, **self.kwargs)
         if self.com.isOpen():
             self.logger.debug('Port %s is ready', self.port)
@@ -61,15 +70,14 @@ class IT6900:
 
     def init(self):
         self.unsuspend()
-        if not self.com.ready:
+        if not self.com.isOpen():
             self.suspend()
             return
         # set device address
         response = self._set_addr()
         if not response:
             self.suspend()
-            msg = 'TDKLambda: device was not initialized properly'
-            self.logger.info(msg)
+            self.logger.info('%s: device was not initialized properly', DEVICE_NAME)
             return
         # read device serial number
         self.sn = self.read_serial_number()
@@ -93,113 +101,70 @@ class IT6900:
         msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
         self.logger.debug(msg)
 
-    def send_command_yield(self, cmd):
-        # unify command
-        cmd = cmd.upper().strip()
-        # convert to bytes
-        if isinstance(self.command, str):
-            cmd = cmd.encode()
-        # ensure LF at the end
-        if not cmd.endswith(b'\n'):
-            cmd += b'\n'
-        self.command = cmd
-        self.response = b''
-        self.t0 = time.time()
-        # write command
-        if not self.write(cmd):
-            self.logger.debug('Error during write')
-            return False
-        # read response (to CR by default)
-        result = self.read_response()
-        dt = time.perf_counter() - t0
-        if result and dt < self.min_read_time:
-            self.min_read_time = dt
-        self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, ms(t0))
-        return result
+    def suspend(self, duration=SUSPEND_TIME):
+        self.suspend_to = time.time() + duration
+        self.suspend_flag = True
+        self.logger.debug('Suspended for %5.2f sec', duration)
 
+    def unsuspend(self):
+        self.suspend_to = 0.0
+        self.suspend_flag = False
+        self.logger.debug('Unsuspended')
 
-        result = self._send_command(cmd)
-        if result:
+    # check if suspended and try to reset
+    def is_suspended(self):
+        if time.time() < self.suspend_to:  # if suspension does not expire
             return True
-        self.logger.warning('Command %s error, repeat' % cmd)
-        result = self._send_command(cmd)
-        if result:
-            return True
-        self.logger.error('Repeated command %s error' % cmd)
-        self.suspend()
-        self.response = b''
-        return False
-
-    def read_response_yeld(self):
-        result = self.read_until(CR)
-        self.response = result
-        if CR not in result:
-            self.logger.error('Response %s without CR', self.response)
-            return False
-        # if checksum used
-        if not self.check:
-            return True
-        # checksum calculation
-        m = result.find(b'$')
-        if m < 0:
-            self.logger.error('No expected checksum in response')
-            return False
-        else:
-            cs = self.checksum(result[:m])
-            if result[m + 1:] != cs:
-                self.logger.error('Incorrect checksum')
-                return False
-            self.response = result[:m]
-            return True
-
-    def check_response(self, expected=b'OK', response=None):
-        if response is None:
-            response = self.response
-        if not response.startswith(expected):
-            msg = 'Unexpected response %s (not %s)' % (response, expected)
-            self.logger.info(msg)
-            return False
-        return True
-
-    def write(self, cmd):
-        length = 0
-        result = False
-        t0 = time.perf_counter()
-        try:
-            # reset input buffer
-            if not self.com.reset_input_buffer():
-                return False
-            # write command
-            length = self.com.write(cmd)
-            if len(cmd) == length:
-                result = True
+        # suspension expires
+        if self.suspend_flag:  # if it was suspended and expires
+            self.suspend_flag = False
+            self.reset()
+            if self.suspend_flag:  # was suspended during reset()
+                return True
             else:
-                result = False
-            dt = (time.perf_counter() - t0) * 1000.0
-            self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
-            return result
-        except SerialTimeoutException:
-            self.logger.error('Writing timeout')
-            dt = (time.perf_counter() - t0) * 1000.0
-            self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
+                return False
+        else:  # it was not suspended
             return False
+
+    def send_command(self, cmd):
+        if self.is_suspended():
+            self.command = cmd
+            self.response = b''
+            self.logger.debug('Command %s to suspended device ignored', cmd)
+            return False
+        try:
+            # unify command
+            cmd = cmd.upper().strip()
+            # convert str to bytes
+            if isinstance(cmd, str):
+                cmd = str.encode(cmd)
+            if not cmd.endswith(b'\r'):
+                cmd += b'\r'
+            self.response = b''
+            t0 = time.time()
+            # write command
+            if not self.write(cmd):
+                return False
+            # read response (to LF by default)
+            result = self.read_response()
+            dt = time.time() - t0
+            if result and dt < self.min_read_time:
+                self.min_read_time = dt
+            if result and dt > self.max_read_time:
+                self.max_read_time = dt
+            self.read_count += 1
+            self.avg_read_time = self.avg_read_time + dt / self.read_count
+            self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, ms(t0))
+            return result
         except:
             self.logger.error('Unexpected exception %s', sys.exc_info()[0])
-            dt = (time.perf_counter() - t0) * 1000.0
-            self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
             self.logger.debug("", exc_info=True)
+            self.suspend()
+            self.response = b''
             return False
 
 
 
-
-
-
-
-
-    def add_to_list(self):
-        if self not in TDKLambda.devices:
-            TDKLambda.devices.append(self)
 
     def read_device_id(self):
         try:
@@ -241,31 +206,6 @@ class IT6900:
             s += int(b)
         result = str.encode(hex(s)[-2:].upper())
         return result
-
-    def suspend(self, duration=SUSPEND_TIME):
-        self.suspend_to = time.time() + duration
-        self.suspend_flag = True
-        self.logger.info('Suspended for %5.2f sec', duration)
-
-    def unsuspend(self):
-        self.suspend_to = 0.0
-        self.suspend_flag = False
-        self.logger.debug('Unsuspended')
-
-    # check if suspended and try to reset
-    def is_suspended(self):
-        if time.time() < self.suspend_to:  # if suspension does not expire
-            return True
-        # suspension expires
-        if self.suspend_flag:  # if it was suspended and expires
-            self.suspend_flag = False
-            self.reset()
-            if self.suspend_flag:  # was suspended during reset()
-                return True
-            else:
-                return False
-        else:  # it was not suspended
-            return False
 
     def _read(self, size=1, timeout=None):
         result = b''
@@ -384,49 +324,6 @@ class IT6900:
             self.min_read_time = dt
         self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, ms(t0))
         return result
-
-    def send_command(self, cmd):
-        with self.com.lock:
-            if self.is_suspended():
-                self.command = cmd
-                self.response = b''
-                self.logger.debug('Command %s to suspended device ignored', cmd)
-                return False
-            try:
-                # unify command
-                cmd = cmd.upper().strip()
-                # convert str to bytes
-                if isinstance(cmd, str):
-                    cmd = str.encode(cmd)
-                if not cmd.endswith(b'\r'):
-                    cmd += b'\r'
-                # add checksum
-                if self.check:
-                    cs = self.checksum(cmd[:-1])
-                    cmd = b'%s$%s\r' % (cmd[:-1], cs)
-                if self.auto_addr and self.com.current_addr != self.addr:
-                    result = self._set_addr()
-                    if not result:
-                        self.suspend()
-                        self.response = b''
-                        return False
-                result = self._send_command(cmd)
-                if result:
-                    return True
-                self.logger.warning('Command %s error, repeat' % cmd)
-                result = self._send_command(cmd)
-                if result:
-                    return True
-                self.logger.error('Repeated command %s error' % cmd)
-                self.suspend()
-                self.response = b''
-                return False
-            except:
-                self.logger.error('Unexpected exception %s', sys.exc_info()[0])
-                self.logger.debug("", exc_info=True)
-                self.suspend()
-                self.response = b''
-                return False
 
     def _set_addr(self):
         a0 = self.com.current_addr
