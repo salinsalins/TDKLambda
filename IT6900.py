@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
 import logging
 import socket
 import time
@@ -11,13 +12,13 @@ import asyncio
 import serial
 from serial import *
 
-from EmulatedLambda import FakeComPort
-from Counter import Counter
-from TDKLambda import ms
-from TDKLambdaExceptions import *
-from Async.AsyncSerial import Timeout
+from TDKLambda import ms, TDKLambda
+sys.path.append('../TangoUtils')
+from config_logger import config_logger
+from log_exception import log_exception
 
-CR = b'\r'
+
+LF = b'\n'
 DEVICE_NAME = 'IT6900'
 DEVICE_FAMILY = 'IT6900 family Power Supply'
 SUSPEND_TIME = 3.0
@@ -31,14 +32,15 @@ class IT6900:
 
     def __init__(self, port: str, *args, logger=None, **kwargs):
         # configure logger
-        #        self.configure_logger()
+        self.logger = config_logger()
         # parameters
         self.read_count = 0
         self.avg_read_time = 0.0
         self.max_read_time = 0.0
+        self.suspend_to = 0.0
+        self.suspend_flag = False
         self.ready = False
         self.port = port.strip()
-        self.logger = logger
         self.args = args
         self.kwargs = kwargs
         # create variables
@@ -57,11 +59,11 @@ class IT6900:
         # create and open COM port
         self.com = self.create_com_port()
         # further initialization (for possible async use)
-        self.init()
+        # self.init()
 
     def create_com_port(self):
         # COM port will be openet automatically after creation
-        self.com = serial.Serial(self.port, **self.kwargs)
+        self.com = serial.Serial(self.port, timeout=0, baudrate=115200, **self.kwargs)
         if self.com.isOpen():
             self.logger.debug('Port %s is ready', self.port)
         else:
@@ -73,12 +75,10 @@ class IT6900:
         if not self.com.isOpen():
             self.suspend()
             return
+        return
         # set device address
-        response = self._set_addr()
-        if not response:
-            self.suspend()
-            self.logger.info('%s: device was not initialized properly', DEVICE_NAME)
-            return
+        self.logger.info('%s: device was not initialized properly', DEVICE_NAME)
+        return
         # read device serial number
         self.sn = self.read_serial_number()
         # read device type
@@ -138,8 +138,8 @@ class IT6900:
             # convert str to bytes
             if isinstance(cmd, str):
                 cmd = str.encode(cmd)
-            if not cmd.endswith(b'\r'):
-                cmd += b'\r'
+            if not cmd.endswith(LF):
+                cmd += LF
             self.response = b''
             t0 = time.time()
             # write command
@@ -147,14 +147,15 @@ class IT6900:
                 return False
             # read response (to LF by default)
             result = self.read_response()
+            # reding time stats
             dt = time.time() - t0
             if result and dt < self.min_read_time:
                 self.min_read_time = dt
             if result and dt > self.max_read_time:
                 self.max_read_time = dt
             self.read_count += 1
-            self.avg_read_time = self.avg_read_time + dt / self.read_count
-            self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, ms(t0))
+            self.avg_read_time = (self.avg_read_time * (self.read_count - 1) + dt) / self.read_count
+            self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt*1000)
             return result
         except:
             self.logger.error('Unexpected exception %s', sys.exc_info()[0])
@@ -163,51 +164,7 @@ class IT6900:
             self.response = b''
             return False
 
-
-
-
-    def read_device_id(self):
-        try:
-            if self.send_command(b'IDN?'):
-                return self.response[:-1].decode()
-            else:
-                return 'Unknown Device'
-        except:
-            return 'Unknown Device'
-
-    def read_serial_number(self):
-        try:
-            if self.send_command(b'SN?'):
-                try:
-                    serial_number = int(self.response[:-1].decode())
-                except:
-                    serial_number = -1
-                return serial_number
-            else:
-                return -1
-        except:
-            return -1
-
-    def close_com_port(self):
-        try:
-            self.com.current_addr = -1
-            self.com.close()
-        except:
-            pass
-        # suspend all devices with same port
-        for d in TDKLambda.devices:
-            if d.port == self.port:
-                d.suspend()
-
-    @staticmethod
-    def checksum(cmd):
-        s = 0
-        for b in cmd:
-            s += int(b)
-        result = str.encode(hex(s)[-2:].upper())
-        return result
-
-    def _read(self, size=1, timeout=None):
+    def read(self, size=1, timeout=None):
         result = b''
         t0 = time.perf_counter()
         while len(result) < size:
@@ -216,67 +173,33 @@ class IT6900:
                 result += r
             else:
                 if timeout is not None and time.perf_counter() - t0 > timeout:
-                    self.logger.info('Reading timeout')
                     raise SerialTimeoutException('Reading timeout')
         return result
-
-    def read(self, size=1):
-        try:
-            result = self._read(size, self.read_timeout)
-            return result
-        except SerialTimeoutException:
-            self.logger.info('Reading timeout')
-            return b''
-        except:
-            self.logger.info('Unexpected exception %s', sys.exc_info()[0])
-            self.logger.debug('Exception', exc_info=True)
-            return b''
 
     def read_until(self, terminator=b'\r', size=None):
         result = b''
         t0 = time.perf_counter()
         while terminator not in result:
-            r = self.read(1)
-            if len(r) <= 0:
-                self.suspend()
+            try:
+                r = self.read(1, timeout=1)
+                if len(r) <= 0:
+                    break
+                result += r
+                if size is not None and len(result) >= size:
+                    break
+                if time.perf_counter() - t0 > self.read_timeout:
+                    break
+            except:
+                log_exception(self, '')
                 return result
-            result += r
-            if size is not None and len(result) >= size:
-                break
-            if time.perf_counter() - t0 > self.read_timeout:
-                self.suspend()
-                break
-        self.logger.debug('%s %s bytes in %4.0f ms', result, len(result), ms(t0))
+        #self.logger.debug('%s %s bytes in %4.0f ms', result, len(result), (time.perf_counter() - t0)*1000)
         return result
 
     def read_response(self):
-        result = self.read_until(CR)
+        result = self.read_until(LF)
         self.response = result
-        if CR not in result:
-            self.logger.error('Response %s without CR', self.response)
-            return False
-        # if checksum used
-        if not self.check:
-            return True
-        # checksum calculation
-        m = result.find(b'$')
-        if m < 0:
-            self.logger.error('No expected checksum in response')
-            return False
-        else:
-            cs = self.checksum(result[:m])
-            if result[m + 1:] != cs:
-                self.logger.error('Incorrect checksum')
-                return False
-            self.response = result[:m]
-            return True
-
-    def check_response(self, expected=b'OK', response=None):
-        if response is None:
-            response = self.response
-        if not response.startswith(expected):
-            msg = 'Unexpected response %s (not %s)' % (response, expected)
-            self.logger.info(msg)
+        if LF not in result:
+            self.logger.error('Response %s without LF', self.response)
             return False
         return True
 
@@ -286,8 +209,7 @@ class IT6900:
         t0 = time.perf_counter()
         try:
             # reset input buffer
-            if not self.com.reset_input_buffer():
-                return False
+            self.com.reset_input_buffer()
             # write command
             length = self.com.write(cmd)
             if len(cmd) == length:
@@ -309,43 +231,100 @@ class IT6900:
             self.logger.debug("", exc_info=True)
             return False
 
-    def _send_command(self, cmd):
-        self.command = cmd
-        self.response = b''
-        t0 = time.perf_counter()
-        # write command
-        if not self.write(cmd):
-            self.logger.debug('Error during write')
-            return False
-        # read response (to CR by default)
-        result = self.read_response()
-        dt = time.perf_counter() - t0
-        if result and dt < self.min_read_time:
-            self.min_read_time = dt
-        self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, ms(t0))
-        return result
-
-    def _set_addr(self):
-        a0 = self.com.current_addr
-        result = self._send_command(b'ADR %d' % self.addr)
-        if result and self.check_response(b'OK'):
-            self.com.current_addr = self.addr
-            self.logger.debug('Address %d -> %d' % (a0, self.addr))
-            return True
-        else:
-            self.logger.error('Error set address %d -> %d' % (a0, self.addr))
-            self.com.current_addr = -1
-            return False
-
-    def read_float(self, cmd):
+    def read_value(self, cmd, v_type=str):
         try:
-            if not self.send_command(cmd):
-                return float('Nan')
-            v = float(self.response)
+            if self.send_command(cmd):
+                v = v_type(self.response)
+            else:
+                v = None
         except:
-            self.logger.debug('%s is not a float' % self.response)
-            v = float('Nan')
+            self.logger.info('Can not convert %s to %s', self.response, v_type)
+            v = None
         return v
+
+    def write_value(self, cmd, value):
+        if isinstance(cmd, str):
+            cmd = cmd.encode()
+        cmd1 = cmd.upper().strip()
+        cmd2 = cmd1 + b' ' + str(value).encode() + b';' + cmd1 + b'?'
+        return self.send_command(cmd2)
+
+    def read_output(self):
+        if not self.send_command(b'OUTP?'):
+            return None
+        response = self.response.upper()
+        if response.startswith((b'ON', b'1')):
+            return True
+        if response.startswith((b'OFF', b'0')):
+            return False
+        self.logger.info('Unexpected response %s' % response)
+        return None
+
+    def write_output(self, value):
+        if value:
+            t_value = 'ON'
+        else:
+            t_value = 'OFF'
+        return self.write_value(b'OUTP', t_value)
+
+    def write_voltage(self, value):
+        return self.write_value(b'VOLT', value)
+
+    def write_current(self, value):
+        return self.write_value(b'CURR', value)
+
+    def read_current(self):
+        return self.read_value(b'MEAS:CURR?', float)
+
+    def read_programmed_current(self):
+        return self.read_value(b'CURR?', v_type=float)
+
+    def read_voltage(self):
+        return self.read_value(b'MEAS:VOLT?', v_type=float)
+
+    def read_programmed_voltage(self):
+        return self.read_value(b'VOLT?', float)
+
+
+
+
+
+    def read_device_id(self):
+        try:
+            if self.send_command(b'*IDN?'):
+                return self.response[:-1].decode()
+            else:
+                return 'Unknown Device'
+        except:
+            return 'Unknown Device'
+
+    def read_serial_number(self):
+        try:
+            if self.send_command(b'SN?'):
+                try:
+                    serial_number = int(self.response[:-1].decode())
+                except:
+                    serial_number = -1
+                return serial_number
+            else:
+                return -1
+        except:
+            return -1
+
+    def close_com_port(self):
+        try:
+            self.com.close()
+        except:
+            pass
+
+    def check_response(self, expected=b'OK', response=None):
+        if response is None:
+            response = self.response
+        if not response.startswith(expected):
+            msg = 'Unexpected response %s (not %s)' % (response, expected)
+            self.logger.info(msg)
+            return False
+        return True
 
     def read_all(self):
         if not self.send_command(b'DVC?'):
@@ -364,17 +343,6 @@ class IT6900:
             vals = [*vals, *[float('Nan')] * 6]
         return vals[:6]
 
-    def read_value(self, cmd, v_type=type(str)):
-        try:
-            if self.send_command(cmd):
-                v = v_type(self.response)
-            else:
-                v = None
-        except:
-            self.logger.info('Can not convert %s to %s', self.response, v_type)
-            v = None
-        return v
-
     def read_bool(self, cmd):
         if not self.send_command(cmd):
             return None
@@ -385,49 +353,6 @@ class IT6900:
             return False
         self.check_response(response=b'Not boolean:' + response)
         return False
-
-    def write_value(self, cmd, value, expect=b'OK'):
-        cmd = cmd.upper().strip() + b' ' + str.encode(str(value))[:10] + b'\r'
-        if self.send_command(cmd):
-            return self.check_response(expect)
-        else:
-            return False
-
-    def read_output(self):
-        if not self.send_command(b'OUT?'):
-            return None
-        response = self.response.upper()
-        if response.startswith((b'ON', b'1')):
-            return True
-        if response.startswith((b'OFF', b'0')):
-            return False
-        self.logger.info('Unexpected response %s' % response)
-        return None
-
-    def write_output(self, value):
-        if value:
-            t_value = 'ON'
-        else:
-            t_value = 'OFF'
-        return self.write_value(b'OUT', t_value)
-
-    def write_voltage(self, value):
-        return self.write_value(b'PV', value)
-
-    def write_current(self, value):
-        return self.write_value(b'PC', value)
-
-    def read_current(self):
-        return self.read_value(b'MC?', v_type=float)
-
-    def read_programmed_current(self):
-        return self.read_value(b'PC?', v_type=float)
-
-    def read_voltage(self):
-        return self.read_value(b'MV?', v_type=float)
-
-    def read_programmed_voltage(self):
-        return self.read_value(b'PV?', v_type=float)
 
     def reset(self):
         self.logger.debug('Resetting')
@@ -468,37 +393,9 @@ class IT6900:
 
 
 if __name__ == "__main__":
-    pd1 = TDKLambda("FAKECOM7", 6)
-    pd2 = TDKLambda("FAKECOM7", 7)
+    pd1 = IT6900("COM3")
     for i in range(5):
         t_0 = time.time()
-        v1 = pd1.read_float("PC?")
+        v1 = pd1.send_command("*IDN?")
         dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, pd1.addr, 'PC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-        t_0 = time.time()
-        v1 = pd1.read_float("MV?")
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, pd1.addr, 'MV? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-        t_0 = time.time()
-        v1 = pd1.send_command("PV 1.0")
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-        t_0 = time.time()
-        v1 = pd1.read_float("PV?")
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-        t_0 = time.time()
-        v1 = pd1.read_all()
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, pd1.addr, 'DVC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-        t_0 = time.time()
-        v1 = pd2.read_float("PC?")
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd2.port, pd2.addr, 'PC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
-        t_0 = time.time()
-        v1 = pd2.read_all()
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd2.port, pd2.addr, 'DVC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
-        # time.sleep(0.5)
-        # pd1.reset()
-        # pd2.reset()
+        print(pd1.port, 'PC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
