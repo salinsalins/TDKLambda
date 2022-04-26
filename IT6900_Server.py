@@ -18,13 +18,13 @@ from TangoServerPrototype import TangoServerPrototype
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'IT6900 family Power Supply Tango Device Server'
 APPLICATION_NAME_SHORT = 'IT6900_Server'
-APPLICATION_VERSION = '0.1'
+APPLICATION_VERSION = '1.0'
 
 logger = config_logger()
 
 
 class IT6900_Server(TangoServerPrototype):
-    server_version = '0.1'
+    server_version = APPLICATION_VERSION
     server_name = APPLICATION_NAME
 
     port = attribute(label="Port", dtype=str,
@@ -74,7 +74,7 @@ class IT6900_Server(TangoServerPrototype):
                                    doc="Programmed current")
 
     def init_device(self):
-        super().__init__()
+        super().init_device()
         kwargs = {}
         args = ()
         port = self.config.get('port', 'COM3')
@@ -84,7 +84,10 @@ class IT6900_Server(TangoServerPrototype):
         self.it6900 = IT6900.IT6900(port, *args, **kwargs)
         if self.it6900.initialized():
             # add device to list
-            IT6900_Server.devices.append(self)
+            IT6900_Server.device_list.append(self)
+            self.programmed_voltage.set_write_value(self.read_programmed_voltage())
+            self.programmed_current.set_write_value(self.read_programmed_current())
+            self.output_state.set_write_value(self.read_output_state())
             # set state to running
             self.set_state(DevState.RUNNING)
             self.set_status('Successfully initialized')
@@ -132,25 +135,20 @@ class IT6900_Server(TangoServerPrototype):
         return value
 
     def write_output_state(self, value):
-            if self.it6900.com is None:
-                msg = '%s:%d Switch output for offline device' % (self.it6900.port, self.it6900.addr)
-                self.debug_stream(msg)
-                logger.debug(msg)
+        if not self.it6900.initialized():
+            self.output_state.set_quality(AttrQuality.ATTR_INVALID)
+            result = False
+            self.set_fault()
+        else:
+            if self.it6900.write_output(value):
+                self.output_state.set_quality(AttrQuality.ATTR_VALID)
+                result = True
+                self.set_running()
+            else:
                 self.output_state.set_quality(AttrQuality.ATTR_INVALID)
                 result = False
                 self.set_fault()
-            else:
-                if self.it6900.write_output(value):
-                    self.output_state.set_quality(AttrQuality.ATTR_VALID)
-                    result = True
-                    self.set_running()
-                else:
-                    msg = '%s:%d Error switch output' % (self.it6900.port, self.it6900.addr)
-                    logger.error(msg)
-                    self.output_state.set_quality(AttrQuality.ATTR_INVALID)
-                    result = False
-                    self.set_fault()
-            return result
+        return result
 
     def read_voltage(self):
         if self.it6900.initialized():

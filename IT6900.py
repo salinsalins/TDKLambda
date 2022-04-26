@@ -26,7 +26,7 @@ class IT6900:
         if 'logger' not in kwargs or kwargs['logger'] is None:
             self.logger = config_logger()
         else:
-            self.logger = kwargs['logger']
+            self.logger = kwargs.pop('logger')
         # parameters
         self.read_count = 0
         self.avg_read_time = 0.0
@@ -59,12 +59,16 @@ class IT6900:
     def create_com_port(self):
         # COM port will be openet automatically after creation
         if 'timeout' not in self.kwargs:
-            self.kwargs['timeout'] = 0
-        self.com = serial.Serial(self.port, **self.kwargs)
-        if self.com.isOpen():
-            self.logger.debug('Port %s is ready', self.port)
-        else:
+            self.kwargs['timeout'] = READ_TIMEOUT
+        try:
+            self.com = serial.Serial(self.port, **self.kwargs)
+            if self.com.isOpen():
+                self.logger.debug('Port %s is ready', self.port)
+            else:
+                self.logger.error('Port %s creation error', self.port)
+        except:
             self.logger.error('Port %s creation error', self.port)
+            self.com = None
         return self.com
 
     def init(self):
@@ -73,6 +77,8 @@ class IT6900:
         # read device type
         self.id = self.read_device_id()
         self.type = self.read_device_type()
+        self.switch_remote()
+        self.clear_status()
         if self.send_command('VOLT? MAX'):
             self.max_voltage = float(self.response[:-1])
         if self.send_command('CURR? MAX'):
