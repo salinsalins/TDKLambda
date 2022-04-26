@@ -1,22 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sys
-import logging
-import socket
-import time
-from threading import Lock, Thread
-from collections import deque
-import asyncio
-
 import serial
 from serial import *
 
-from TDKLambda import ms, TDKLambda
 sys.path.append('../TangoUtils')
 from config_logger import config_logger
 from log_exception import log_exception
-
 
 LF = b'\n'
 DEVICE_NAME = 'IT6900'
@@ -33,7 +23,10 @@ class IT6900:
 
     def __init__(self, port: str, *args, **kwargs):
         # configure logger
-        self.logger = config_logger()
+        if 'logger' not in kwargs or kwargs['logger'] is None:
+            self.logger = config_logger()
+        else:
+            self.logger = kwargs['logger']
         # parameters
         self.read_count = 0
         self.avg_read_time = 0.0
@@ -113,11 +106,10 @@ class IT6900:
                 self.max_read_time = dt
             self.read_count += 1
             self.avg_read_time = (self.avg_read_time * (self.read_count - 1) + dt) / self.read_count
-            self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt*1000)
+            self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt * 1000)
             return result
         except:
-            self.logger.error('Unexpected exception %s', sys.exc_info()[0])
-            self.logger.debug("", exc_info=True)
+            log_exception(self, 'Unexpected exception')
             self.response = b''
             return False
 
@@ -147,16 +139,15 @@ class IT6900:
                 if time.perf_counter() - t0 > self.read_timeout:
                     break
             except:
-                log_exception(self, '')
+                log_exception(self)
                 return result
-        #self.logger.debug('%s %s bytes in %4.0f ms', result, len(result), (time.perf_counter() - t0)*1000)
         return result
 
     def read_response(self):
         result = self.read_until(LF)
         self.response = result
         if LF not in result:
-            self.logger.error('Response %s without LF', self.response)
+            self.logger.error('Response without LF %s ', self.response)
             return False
         return True
 
@@ -276,14 +267,6 @@ class IT6900:
         except:
             pass
 
-    def check_response(self, expected=b'', response=None):
-        if response is None:
-            response = self.response
-        if not (response.endswith(LF) and response.startswith(expected)):
-            self.logger.info('Unexpected response %s (not %s)' % (response, expected))
-            return False
-        return True
-
     def switch_remote(self):
         return self.send_command(b'SYST:REM', False)
 
@@ -305,6 +288,9 @@ class IT6900:
             kwargs = self.kwargs
         self.close_com_port()
         self.__init__(port, *args, **kwargs)
+
+    def initialized(self):
+        return self.id.startswith('ITECH Ltd., IT69')
 
 
 if __name__ == "__main__":
