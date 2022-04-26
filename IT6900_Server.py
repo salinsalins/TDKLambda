@@ -20,8 +20,6 @@ APPLICATION_NAME = 'IT6900 family Power Supply Tango Device Server'
 APPLICATION_NAME_SHORT = 'IT6900_Server'
 APPLICATION_VERSION = '1.0'
 
-logger = config_logger()
-
 
 class IT6900_Server(TangoServerPrototype):
     server_version = APPLICATION_VERSION
@@ -92,10 +90,10 @@ class IT6900_Server(TangoServerPrototype):
             self.set_state(DevState.RUNNING)
             self.set_status('Successfully initialized')
             msg = '%s %s created successfully' % (self.it6900.port, self.it6900.type)
-            logger.info(msg)
+            self.logger.info(msg)
         else:
             msg = '%s %s creation error' % (self.it6900.port, self.it6900.type)
-            logger.error(msg)
+            self.logger.error(msg)
             self.set_state(DevState.FAULT)
             self.set_status('Initialization error')
 
@@ -104,7 +102,7 @@ class IT6900_Server(TangoServerPrototype):
             IT6900_Server.devices.remove(self)
             self.it6900.close_com_port()
             msg = 'Device has been deleted'
-            logger.info(msg)
+            self.logger.info(msg)
 
     def read_port(self):
         if self.it6900.initialized():
