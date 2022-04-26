@@ -82,7 +82,8 @@ class IT6900_Server(TangoServerPrototype):
         self.it6900 = IT6900.IT6900(port, *args, **kwargs)
         if self.it6900.initialized():
             # add device to list
-            IT6900_Server.device_list.append(self)
+            if self not in IT6900_Server.device_list:
+                IT6900_Server.device_list.append(self)
             self.programmed_voltage.set_write_value(self.read_programmed_voltage())
             self.programmed_current.set_write_value(self.read_programmed_current())
             self.output_state.set_write_value(self.read_output_state())
