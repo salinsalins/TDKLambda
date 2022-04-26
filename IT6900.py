@@ -231,7 +231,8 @@ class IT6900:
             t_value = 'ON'
         else:
             t_value = 'OFF'
-        return self.write_value(b'OUTP', t_value)
+        self.write_value(b'OUTP', t_value)
+        return bool(self.response[:-1]) == value
 
     def write_voltage(self, value: float):
         return self.write_value(b'VOLT', value)
