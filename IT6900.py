@@ -4,6 +4,8 @@
 import serial
 from serial import *
 
+from TDKLambda import MoxaTCPComPort
+
 sys.path.append('../TangoUtils')
 from config_logger import config_logger
 from log_exception import log_exception
@@ -57,11 +59,17 @@ class IT6900:
         self.init()
 
     def create_com_port(self):
-        # COM port will be openet automatically after creation
-        if 'timeout' not in self.kwargs:
-            self.kwargs['timeout'] = READ_TIMEOUT
         try:
-            self.com = serial.Serial(self.port, **self.kwargs)
+            if (self.port.upper().startswith('COM')
+                    or self.port.startswith('tty')
+                    or self.port.startswith('/dev')
+                    or self.port.startswith('cua')):
+                if 'timeout' not in self.kwargs:
+                    self.kwargs['timeout'] = READ_TIMEOUT
+                # COM port will be openet automatically after creation
+                self.com = serial.Serial(self.port, **self.kwargs)
+            else:
+                self.com = MoxaTCPComPort(self.port, *self.args, **self.kwargs)
             if self.com.isOpen():
                 self.logger.debug('Port %s is ready', self.port)
             else:
@@ -83,8 +91,11 @@ class IT6900:
             self.max_voltage = float(self.response[:-1])
         if self.send_command('CURR? MAX'):
             self.max_current = float(self.response[:-1])
-        msg = '%s has been initialized' % self.id
-        self.logger.debug(msg)
+        if self.initialized():
+            msg = '%s has been initialized' % self.id
+            self.logger.debug(msg)
+        else:
+            self.logger.error('Device initialization error')
 
     def send_command(self, cmd, check_response=True):
         try:
