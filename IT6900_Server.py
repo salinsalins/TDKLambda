@@ -101,9 +101,9 @@ class IT6900_Server(TangoServerPrototype):
     def delete_device(self):
         if self in IT6900_Server.devices:
             IT6900_Server.devices.remove(self)
-            self.it6900.close_com_port()
-            msg = 'Device has been deleted'
-            self.logger.info(msg)
+        self.it6900.close_com_port()
+        msg = 'Device has been deleted'
+        self.logger.info(msg)
 
     def read_port(self):
         if self.it6900.initialized():
@@ -255,13 +255,13 @@ class IT6900_Server(TangoServerPrototype):
             self.set_fault()
         return result
 
-    def set_running(self):
+    def set_running(self, msg='R/W OK'):
         self.set_state(DevState.RUNNING)
-        self.set_status('R/W OK')
+        self.set_status(msg)
 
-    def set_fault(self):
+    def set_fault(self, msg='Error during R/W'):
         self.set_state(DevState.FAULT)
-        self.set_status('Error during R/W')
+        self.set_status(msg)
 
     @command
     def reconnect(self):
@@ -275,7 +275,10 @@ class IT6900_Server(TangoServerPrototype):
     @command(dtype_in=str, doc_in='Directly send command to the device',
              dtype_out=str, doc_out='Response from device without final LF')
     def send_command(self, cmd):
-        self.it6900.send_command(cmd).decode()
+        if self.it6900.send_command(cmd):
+            self.set_running('Command Ok')
+        else:
+            self.set_fault('Command Error')
         return self.it6900.response[:-1].decode()
 
 if __name__ == "__main__":
