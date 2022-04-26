@@ -303,10 +303,7 @@ class IT6900:
             args = self.args
         if len(kwargs) == 0:
             kwargs = self.kwargs
-        try:
-            self.com.close()
-        except:
-            pass
+        self.close_com_port()
         self.__init__(port, *args, **kwargs)
 
 
