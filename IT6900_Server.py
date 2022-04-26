@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
 import sys
+import time
 from math import isnan
 
 import tango
@@ -281,5 +282,12 @@ class IT6900_Server(TangoServerPrototype):
             self.set_fault('Command Error')
         return self.it6900.response[:-1].decode()
 
+
+def looping():
+    time.sleep(1.0)
+    for dev in IT6900_Server.device_list:
+        dev.logger.debug("Test loop")
+
+
 if __name__ == "__main__":
-    IT6900_Server.run_server()
+    IT6900_Server.run_server(event_loop=looping)
