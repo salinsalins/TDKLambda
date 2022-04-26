@@ -196,7 +196,7 @@ class IT6900:
             self.logger.debug("", exc_info=True)
             return False
 
-    def read_value(self, cmd, v_type=str):
+    def read_value(self, cmd, v_type=float):
         try:
             if self.send_command(cmd):
                 v = v_type(self.response)
@@ -212,7 +212,8 @@ class IT6900:
             cmd = cmd.encode()
         cmd1 = cmd.upper().strip()
         cmd2 = cmd1 + b' ' + str(value).encode() + b';' + cmd1 + b'?'
-        return self.send_command(cmd2)
+        v = self.read_value(cmd2, type(value))
+        return value == v
 
     def read_output(self):
         if not self.send_command(b'OUTP?'):
@@ -225,30 +226,30 @@ class IT6900:
         self.logger.info('Unexpected response %s' % response)
         return None
 
-    def write_output(self, value):
+    def write_output(self, value: bool):
         if value:
             t_value = 'ON'
         else:
             t_value = 'OFF'
         return self.write_value(b'OUTP', t_value)
 
-    def write_voltage(self, value):
+    def write_voltage(self, value: float):
         return self.write_value(b'VOLT', value)
 
-    def write_current(self, value):
+    def write_current(self, value: float):
         return self.write_value(b'CURR', value)
 
     def read_current(self):
-        return self.read_value(b'MEAS:CURR?', float)
+        return self.read_value(b'MEAS:CURR?')
 
     def read_programmed_current(self):
-        return self.read_value(b'CURR?', v_type=float)
+        return self.read_value(b'CURR?')
 
     def read_voltage(self):
-        return self.read_value(b'MEAS:VOLT?', v_type=float)
+        return self.read_value(b'MEAS:VOLT?')
 
     def read_programmed_voltage(self):
-        return self.read_value(b'VOLT?', float)
+        return self.read_value(b'VOLT?')
 
     def read_device_id(self):
         try:
@@ -288,7 +289,10 @@ class IT6900:
         return self.send_command(b'SYST:REM', False)
 
     def read_errors(self):
-        return self.send_command(b'SYST:ERR?')
+        if self.send_command(b'SYST:ERR?'):
+            return self.response[:-1].decode()
+        else:
+            return None
 
     def switch_local(self):
         return self.send_command(b'SYST:LOC', False)
