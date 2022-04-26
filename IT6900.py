@@ -22,6 +22,7 @@ LF = b'\n'
 DEVICE_NAME = 'IT6900'
 DEVICE_FAMILY = 'IT6900 family Power Supply'
 SUSPEND_TIME = 3.0
+READ_TIMEOUT = 0.5
 
 
 class IT6900Exception(Exception):
@@ -30,7 +31,7 @@ class IT6900Exception(Exception):
 
 class IT6900:
 
-    def __init__(self, port: str, *args, logger=None, **kwargs):
+    def __init__(self, port: str, *args, **kwargs):
         # configure logger
         self.logger = config_logger()
         # parameters
@@ -53,17 +54,20 @@ class IT6900:
         # default com port, id, and serial number
         self.com = None
         self.id = 'Unknown Device'
+        self.type = 'Unknown Device'
         self.sn = 0
         self.max_voltage = float('inf')
         self.max_current = float('inf')
         # create and open COM port
         self.com = self.create_com_port()
         # further initialization (for possible async use)
-        # self.init()
+        self.init()
 
     def create_com_port(self):
         # COM port will be openet automatically after creation
-        self.com = serial.Serial(self.port, timeout=0, baudrate=115200, **self.kwargs)
+        if 'timeout' not in self.kwargs:
+            self.kwargs['timeout'] = 0
+        self.com = serial.Serial(self.port, **self.kwargs)
         if self.com.isOpen():
             self.logger.debug('Port %s is ready', self.port)
         else:
@@ -71,67 +75,19 @@ class IT6900:
         return self.com
 
     def init(self):
-        self.unsuspend()
-        if not self.com.isOpen():
-            self.suspend()
-            return
-        return
-        # set device address
-        self.logger.info('%s: device was not initialized properly', DEVICE_NAME)
-        return
         # read device serial number
         self.sn = self.read_serial_number()
         # read device type
         self.id = self.read_device_id()
-        if self.id.find('LAMBDA') >= 0:
-            # determine max current and voltage from model name
-            n1 = self.id.find('GEN')
-            n2 = self.id.find('-')
-            if 0 <= n1 < n2:
-                try:
-                    self.max_voltage = float(self.id[n1 + 3:n2])
-                    self.max_current = float(self.id[n2 + 1:])
-                except:
-                    pass
-        else:
-            self.suspend()
-            msg = 'TDKLambda: device was not initialized properly'
-            self.logger.info(msg)
-            return
-        msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
+        self.type = self.read_device_type()
+        if self.send_command('VOLT? MAX'):
+            self.max_voltage = float(self.response[:-1])
+        if self.send_command('CURR? MAX'):
+            self.max_current = float(self.response[:-1])
+        msg = '%s has been initialized' % self.id
         self.logger.debug(msg)
 
-    def suspend(self, duration=SUSPEND_TIME):
-        self.suspend_to = time.time() + duration
-        self.suspend_flag = True
-        self.logger.debug('Suspended for %5.2f sec', duration)
-
-    def unsuspend(self):
-        self.suspend_to = 0.0
-        self.suspend_flag = False
-        self.logger.debug('Unsuspended')
-
-    # check if suspended and try to reset
-    def is_suspended(self):
-        if time.time() < self.suspend_to:  # if suspension does not expire
-            return True
-        # suspension expires
-        if self.suspend_flag:  # if it was suspended and expires
-            self.suspend_flag = False
-            self.reset()
-            if self.suspend_flag:  # was suspended during reset()
-                return True
-            else:
-                return False
-        else:  # it was not suspended
-            return False
-
-    def send_command(self, cmd):
-        if self.is_suspended():
-            self.command = cmd
-            self.response = b''
-            self.logger.debug('Command %s to suspended device ignored', cmd)
-            return False
+    def send_command(self, cmd, check_response=True):
         try:
             # unify command
             cmd = cmd.upper().strip()
@@ -145,6 +101,8 @@ class IT6900:
             # write command
             if not self.write(cmd):
                 return False
+            if not check_response:
+                return True
             # read response (to LF by default)
             result = self.read_response()
             # reding time stats
@@ -160,7 +118,6 @@ class IT6900:
         except:
             self.logger.error('Unexpected exception %s', sys.exc_info()[0])
             self.logger.debug("", exc_info=True)
-            self.suspend()
             self.response = b''
             return False
 
@@ -176,12 +133,12 @@ class IT6900:
                     raise SerialTimeoutException('Reading timeout')
         return result
 
-    def read_until(self, terminator=b'\r', size=None):
+    def read_until(self, terminator=LF, size=None):
         result = b''
         t0 = time.perf_counter()
         while terminator not in result:
             try:
-                r = self.read(1, timeout=1)
+                r = self.read(1, timeout=READ_TIMEOUT)
                 if len(r) <= 0:
                     break
                 result += r
@@ -297,12 +254,21 @@ class IT6900:
     def read_serial_number(self):
         try:
             if self.send_command(b'*IDN?'):
-                serial_number = self.response[:-1].decode().split(',')[2]
+                serial_number = int(self.response[:-1].decode().split(',')[2])
                 return serial_number
             else:
-                return -1
+                return "-1"
         except:
-            return -1
+            return "-1"
+
+    def read_device_type(self):
+        try:
+            if self.send_command(b'*IDN?'):
+                return self.response[:-1].decode().split(',')[1]
+            else:
+                return "Unknown Device"
+        except:
+            return "Unknown Device"
 
     def close_com_port(self):
         try:
@@ -319,16 +285,29 @@ class IT6900:
         return True
 
     def switch_remote(self):
-        return self.send_command(b'SYST:REM')
+        return self.send_command(b'SYST:REM', False)
 
     def read_errors(self):
         return self.send_command(b'SYST:ERR?')
 
     def switch_local(self):
-        return self.send_command(b'SYST:LOC')
+        return self.send_command(b'SYST:LOC', False)
 
     def clear_status(self):
-        return self.send_command(b'*CLS')
+        return self.send_command(b'*CLS', False)
+
+    def reconnect(self, port=None, *args, **kwargs):
+        if port is None:
+            port = self.port
+        if len(args) == 0:
+            args = self.args
+        if len(kwargs) == 0:
+            kwargs = self.kwargs
+        try:
+            self.com.close()
+        except:
+            pass
+        self.__init__(port, *args, **kwargs)
 
 
 if __name__ == "__main__":
