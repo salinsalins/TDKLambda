@@ -238,8 +238,8 @@ class IT6900:
             else:
                 v = None
         except:
-            self.logger.info('Can not convert %s to %s', self.response, v_type)
             v = None
+            self.logger.debug('Can not convert %s to %s', self.response, v_type)
         return v
 
     def write_value(self, cmd, value):
@@ -285,10 +285,6 @@ class IT6900:
     def read_programmed_voltage(self):
         return self.read_value(b'VOLT?', float)
 
-
-
-
-
     def read_device_id(self):
         try:
             if self.send_command(b'*IDN?'):
@@ -300,11 +296,8 @@ class IT6900:
 
     def read_serial_number(self):
         try:
-            if self.send_command(b'SN?'):
-                try:
-                    serial_number = int(self.response[:-1].decode())
-                except:
-                    serial_number = -1
+            if self.send_command(b'*IDN?'):
+                serial_number = self.response[:-1].decode().split(',')[2]
                 return serial_number
             else:
                 return -1
@@ -317,79 +310,25 @@ class IT6900:
         except:
             pass
 
-    def check_response(self, expected=b'OK', response=None):
+    def check_response(self, expected=b'', response=None):
         if response is None:
             response = self.response
-        if not response.startswith(expected):
-            msg = 'Unexpected response %s (not %s)' % (response, expected)
-            self.logger.info(msg)
+        if not (response.endswith(LF) and response.startswith(expected)):
+            self.logger.info('Unexpected response %s (not %s)' % (response, expected))
             return False
         return True
 
-    def read_all(self):
-        if not self.send_command(b'DVC?'):
-            return [float('Nan')] * 6
-        reply = self.response
-        sv = reply.split(b',')
-        vals = []
-        for s in sv:
-            try:
-                v = float(s)
-            except:
-                self.logger.debug('%s is not a float', reply)
-                v = float('Nan')
-            vals.append(v)
-        if len(vals) <= 6:
-            vals = [*vals, *[float('Nan')] * 6]
-        return vals[:6]
+    def switch_remote(self):
+        return self.send_command(b'SYST:REM')
 
-    def read_bool(self, cmd):
-        if not self.send_command(cmd):
-            return None
-        response = self.response
-        if response.upper() in (b'ON', b'1'):
-            return True
-        if response.upper() in (b'OFF', b'0'):
-            return False
-        self.check_response(response=b'Not boolean:' + response)
-        return False
+    def read_errors(self):
+        return self.send_command(b'SYST:ERR?')
 
-    def reset(self):
-        self.logger.debug('Resetting')
-        # if port was not initialized
-        if not self.com.ready:
-            self.com.close()
-            self.com.init()
-            if self.com.ready:
-                self.init()
-            else:
-                # suspend all devices on same port
-                for d in TDKLambda.devices:
-                    if d.port == self.port:
-                        d.suspend()
-            return
-        # port is OK, find working devices on same port
-        for d in TDKLambda.devices:
-            if d != self and d.port == self.port and d.alive():
-                self.init()
-                return
-        # no working devices on same port so try to recreate com port
-        self.com.close()
-        self.com.init()
-        if self.com.ready:
-            self.init()
-        else:
-            # suspend all devices on same port
-            for d in TDKLambda.devices:
-                if d.port == self.port:
-                    d.suspend()
-        return
+    def switch_local(self):
+        return self.send_command(b'SYST:LOC')
 
-    def initialized(self):
-        return self.com.ready and self.id.find('LAMBDA') > 0
-
-    def alive(self):
-        return self.read_serial_number() > 0
+    def clear_status(self):
+        return self.send_command(b'*CLS')
 
 
 if __name__ == "__main__":
