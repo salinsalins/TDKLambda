@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """IT6900 family power supply tango device server"""
 import sys
+import threading
 import time
 from math import isnan
 
@@ -85,8 +86,8 @@ class IT6900_Server(TangoServerPrototype):
         self.it6900 = IT6900.IT6900(port, *args, **kwargs)
         if self.it6900.initialized():
             # add device to list
-            if self not in IT6900_Server.device_list:
-                IT6900_Server.device_list.append(self)
+            self.programmed_voltage.set_max_value(self.it6900.max_voltage)
+            self.programmed_current.set_max_value(self.it6900.max_current)
             self.programmed_voltage.set_write_value(self.read_programmed_voltage())
             self.programmed_current.set_write_value(self.read_programmed_current())
             self.output_state.set_write_value(self.read_output_state())
@@ -102,11 +103,11 @@ class IT6900_Server(TangoServerPrototype):
             self.set_status('Initialization error')
 
     def delete_device(self):
+        self.it6900.ready = False
         if self in IT6900_Server.devices:
             IT6900_Server.devices.remove(self)
         self.it6900.close_com_port()
-        msg = 'Device has been deleted'
-        self.logger.info(msg)
+        self.logger.info('Device has been deleted')
 
     def read_port(self):
         if self.it6900.initialized():
@@ -268,12 +269,7 @@ class IT6900_Server(TangoServerPrototype):
 
     @command
     def reconnect(self):
-        kwargs = {}
-        args = ()
-        port = self.config.get('port', 'COM3')
-        kwargs['baudrate'] = self.config.get('baudrate', 115200)
-        kwargs['logger'] = self.logger
-        self.it6900.reconnect(port, *args, **kwargs)
+        self.it6900.reconnect()
 
     @command(dtype_in=str, doc_in='Directly send command to the device',
              dtype_out=str, doc_out='Response from device without final LF')

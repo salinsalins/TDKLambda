@@ -34,19 +34,15 @@ class IT6900:
         self.read_count = 0
         self.avg_read_time = 0.0
         self.max_read_time = 0.0
-        self.suspend_to = 0.0
-        self.suspend_flag = False
-        self.ready = False
+        self.min_read_time = self.read_timeout
         self.port = port.strip()
         self.args = args
         self.kwargs = kwargs
         # create variables
         self.command = b''
         self.response = b''
-        self.t0 = 0.0
         # timeouts
-        self.read_timeout = 0.5
-        self.min_read_time = self.read_timeout
+        self.read_timeout = READ_TIMEOUT
         # default com port, id, and serial number
         self.com = None
         self.id = 'Unknown Device'
@@ -82,24 +78,25 @@ class IT6900:
         return self.com
 
     def init(self):
-        # read device serial number
-        self.sn = self.read_serial_number()
-        # read device type
+        # device id, sn and type
         self.id = self.read_device_id()
+        if not self.id.startswith(ID_OK):
+            self.ready = False
+            self.logger.error('%s initialization error', DEVICE_NAME)
+            return
+        self.ready = True
+        self.sn = self.read_serial_number()
         self.type = self.read_device_type()
+        # switch to remote mode
         self.switch_remote()
         self.clear_status()
+        # read maximal voltage and current
         if self.send_command('VOLT? MAX'):
             self.max_voltage = float(self.response[:-1])
         if self.send_command('CURR? MAX'):
             self.max_current = float(self.response[:-1])
-        if self.id.startswith(ID_OK):
-            self.ready = True
-            msg = '%s has been initialized' % self.id
-            self.logger.debug(msg)
-        else:
-            self.ready = False
-            self.logger.error('Device initialization error')
+        msg = 'Device has been initialized %s' % self.id
+        self.logger.debug(msg)
 
     def send_command(self, cmd, check_response=True):
         try:
@@ -306,14 +303,16 @@ class IT6900:
         return self.send_command(b'*CLS', False)
 
     def reconnect(self, port=None, *args, **kwargs):
-        if port is None:
-            port = self.port
-        if len(args) == 0:
-            args = self.args
-        if len(kwargs) == 0:
-            kwargs = self.kwargs
+        if port is not None:
+            self.port = port.strip()
+        if len(args) > 0:
+            self.args = args
+        if len(kwargs) > 0:
+            self.kwargs = kwargs
+        self.ready = False
         self.close_com_port()
-        self.__init__(port, *args, **kwargs)
+        self.com = self.create_com_port()
+        self.init()
 
     def initialized(self):
         return self.ready
