@@ -292,4 +292,5 @@ def looping():
 
 
 if __name__ == "__main__":
-    IT6900_Server.run_server(event_loop=looping)
+    # IT6900_Server.run_server(event_loop=looping)
+    IT6900_Server.run_server()
