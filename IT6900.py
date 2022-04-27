@@ -15,6 +15,7 @@ DEVICE_NAME = 'IT6900'
 DEVICE_FAMILY = 'IT6900 family Power Supply'
 SUSPEND_TIME = 3.0
 READ_TIMEOUT = 0.5
+ID_OK = 'ITECH Ltd., IT69'
 
 
 class IT6900Exception(Exception):
@@ -312,7 +313,7 @@ class IT6900:
         self.__init__(port, *args, **kwargs)
 
     def initialized(self):
-        return self.id.startswith('ITECH Ltd., IT69')
+        return self.id.startswith(ID_OK)
 
 
 if __name__ == "__main__":

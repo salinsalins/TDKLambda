@@ -74,6 +74,8 @@ class IT6900_Server(TangoServerPrototype):
 
     def init_device(self):
         super().init_device()
+        if self not in IT6900_Server.device_list:
+            IT6900_Server.device_list.append(self)
         kwargs = {}
         args = ()
         port = self.config.get('port', 'COM3')
