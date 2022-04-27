@@ -104,9 +104,9 @@ class IT6900_Server(TangoServerPrototype):
 
     def delete_device(self):
         self.it6900.ready = False
+        self.it6900.close_com_port()
         if self in IT6900_Server.devices:
             IT6900_Server.devices.remove(self)
-        self.it6900.close_com_port()
         self.logger.info('Device has been deleted')
 
     def read_port(self):
