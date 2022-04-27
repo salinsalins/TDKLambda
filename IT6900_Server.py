@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""TDK Lambda Genesis series power supply tango device server"""
+"""IT6900 family power supply tango device server"""
 import sys
 import time
 from math import isnan

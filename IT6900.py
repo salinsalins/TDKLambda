@@ -54,6 +54,7 @@ class IT6900:
         self.sn = 0
         self.max_voltage = float('inf')
         self.max_current = float('inf')
+        self.ready = False
         # create and open COM port
         self.com = self.create_com_port()
         # further initialization (for possible async use)
@@ -92,10 +93,12 @@ class IT6900:
             self.max_voltage = float(self.response[:-1])
         if self.send_command('CURR? MAX'):
             self.max_current = float(self.response[:-1])
-        if self.initialized():
+        if self.id.startswith(ID_OK):
+            self.ready = True
             msg = '%s has been initialized' % self.id
             self.logger.debug(msg)
         else:
+            self.ready = False
             self.logger.error('Device initialization error')
 
     def send_command(self, cmd, check_response=True):
@@ -313,7 +316,7 @@ class IT6900:
         self.__init__(port, *args, **kwargs)
 
     def initialized(self):
-        return self.id.startswith(ID_OK)
+        return self.ready
 
 
 if __name__ == "__main__":
