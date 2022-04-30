@@ -34,7 +34,7 @@ class IT6900:
         self.read_count = 0
         self.avg_read_time = 0.0
         self.max_read_time = 0.0
-        self.min_read_time = self.read_timeout
+        self.min_read_time = READ_TIMEOUT
         self.port = port.strip()
         self.args = args
         self.kwargs = kwargs
@@ -55,7 +55,7 @@ class IT6900:
         self.com = self.create_com_port()
         if self.com is None:
             self.logger.error('Can not open serial port')
-            self.read = False
+            self.ready = False
             return
         # further initialization (for possible async use)
         self.init()
@@ -286,6 +286,7 @@ class IT6900:
             return "Unknown Device"
 
     def close_com_port(self):
+        self.ready = False
         try:
             self.com.close()
         except:
