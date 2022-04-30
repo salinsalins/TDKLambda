@@ -103,6 +103,18 @@ class ComPort:
         return object.__new__(cls)
 
     def __init__(self, port, *args, **kwargs):
+        logger = logging.getLogger(str(self))
+        logger.propagate = False
+        level = logging.DEBUG
+        logger.setLevel(level)
+        f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
+                '%(funcName)s(%(lineno)s) ' + '%s' % port + ' - %(message)s'
+        log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(log_formatter)
+        if not logger.hasHandlers():
+            logger.addHandler(console_handler)
+        self.logger = logger
         # use existed device
         if port in ComPort._devices:
             self.logger.debug('Using existent port')
@@ -115,18 +127,6 @@ class ComPort:
         self._ex = None
         self.time = 0.0
 
-        logger = logging.getLogger(str(self))
-        logger.propagate = False
-        level = logging.DEBUG
-        logger.setLevel(level)
-        f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
-                '%(funcName)s(%(lineno)s) ' + '%s' % self.port + ' - %(message)s'
-        log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(log_formatter)
-        if not logger.hasHandlers():
-            logger.addHandler(console_handler)
-        self.logger = logger
         # default device
         self._device = ComPort.UninitializedDevice(port)
         self.init()
