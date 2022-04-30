@@ -53,6 +53,10 @@ class IT6900:
         self.ready = False
         # create and open COM port
         self.com = self.create_com_port()
+        if self.com is None:
+            self.logger.error('Can not open serial port')
+            self.read = False
+            return
         # further initialization (for possible async use)
         self.init()
 
