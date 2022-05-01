@@ -36,7 +36,6 @@ class MainWindow(QMainWindow):
         # members definition
         self.port = None
         self.baud = 9600
-        self.send = ''
         # Load the Qt UI
         uic.loadUi(UI_FILE, self)
         # Default main window parameters
@@ -60,6 +59,7 @@ class MainWindow(QMainWindow):
         # Connect signals with slots
         self.lineEdit_3.editingFinished.connect(self.send_changed)
         self.lineEdit_4.editingFinished.connect(self.hex_changed)
+        self.pushButton.clicked.connect(self.button_clicked)
         # Defile callback task and start timer
         self.timer = QTimer()
         self.timer.timeout.connect(self.timer_handler)
@@ -88,8 +88,15 @@ class MainWindow(QMainWindow):
         for i in ve:
             h += hex(i)[2:] + ' '
         self.lineEdit_4.setText(h)
-        stat = self.com.write(ve)
-        self.logger.debug('%s of %s bytes written', stat, len(ve))
+        # stat = self.com.write(ve)
+        # self.logger.debug('%s of %s bytes written', stat, len(ve))
+
+    def button_clicked(self):
+        v = self.lineEdit_3.text().encode()
+        s = self.str_from_hex(self.lineEdit_5.text()).encode()
+        t = v + s
+        stat = self.com.write(t)
+        self.logger.debug('%s of %s bytes written %s', stat, len(t), t)
 
     def hex_changed(self):
         v = self.lineEdit_4.text()
@@ -99,10 +106,9 @@ class MainWindow(QMainWindow):
             v = i.strip()
             if v != '':
                 h += chr(int(v, 16))
-        self.logger.debug('%s', h)
         self.lineEdit_3.setText(h)
-        stat = self.com.write(h.encode())
-        self.logger.debug('%s of %s bytes written', stat, len(h))
+        # stat = self.com.write(h.encode())
+        # self.logger.debug('%s of %s bytes written', stat, len(h))
 
 
     def on_quit(self) :
@@ -116,7 +122,7 @@ class MainWindow(QMainWindow):
             result += r
             r = self.com.read(1)
         if len(result) > 0:
-            self.logger.debug('%s', result)
+            self.logger.debug('received %s bytes : %s', len(result), str(result))
             self.plainTextEdit.setPlainText(str(result))
             h = ''
             for i in result:

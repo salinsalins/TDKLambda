@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>498</width>
-    <height>728</height>
+    <width>600</width>
+    <height>619</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -24,8 +24,8 @@
   </property>
   <property name="maximumSize">
    <size>
-    <width>500</width>
-    <height>9999</height>
+    <width>600</width>
+    <height>800</height>
    </size>
   </property>
   <property name="baseSize">
@@ -56,18 +56,6 @@
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label">
-        <property name="font">
-         <font>
-          <pointsize>18</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Port</string>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="1">
        <widget class="QLineEdit" name="lineEdit">
         <property name="font">
@@ -80,15 +68,57 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="lineEdit_2">
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_3">
         <property name="font">
          <font>
           <pointsize>18</pointsize>
          </font>
         </property>
         <property name="text">
-         <string>9600</string>
+         <string>Str</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label">
+        <property name="font">
+         <font>
+          <pointsize>18</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Port</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="font">
+         <font>
+          <pointsize>18</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Hex</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QLineEdit" name="lineEdit_4">
+        <property name="font">
+         <font>
+          <pointsize>18</pointsize>
+         </font>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QLineEdit" name="lineEdit_5">
+        <property name="font">
+         <font>
+          <pointsize>18</pointsize>
+         </font>
         </property>
        </widget>
       </item>
@@ -104,27 +134,6 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
-       <widget class="QLineEdit" name="lineEdit_4">
-        <property name="font">
-         <font>
-          <pointsize>18</pointsize>
-         </font>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="font">
-         <font>
-          <pointsize>18</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Send Hex</string>
-        </property>
-       </widget>
-      </item>
       <item row="2" column="1">
        <widget class="QLineEdit" name="lineEdit_3">
         <property name="font">
@@ -134,20 +143,20 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_3">
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="lineEdit_2">
         <property name="font">
          <font>
           <pointsize>18</pointsize>
          </font>
         </property>
         <property name="text">
-         <string>Send</string>
+         <string>9600</string>
         </property>
        </widget>
       </item>
-      <item row="4" column="1">
-       <widget class="QLineEdit" name="lineEdit_5">
+      <item row="5" column="1">
+       <widget class="QPlainTextEdit" name="plainTextEdit">
         <property name="font">
          <font>
           <pointsize>18</pointsize>
@@ -167,8 +176,8 @@
         </property>
        </widget>
       </item>
-      <item row="5" column="1">
-       <widget class="QPlainTextEdit" name="plainTextEdit">
+      <item row="6" column="1">
+       <widget class="QPlainTextEdit" name="plainTextEdit_2">
         <property name="font">
          <font>
           <pointsize>18</pointsize>
@@ -176,12 +185,15 @@
         </property>
        </widget>
       </item>
-      <item row="6" column="1">
-       <widget class="QPlainTextEdit" name="plainTextEdit_2">
+      <item row="2" column="2">
+       <widget class="QPushButton" name="pushButton">
         <property name="font">
          <font>
           <pointsize>18</pointsize>
          </font>
+        </property>
+        <property name="text">
+         <string>Send</string>
         </property>
        </widget>
       </item>
