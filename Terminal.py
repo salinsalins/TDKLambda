@@ -46,19 +46,40 @@ class MainWindow(QMainWindow):
         # Welcome message
         print(APPLICATION_NAME + ' version ' + APPLICATION_VERSION + ' started')
         #
-        restore_settings(self, file_name=CONFIG_FILE, widgets=(self.lineEdit, self.lineEdit_2, self.lineEdit_3))
+        restore_settings(self, file_name=CONFIG_FILE, widgets=(self.lineEdit, self.lineEdit_2, self.lineEdit_3, self.lineEdit_5))
+        v = self.lineEdit_3.text()
+        ve = v.encode()
+        h = ''
+        for i in ve:
+            h += hex(i)[2:] + ' '
+        self.lineEdit_4.setText(h)
         #
         self.port = str(self.lineEdit.text())
         self.baud = int(self.lineEdit_2.text())
-        self.com = serial.Serial(self.port, baudrate=self.baud)
+        self.com = serial.Serial(self.port, baudrate=self.baud, timeout=0)
         # Connect signals with slots
         self.lineEdit_3.editingFinished.connect(self.send_changed)
         self.lineEdit_4.editingFinished.connect(self.hex_changed)
+        # Defile callback task and start timer
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.timer_handler)
+        self.timer.start(TIMER_PERIOD)
         self.logger.info('\n---------- Config Finished -----------\n')
 
-    def port_changed(self):
-        pass
+    def hex_from_str(self, v):
+        h = ''
+        for i in v:
+            h += hex(i)[2:] + ' '
+        return h
 
+    def str_from_hex(self, v):
+        vs = v.split(' ')
+        h = ''
+        for i in vs:
+            v = i.strip()
+            if v != '':
+                h += chr(int(v, 16))
+        return h
 
     def send_changed(self):
         v = self.lineEdit_3.text()
@@ -86,10 +107,22 @@ class MainWindow(QMainWindow):
 
     def on_quit(self) :
         # Save global settings
-        save_settings(self, file_name=CONFIG_FILE, widgets=(self.lineEdit, self.lineEdit_2, self.lineEdit_3))
+        save_settings(self, file_name=CONFIG_FILE, widgets=(self.lineEdit, self.lineEdit_2, self.lineEdit_3, self.lineEdit_5))
 
-    def loop(self):
-        time.sleep(0.1)
+    def timer_handler(self):
+        result = b''
+        r = self.com.read(1)
+        while len(r) > 0:
+            result += r
+            r = self.com.read(1)
+        if len(result) > 0:
+            self.logger.debug('%s', result)
+            self.plainTextEdit.setPlainText(str(result))
+            h = ''
+            for i in result:
+                h += hex(i) + ' '
+            self.plainTextEdit_2.setPlainText(h)
+
 
 if __name__ == '__main__':
     # Create the GUI application
