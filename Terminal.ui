@@ -22,12 +22,6 @@
     <height>200</height>
    </size>
   </property>
-  <property name="maximumSize">
-   <size>
-    <width>600</width>
-    <height>800</height>
-   </size>
-  </property>
   <property name="baseSize">
    <size>
     <width>100</width>
@@ -54,8 +48,23 @@
     </sizepolicy>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="leftMargin">
+     <number>20</number>
+    </property>
+    <property name="topMargin">
+     <number>20</number>
+    </property>
+    <property name="rightMargin">
+     <number>20</number>
+    </property>
+    <property name="bottomMargin">
+     <number>20</number>
+    </property>
     <item>
      <layout class="QGridLayout" name="gridLayout">
+      <property name="spacing">
+       <number>12</number>
+      </property>
       <item row="0" column="1">
        <widget class="QLineEdit" name="lineEdit">
         <property name="font">
@@ -194,6 +203,18 @@
         </property>
         <property name="text">
          <string>Send</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="pushButton_2">
+        <property name="font">
+         <font>
+          <pointsize>18</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Connect</string>
         </property>
        </widget>
       </item>
