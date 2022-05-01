@@ -74,11 +74,11 @@ class IT6900:
                 self.com = MoxaTCPComPort(self.port, *self.args, **self.kwargs)
             if self.com.isOpen():
                 self.logger.debug('Port %s is ready', self.port)
-            else:
-                self.logger.error('Port %s creation error', self.port)
+                return self.com
         except:
-            self.logger.error('Port %s creation error', self.port)
-            self.com = None
+            log_exception(self,'')
+        self.logger.error('COM port creation error')
+        self.com = None
         return self.com
 
     def init(self):
