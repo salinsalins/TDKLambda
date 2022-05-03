@@ -74,11 +74,11 @@ class IT6900_Server(TangoServerPrototype):
                                    doc="Programmed current")
 
     power = attribute(label="Power", dtype=float,
-                        display_level=DispLevel.OPERATOR,
-                        access=AttrWriteType.READ,
-                        unit="W", format="%8.3f",
-                        min_value=0.0,
-                        doc="Measured output power")
+                      display_level=DispLevel.OPERATOR,
+                      access=AttrWriteType.READ,
+                      unit="W", format="%8.3f",
+                      min_value=0.0,
+                      doc="Measured output power")
 
     def init_device(self):
         super().init_device()
