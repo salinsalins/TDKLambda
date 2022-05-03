@@ -63,7 +63,7 @@ class IT6900:
         # further initialization (for possible async use)
         self.init()
 
-    def create_com_port(self):
+    def create_com_port(self, *args, **kwargs):
         try:
             if (self.port.upper().startswith('COM')
                     or self.port.startswith('tty')
@@ -269,7 +269,7 @@ class IT6900:
 
     def read_device_id(self):
         try:
-            if self.send_command(b'*IDN?'):
+            if self.send_command(b':*IDN?'):
                 return self.response[:-1].decode()
             else:
                 return 'Unknown Device'
@@ -327,16 +327,35 @@ class IT6900:
         self.ready = False
         self.close_com_port()
         self.com = self.create_com_port()
+        # self.com.reset_output_buffer()
+        # self.com.reset_input_buffer()
+        # self.send_command('*IDN?', False)
         self.init()
+        # print(self.read_errors())
 
     def initialized(self):
         return self.ready
 
+    # def detect_baud(self):
+    #     if self.ready:
+    #         return
+    #     bauds = (4800, 9600, 115200, 19200, 38400, 57600, 115200)
+    #     #bauds = (115200,)
+    #     for baud in bauds:
+    #         self.logger.debug('Try reconnect at %s', baud)
+    #         self.kwargs['baudrate'] = baud
+    #         self.reconnect()
+    #         if self.ready:
+    #             self.logger.debug('Reconnected successfully at %s', baud)
+    #             return
+
 
 if __name__ == "__main__":
     pd1 = IT6900("COM3", baudrate=115200)
+    # pd1 = IT6900("COM3")
+    # pd1.detect_baud()
     for i in range(100):
-        cmd = "*IDN?"
+        cmd = ":*IDN?"
         t_0 = time.time()
         v1 = pd1.send_command(cmd)
         dt1 = int((time.time() - t_0) * 1000.0)  # ms
