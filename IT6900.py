@@ -79,7 +79,7 @@ class IT6900:
                 self.logger.debug('Port %s is ready', self.port)
                 return self.com
         except:
-            log_exception(self,'')
+            log_exception(self)
         self.logger.error('COM port creation error')
         self.com = None
         return self.com
@@ -116,7 +116,7 @@ class IT6900:
             if not cmd.endswith(LF):
                 cmd += LF
             self.response = b''
-            t0 = time.time()
+            t0 = time.perf_counter()
             # write command
             if not self.write(cmd):
                 return False
@@ -130,14 +130,15 @@ class IT6900:
             # read response (to LF by default)
             result = self.read_response()
             # reding time stats
-            dt = time.time() - t0
-            if result:
-                self.min_io_time = min(self.min_io_time, dt)
-                self.max_io_time = max(self.max_io_time, dt)
-                self.avg_io_time = (self.avg_io_time * (self.io_count - 1) + dt) / self.io_count
-            self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt * 1000)
+            dt = time.perf_counter() - t0
+            self.min_io_time = min(self.min_io_time, dt)
+            self.max_io_time = max(self.max_io_time, dt)
+            self.avg_io_time = (self.avg_io_time * (self.io_count - 1) + dt) / self.io_count
+            if not result:
+                self.io_error_count += 1
+            self.logger.debug('%s -> %s, %s, %4.0f ms', cmd, self.response, result, dt * 1000)
             return result
-        except Exception as ex:
+        except:
             self.io_error_count += 1
             log_exception(self, 'Command %s exception', cmd)
             return False
@@ -158,26 +159,29 @@ class IT6900:
     def read(self, size=1, timeout=None):
         result = b''
         self.timeout = timeout
-        while len(result) < size:
-            if self.com.in_waiting > 0:
-                r = self.com.read(1)
-                if len(r) > 0:
-                    result += r
-            else:
-                if self.timeout:
-                    raise SerialTimeoutException('Reading timeout')
+        try:
+            while len(result) < size:
+                if self.com.in_waiting > 0:
+                    r = self.com.read(1)
+                    if len(r) > 0:
+                        result += r
+                else:
+                    if self.timeout:
+                        self.logger.error('Reading timeout')
+                        return result
+        except:
+            log_exception(self)
         return result
 
     def read_until(self, terminator=LF, size=None, timeout=READ_TIMEOUT):
         result = b''
         r = b''
         while terminator not in r:
-            try:
-                r = self.read(1, timeout=timeout)
-                result += r
-                if size is not None and len(result) >= size:
-                    break
-            except:
+            r = self.read(1, timeout=timeout)
+            if len(r) <= 0:
+                return result
+            result += r
+            if size is not None and len(result) >= size:
                 return result
         return result
 
@@ -190,34 +194,32 @@ class IT6900:
         return True
 
     def write(self, cmd):
-        t0 = time.perf_counter()
+        # t0 = time.perf_counter()
         try:
-            # reset input buffer
+            # reset buffers
             self.com.reset_input_buffer()
+            self.com.reset_output_buffer()
             # write command
             length = self.com.write(cmd)
             if len(cmd) != length:
-                raise IT6900Exception('Write error %s of %s' % (length, len(cmd)))
-            dt = (time.perf_counter() - t0) * 1000.0
-            self.logger.debug('%s %s bytes in %4.0f ms', cmd, length, dt)
+                self.logger.error('Write error %s of %s' % (length, len(cmd)))
+                return False
+            # dt = (time.perf_counter() - t0) * 1000.0
+            # self.logger.debug('%s %s bytes in %4.0f ms', cmd, length, dt)
             return True
-        except Exception as ex:
-            self.last_exception = ex
-            self.last_exception_time = time.time()
-            self.io_error_count += 1
+        except:
             log_exception(self, 'Exception during write')
             return False
 
     def read_value(self, cmd, v_type=float):
         try:
             if self.send_command(cmd):
-                v = v_type(self.response)
+                return v_type(self.response)
             else:
-                v = None
+                return None
         except:
-            v = None
             self.logger.debug('Can not convert %s to %s', self.response, v_type)
-        return v
+            return None
 
     def write_value(self, cmd, value):
         if isinstance(cmd, str):
@@ -309,7 +311,7 @@ class IT6900:
         if self.send_command(b'SYST:ERR?'):
             return self.response[:-1].decode()
         else:
-            return None
+            return ''
 
     def switch_local(self):
         return self.send_command(b'SYST:LOC', False)
