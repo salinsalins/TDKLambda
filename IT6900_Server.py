@@ -143,7 +143,7 @@ class IT6900_Server(TangoServerPrototype):
         self.output_state.set_quality(qual)
         return value
 
-    def common_read(self, read_function, attrib, wvalue=False):
+    def common_read(self, read_function, attrib, wvalue=None):
         if not self.it6900.initialized():
             attrib.set_value(wvalue)
             attrib.set_quality(AttrQuality.ATTR_INVALID)
@@ -302,14 +302,6 @@ class IT6900_Server(TangoServerPrototype):
             self.programmed_voltage.set_quality(AttrQuality.ATTR_INVALID)
             self.set_fault()
         return result
-
-    def set_running(self, msg='R/W OK'):
-        self.set_state(DevState.RUNNING)
-        self.set_status(msg)
-
-    def set_fault(self, msg='Error during R/W'):
-        self.set_state(DevState.FAULT)
-        self.set_status(msg)
 
     @command
     def reconnect(self):
