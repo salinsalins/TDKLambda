@@ -48,30 +48,37 @@ class IT6900_Server(TangoServerPrototype):
     voltage = attribute(label="Voltage", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
-                        unit="V", format="%6.2f",
+                        unit="V", format="%6.3f",
                         min_value=0.0,
                         doc="Measured voltage")
 
     programmed_voltage = attribute(label="Programmed Voltage", dtype=float,
                                    display_level=DispLevel.OPERATOR,
                                    access=AttrWriteType.READ_WRITE,
-                                   unit="V", format="%6.2f",
+                                   unit="V", format="%6.3f",
                                    min_value=0.0,
                                    doc="Programmed voltage")
 
     current = attribute(label="Current", dtype=float,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
-                        unit="A", format="%6.2f",
+                        unit="A", format="%6.3f",
                         min_value=0.0,
                         doc="Measured current")
 
     programmed_current = attribute(label="Programmed Current", dtype=float,
                                    display_level=DispLevel.OPERATOR,
                                    access=AttrWriteType.READ_WRITE,
-                                   unit="A", format="%6.2f",
+                                   unit="A", format="%6.3f",
                                    min_value=0.0,
                                    doc="Programmed current")
+
+    power = attribute(label="Power", dtype=float,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="W", format="%8.3f",
+                        min_value=0.0,
+                        doc="Measured output power")
 
     def init_device(self):
         super().init_device()
@@ -187,6 +194,9 @@ class IT6900_Server(TangoServerPrototype):
         #         result = False
         #         self.set_fault()
         # return result
+
+    def read_power(self):
+        return self.common_read(self.it6900.read_power, self.power)
 
     def read_voltage(self):
         if self.it6900.initialized():
@@ -304,6 +314,15 @@ class IT6900_Server(TangoServerPrototype):
     @command
     def reconnect(self):
         self.it6900.reconnect()
+        self.it6900.switch_remote()
+
+    @command
+    def switch_remote(self):
+        self.it6900.switch_remote()
+
+    @command
+    def clear_status(self):
+        self.it6900.clear_status()
 
     @command(dtype_in=str, doc_in='Directly send command to the device',
              dtype_out=str, doc_out='Response from device without final LF')

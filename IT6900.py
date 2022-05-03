@@ -264,6 +264,9 @@ class IT6900:
     def read_programmed_voltage(self):
         return self.read_value(b'VOLT?')
 
+    def read_power(self):
+        return self.read_value(b'MEAS:POW?')
+
     def read_device_id(self):
         try:
             if self.send_command(b'*IDN?'):
