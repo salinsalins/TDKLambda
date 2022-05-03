@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import time
 
 import serial
 from serial import *
@@ -32,9 +33,14 @@ class IT6900:
             self.logger = kwargs.pop('logger')
         # parameters
         self.read_count = 0
+        self.read_error_count = 0
         self.avg_read_time = 0.0
         self.max_read_time = 0.0
         self.min_read_time = READ_TIMEOUT
+        #
+        self.last_exception = None
+        self.last_exception_time = 0.0
+        #
         self.port = port.strip()
         self.args = args
         self.kwargs = kwargs
@@ -128,20 +134,25 @@ class IT6900:
                 self.max_read_time = dt
             self.read_count += 1
             self.avg_read_time = (self.avg_read_time * (self.read_count - 1) + dt) / self.read_count
+            self.last_exception = None
+            self.last_exception_time = time.time()
             self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt * 1000)
             return result
-        except:
-            log_exception(self, 'Unexpected exception')
-            self.response = b''
+        except Exception as ex:
+            self.last_exception = ex
+            self.last_exception_time = time.time()
+            self.read_error_count += 1
+            log_exception(self, 'Command %s exception', cmd)
             return False
 
     def read(self, size=1, timeout=None):
         result = b''
         t0 = time.perf_counter()
         while len(result) < size:
-            r = self.com.read(1)
-            if len(r) > 0:
-                result += r
+            if self.com.in_waiting > 0:
+                r = self.com.read(1)
+                if len(r) > 0:
+                    result += r
             else:
                 if timeout is not None and time.perf_counter() - t0 > timeout:
                     raise SerialTimeoutException('Reading timeout')
