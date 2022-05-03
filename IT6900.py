@@ -335,9 +335,14 @@ class IT6900:
 
 
 if __name__ == "__main__":
-    pd1 = IT6900("COM3")
-    for i in range(5):
+    pd1 = IT6900("COM3", baudrate=115200)
+    for i in range(100):
         t_0 = time.time()
         v1 = pd1.send_command("*IDN?")
         dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, 'PC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+        print(pd1.port, '*IDN? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+    print('Total I/O:', pd1.read_count)
+    print('Total Errors:', pd1.read_error_count)
+    print('min I/O time:', pd1.min_read_time)
+    print('max I/O time:', pd1.max_read_time)
+    print('avg I/O time:', pd1.avg_read_time)
