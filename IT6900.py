@@ -14,9 +14,9 @@ from log_exception import log_exception
 LF = b'\n'
 DEVICE_NAME = 'IT6900'
 DEVICE_FAMILY = 'IT6900 family Power Supply'
-SUSPEND_TIME = 3.0
-READ_TIMEOUT = 0.5
 ID_OK = 'ITECH Ltd., IT69'
+MIN_TIMEOUT = 0.1
+READ_TIMEOUT = 0.5
 
 
 class IT6900Exception(Exception):
@@ -32,14 +32,11 @@ class IT6900:
         else:
             self.logger = kwargs.pop('logger')
         # parameters
-        self.read_count = 0
-        self.read_error_count = 0
-        self.avg_read_time = 0.0
-        self.max_read_time = 0.0
-        self.min_read_time = READ_TIMEOUT
-        #
-        self.last_exception = None
-        self.last_exception_time = 0.0
+        self.io_count = 0
+        self.io_error_count = 0
+        self.avg_io_time = 0.0
+        self.max_io_time = 0.0
+        self.min_io_time = 1000.0
         #
         self.port = port.strip()
         self.args = args
@@ -48,7 +45,7 @@ class IT6900:
         self.command = b''
         self.response = b''
         # timeouts
-        self.read_timeout = READ_TIMEOUT
+        self.timeout_time = float('inf')
         # default com port, id, and serial number
         self.com = None
         self.id = 'Unknown Device'
@@ -73,7 +70,7 @@ class IT6900:
                     or self.port.startswith('/dev')
                     or self.port.startswith('cua')):
                 if 'timeout' not in self.kwargs:
-                    self.kwargs['timeout'] = READ_TIMEOUT
+                    self.kwargs['timeout'] = 0.0
                 # COM port will be openet automatically after creation
                 self.com = serial.Serial(self.port, **self.kwargs)
             else:
@@ -108,7 +105,8 @@ class IT6900:
         msg = 'Device has been initialized %s' % self.id
         self.logger.debug(msg)
 
-    def send_command(self, cmd, check_response=True):
+    def send_command(self, cmd, check_response=None):
+        self.io_count += 1
         try:
             # unify command
             cmd = cmd.upper().strip()
@@ -122,94 +120,92 @@ class IT6900:
             # write command
             if not self.write(cmd):
                 return False
+            if check_response is None:
+                if b'?' in cmd:
+                    check_response = True
+                else:
+                    check_response = False
             if not check_response:
                 return True
             # read response (to LF by default)
             result = self.read_response()
             # reding time stats
             dt = time.time() - t0
-            if result and dt < self.min_read_time:
-                self.min_read_time = dt
-            if result and dt > self.max_read_time:
-                self.max_read_time = dt
-            self.read_count += 1
-            self.avg_read_time = (self.avg_read_time * (self.read_count - 1) + dt) / self.read_count
-            self.last_exception = None
-            self.last_exception_time = time.time()
+            if result:
+                self.min_io_time = min(self.min_io_time, dt)
+                self.max_io_time = max(self.max_io_time, dt)
+                self.avg_io_time = (self.avg_io_time * (self.io_count - 1) + dt) / self.io_count
             self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt * 1000)
             return result
         except Exception as ex:
-            self.last_exception = ex
-            self.last_exception_time = time.time()
-            self.read_error_count += 1
+            self.io_error_count += 1
             log_exception(self, 'Command %s exception', cmd)
             return False
 
+    @property
+    def timeout(self):
+        if time.perf_counter() > self.timeout_time:
+            return True
+        return False
+
+    @timeout.setter
+    def timeout(self, value):
+        if value is not None:
+            self.timeout_time = time.perf_counter() + value
+        else:
+            self.timeout_time = float('inf')
+
     def read(self, size=1, timeout=None):
         result = b''
-        t0 = time.perf_counter()
+        self.timeout = timeout
         while len(result) < size:
             if self.com.in_waiting > 0:
                 r = self.com.read(1)
                 if len(r) > 0:
                     result += r
             else:
-                if timeout is not None and time.perf_counter() - t0 > timeout:
+                if self.timeout:
                     raise SerialTimeoutException('Reading timeout')
         return result
 
-    def read_until(self, terminator=LF, size=None):
+    def read_until(self, terminator=LF, size=None, timeout=READ_TIMEOUT):
         result = b''
-        t0 = time.perf_counter()
-        while terminator not in result:
+        r = b''
+        while terminator not in r:
             try:
-                r = self.read(1, timeout=READ_TIMEOUT)
-                if len(r) <= 0:
-                    break
+                r = self.read(1, timeout=timeout)
                 result += r
                 if size is not None and len(result) >= size:
                     break
-                if time.perf_counter() - t0 > self.read_timeout:
-                    break
             except:
-                log_exception(self)
                 return result
         return result
 
-    def read_response(self):
-        result = self.read_until(LF)
+    def read_response(self, expected=LF):
+        result = self.read_until(expected)
         self.response = result
-        if LF not in result:
-            self.logger.error('Response without LF %s ', self.response)
+        if expected not in result:
+            self.logger.error('Response %s without %s ', result, expected)
             return False
         return True
 
     def write(self, cmd):
-        length = 0
-        result = False
         t0 = time.perf_counter()
         try:
             # reset input buffer
             self.com.reset_input_buffer()
             # write command
             length = self.com.write(cmd)
-            if len(cmd) == length:
-                result = True
-            else:
-                result = False
+            if len(cmd) != length:
+                raise IT6900Exception('Write error %s of %s' % (length, len(cmd)))
             dt = (time.perf_counter() - t0) * 1000.0
-            self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
-            return result
-        except SerialTimeoutException:
-            self.logger.error('Writing timeout')
-            dt = (time.perf_counter() - t0) * 1000.0
-            self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
-            return False
-        except:
-            self.logger.error('Unexpected exception %s', sys.exc_info()[0])
-            dt = (time.perf_counter() - t0) * 1000.0
-            self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
-            self.logger.debug("", exc_info=True)
+            self.logger.debug('%s %s bytes in %4.0f ms', cmd, length, dt)
+            return True
+        except Exception as ex:
+            self.last_exception = ex
+            self.last_exception_time = time.time()
+            self.io_error_count += 1
+            log_exception(self, 'Exception during write')
             return False
 
     def read_value(self, cmd, v_type=float):
@@ -337,12 +333,18 @@ class IT6900:
 if __name__ == "__main__":
     pd1 = IT6900("COM3", baudrate=115200)
     for i in range(100):
+        cmd = "*IDN?"
         t_0 = time.time()
-        v1 = pd1.send_command("*IDN?")
+        v1 = pd1.send_command(cmd)
         dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, '*IDN? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-    print('Total I/O:', pd1.read_count)
-    print('Total Errors:', pd1.read_error_count)
-    print('min I/O time:', pd1.min_read_time)
-    print('max I/O time:', pd1.max_read_time)
-    print('avg I/O time:', pd1.avg_read_time)
+        print(pd1.port, cmd, '->', pd1.response, v1, '%4d ms ' % dt1)
+        cmd = "VOLT?"
+        t_0 = time.time()
+        v1 = pd1.send_command(cmd)
+        dt1 = int((time.time() - t_0) * 1000.0)  # ms
+        print(pd1.port, cmd, '->', pd1.response, v1, '%4d ms ' % dt1)
+    print('Total I/O:', pd1.io_count)
+    print('Total Errors:', pd1.io_error_count)
+    print('min I/O time:', pd1.min_io_time)
+    print('max I/O time:', pd1.max_io_time)
+    print('avg I/O time:', pd1.avg_io_time)
