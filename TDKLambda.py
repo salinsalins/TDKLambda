@@ -210,7 +210,7 @@ class TDKLambda:
     commands = deque()
     completed_commands = deque()
 
-    def __init__(self, port, addr, checksum=False, baud_rate=9600, logger=None, **kwargs):
+    def __init__(self, port, addr, checksum=False, baudrate=9600, logger=None, **kwargs):
         # check device address
         if addr <= 0:
             raise wrongAddressException
