@@ -15,6 +15,7 @@ from EmulatedLambda import FakeComPort
 from Counter import Counter
 from TDKLambdaExceptions import *
 from Async.AsyncSerial import Timeout
+from config_logger import config_logger
 
 CR = b'\r'
 
@@ -103,18 +104,7 @@ class ComPort:
         return object.__new__(cls)
 
     def __init__(self, port, *args, **kwargs):
-        logger = logging.getLogger(str(self))
-        logger.propagate = False
-        level = logging.DEBUG
-        logger.setLevel(level)
-        f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
-                '%(funcName)s(%(lineno)s) ' + '%s' % port + ' - %(message)s'
-        log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(log_formatter)
-        if not logger.hasHandlers():
-            logger.addHandler(console_handler)
-        self.logger = logger
+        self.logger = config_logger()
         # use existed device
         if port in ComPort._devices:
             self.logger.debug('Using existent port')
@@ -126,7 +116,6 @@ class ComPort:
         self.lock = Lock()
         self._ex = None
         self.time = 0.0
-
         # default device
         self._device = ComPort.UninitializedDevice(port)
         self.init()
@@ -210,16 +199,13 @@ class TDKLambda:
     commands = deque()
     completed_commands = deque()
 
-    def __init__(self, port, addr, checksum=False, baudrate=9600, logger=None, **kwargs):
-        # check device address
-        if addr <= 0:
-            raise wrongAddressException
+    def __init__(self, port, addr, checksum=False, baudrate=9600, **kwargs):
         # parameters
         self.port = port.strip()
         self.addr = addr
         self.check = checksum
         self.baud = baudrate
-        self.logger = logger
+        self.logger = None
         self.auto_addr = True
         # create variables
         self.command = b''
@@ -237,7 +223,10 @@ class TDKLambda:
         self.max_voltage = float('inf')
         self.max_current = float('inf')
         # configure logger
-        self.configure_logger()
+        self.logger = config_logger()
+        # check device address
+        if addr <= 0:
+            raise wrongAddressException
         # check if port and address are in use
         for d in TDKLambda.devices:
             if d.port == self.port and d.addr == self.addr and d != self:
@@ -245,74 +234,14 @@ class TDKLambda:
         # create COM port
         self.com = self.create_com_port()
         # add device to list
-        self.add_to_list()
+        if self not in TDKLambda.devices:
+            TDKLambda.devices.append(self)
         # further initialization (for possible async use)
         self.init()
 
     def __del__(self):
         if self in TDKLambda.devices:
             TDKLambda.devices.remove(self)
-
-    @staticmethod
-    async def dispatcher():
-        while True:
-            for cmd in TDKLambda.commands:
-                if cmd.queued():
-                    # check if it is repeated command
-                    flag = False
-                    cmd1 = cmd.command[:4]
-                    for cmd2 in TDKLambda.commands:
-                        if cmd2.state != 2:
-                            continue
-                        if cmd2.command[:4] == cmd1:
-                            flag = True
-                            break
-                    if flag:
-                        TDKLambda.commands.remove(cmd)
-                    else:
-                        cmd.task = asyncio.create_task(cmd.device._send_command(cmd.command))
-                        cmd.state = 2
-                elif cmd.task.done():
-                    cmd.state = 3
-                    cmd.exception = cmd.task.exception()
-                    if cmd.exception is None:
-                        cmd.result = cmd.task.result()
-                    else:
-                        cmd.result = b''
-                    TDKLambda.commands.remove(cmd)
-                    TDKLambda.completed_commands.append(cmd)
-            await asyncio.sleep(0)
-
-    @staticmethod
-    def start_loop(self):
-        if TDKLambda.loop is not None:
-            return
-        TDKLambda.loop = asyncio.get_running_loop()
-        asyncio.run(TDKLambda.dispatcher())
-
-    @staticmethod
-    def init_thread(self):
-        if TDKLambda.thread is not None:
-            return
-        TDKLambda.thread = Thread(target=TDKLambda.start_loop, args=())
-        TDKLambda.thread.start()
-
-    def configure_logger(self, level=None):
-        logger = logging.getLogger(str(self))
-        logger.propagate = False
-        if level is None:
-            level = self.LOG_LEVEL
-        logger.setLevel(level)
-        f_str = '%(asctime)s,%(msecs)3d %(levelname)-7s [%(process)d:%(thread)d] %(filename)s ' \
-                '%(funcName)s(%(lineno)s) ' + '%s::%d ' % (self.port, self.addr) + ' - %(message)s'
-        log_formatter = logging.Formatter(f_str, datefmt='%H:%M:%S')
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(log_formatter)
-        if not logger.hasHandlers():
-            logger.addHandler(console_handler)
-        if self.logger is None:
-            self.logger = logger
-        return logger
 
     def create_com_port(self):
         self.com = ComPort(self.port, baudrate=self.baud)
@@ -355,10 +284,6 @@ class TDKLambda:
             return
         msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
         self.logger.debug(msg)
-
-    def add_to_list(self):
-        if self not in TDKLambda.devices:
-            TDKLambda.devices.append(self)
 
     def read_device_id(self):
         try:
