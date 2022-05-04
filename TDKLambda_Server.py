@@ -343,7 +343,7 @@ class TDKLambda_Server(Device):
             msg = '%s:%d Reset TDKLambda PS' % (self.tdk.port, self.tdk.addr)
             logger.info(msg)
             self.info_stream(msg)
-            self.tdk._send_command(b'RST')
+            self.tdk._send_command(b'RST\r')
 
     @command
     def Debug(self):

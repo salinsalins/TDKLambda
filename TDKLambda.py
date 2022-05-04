@@ -557,8 +557,8 @@ class TDKLambda:
                 # convert str to bytes
                 if isinstance(cmd, str):
                     cmd = str.encode(cmd)
-                if not cmd.endswith(b'\r'):
-                    cmd += b'\r'
+                if not cmd.endswith(CR):
+                    cmd += CR
                 # add checksum
                 if self.check:
                     cs = self.checksum(cmd[:-1])
@@ -589,7 +589,7 @@ class TDKLambda:
 
     def _set_addr(self):
         a0 = self.com.current_addr
-        result = self._send_command(b'ADR %d' % self.addr)
+        result = self._send_command(b'ADR %d\r' % self.addr)
         if result and self.check_response(b'OK'):
             self.com.current_addr = self.addr
             self.logger.debug('Address %d -> %d' % (a0, self.addr))
@@ -649,7 +649,7 @@ class TDKLambda:
         return False
 
     def write_value(self, cmd, value, expect=b'OK'):
-        cmd = cmd.upper().strip() + b' ' + str.encode(str(value))[:10] + b'\r'
+        cmd = cmd.upper().strip() + b' ' + str.encode(str(value))[:10] + CR
         if self.send_command(cmd):
             return self.check_response(expect)
         else:
@@ -730,8 +730,8 @@ class TDKLambda:
 
 
 if __name__ == "__main__":
-    pd1 = TDKLambda("FAKECOM7", 6)
-    pd2 = TDKLambda("FAKECOM7", 7)
+    pd1 = TDKLambda("COM2", 6)
+    # pd2 = TDKLambda("FAKECOM7", 7)
     for i in range(5):
         t_0 = time.time()
         v1 = pd1.read_float("PC?")
@@ -754,13 +754,13 @@ if __name__ == "__main__":
         dt1 = int((time.time() - t_0) * 1000.0)  # ms
         print(pd1.port, pd1.addr, 'DVC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
         t_0 = time.time()
-        v1 = pd2.read_float("PC?")
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd2.port, pd2.addr, 'PC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
-        t_0 = time.time()
-        v1 = pd2.read_all()
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd2.port, pd2.addr, 'DVC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+        # v1 = pd2.read_float("PC?")
+        # dt1 = int((time.time() - t_0) * 1000.0)  # ms
+        # print(pd2.port, pd2.addr, 'PC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+        # t_0 = time.time()
+        # v1 = pd2.read_all()
+        # dt1 = int((time.time() - t_0) * 1000.0)  # ms
+        # print(pd2.port, pd2.addr, 'DVC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
         # time.sleep(0.5)
         # pd1.reset()
         # pd2.reset()
