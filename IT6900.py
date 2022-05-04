@@ -338,24 +338,25 @@ class IT6900:
     def initialized(self):
         return self.ready
 
-    # def detect_baud(self):
-    #     if self.ready:
-    #         return
-    #     bauds = (4800, 9600, 115200, 19200, 38400, 57600, 115200)
-    #     #bauds = (115200,)
-    #     for baud in bauds:
-    #         self.logger.debug('Try reconnect at %s', baud)
-    #         self.kwargs['baudrate'] = baud
-    #         self.reconnect()
-    #         if self.ready:
-    #             self.logger.debug('Reconnected successfully at %s', baud)
-    #             return
+    def detect_baud(self):
+        if self.ready:
+            return
+        bauds = (115200, 9600, 4800, 19200, 38400, 57600)
+        #bauds = (115200,)
+        for baud in bauds:
+            self.logger.debug('Try reconnect at %s', baud)
+            self.kwargs['baudrate'] = baud
+            time.sleep(2.0)
+            self.reconnect()
+            if self.ready:
+                self.logger.debug('Reconnected successfully at %s', baud)
+                return
 
 
 if __name__ == "__main__":
-    pd1 = IT6900("COM3", baudrate=115200)
-    # pd1 = IT6900("COM3")
-    # pd1.detect_baud()
+    # pd1 = IT6900("COM3", baudrate=115200)
+    pd1 = IT6900("COM3", baudrate=9600)
+    pd1.detect_baud()
     for i in range(100):
         cmd = ":*IDN?"
         t_0 = time.time()
