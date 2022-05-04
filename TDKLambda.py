@@ -218,7 +218,7 @@ class TDKLambda:
         self.port = port.strip()
         self.addr = addr
         self.check = checksum
-        self.baud = baud_rate
+        self.baud = baudrate
         self.logger = logger
         self.auto_addr = True
         # create variables
