@@ -233,7 +233,7 @@ class TDKLambda:
         # default com port, id, and serial number
         self.com = None
         self.id = 'Unknown Device'
-        self.sn = 0
+        self.sn = ''
         self.max_voltage = float('inf')
         self.max_current = float('inf')
         # configure logger
@@ -372,15 +372,12 @@ class TDKLambda:
     def read_serial_number(self):
         try:
             if self.send_command(b'SN?'):
-                try:
-                    serial_number = int(self.response[:-1].decode())
-                except:
-                    serial_number = -1
+                serial_number = int(self.response[:-1].decode())
                 return serial_number
             else:
-                return -1
+                return ''
         except:
-            return -1
+            return ''
 
     def close_com_port(self):
         try:
@@ -723,14 +720,14 @@ class TDKLambda:
         return
 
     def initialized(self):
-        return self.com.ready and self.id.find('LAMBDA') > 0
+        return self.com.ready and self.id.find('LAMBDA') >= 0
 
     def alive(self):
         return self.read_serial_number() > 0
 
 
 if __name__ == "__main__":
-    pd1 = TDKLambda("COM2", 6)
+    pd1 = TDKLambda("COM6", 7)
     # pd2 = TDKLambda("FAKECOM7", 7)
     for i in range(5):
         t_0 = time.time()
