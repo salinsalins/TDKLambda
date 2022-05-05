@@ -3,45 +3,16 @@
 
 import logging
 import socket
-import time
-from threading import Lock, Thread
 from collections import deque
-import asyncio
+from threading import Lock
 
 import serial
 from serial import *
 
 from EmulatedLambda import FakeComPort
-from Counter import Counter
-from TDKLambdaExceptions import *
-from Async.AsyncSerial import Timeout
 from config_logger import config_logger
 
 CR = b'\r'
-
-
-class Command:
-    def __init__(self, cmd, device, callback=None):
-        self.command = cmd
-        self.device = device
-        self.time_start = time.time()
-        self.time_end = 0.0
-        self.callback = callback
-        self.state = 0          # 0 - created; 1 - queued; 2 - executing; 3 - completed
-        self.task = None
-        self.result = b''
-
-    @property
-    def completed(self):
-        return self.state >= 3
-
-    @property
-    def queued(self):
-        return self.state == 1
-
-    @property
-    def executing(self):
-        return self.state == 2
 
 
 class MoxaTCPComPort:
@@ -190,6 +161,10 @@ def ms(t0):
     return (time.perf_counter() - t0) * 1000.0
 
 
+class TDKLambdaException(Exception):
+    pass
+
+
 class TDKLambda:
     LOG_LEVEL = logging.DEBUG
     SUSPEND_TIME = 5.0
@@ -203,6 +178,7 @@ class TDKLambda:
         # parameters
         self.port = port.strip()
         self.addr = addr
+        self.kwargs = kwargs
         self.check = checksum
         self.baud = baudrate
         self.logger = None
@@ -226,11 +202,11 @@ class TDKLambda:
         self.logger = config_logger()
         # check device address
         if addr <= 0:
-            raise wrongAddressException
+            raise TDKLambdaException('Wrong address')
         # check if port and address are in use
         for d in TDKLambda.devices:
             if d.port == self.port and d.addr == self.addr and d != self:
-                raise addressInUseException
+                raise TDKLambdaException('Address in use')
         # create COM port
         self.com = self.create_com_port()
         # add device to list
