@@ -16,6 +16,7 @@ from config_logger import config_logger
 CR = b'\r'
 LF = b'\n'
 
+VERSION = '2.0'
 
 class ComPort:
     _devices = {}
