@@ -287,7 +287,7 @@ class TDKLambda:
             self.logger.debug('Exception', exc_info=True)
             return b''
 
-    def read_until(self, terminator=b'\r', size=None):
+    def read_until(self, terminator=CR, size=None):
         result = b''
         t0 = time.perf_counter()
         while terminator not in result:
@@ -308,7 +308,7 @@ class TDKLambda:
         result = self.read_until(CR)
         self.response = result
         if CR not in result:
-            self.logger.error('Response %s without CR', self.response)
+            self.logger.error('Response %s without CR', result)
             return False
         # if checksum used
         if not self.check:
@@ -398,7 +398,7 @@ class TDKLambda:
         try:
             if not self.send_command(cmd):
                 return float('Nan')
-            v = float(self.response)
+            v = float(self.response[:-1])
         except:
             self.logger.debug('%s is not a float' % self.response)
             v = float('Nan')
@@ -407,7 +407,7 @@ class TDKLambda:
     def read_value(self, cmd, v_type=type(str)):
         try:
             if self.send_command(cmd):
-                v = v_type(self.response)
+                v = v_type(self.response[:-1])
             else:
                 v = None
         except:
@@ -418,7 +418,7 @@ class TDKLambda:
     def read_bool(self, cmd):
         if not self.send_command(cmd):
             return None
-        response = self.response
+        response = self.response[:-1]
         if response.upper() in (b'ON', b'1'):
             return True
         if response.upper() in (b'OFF', b'0'):
