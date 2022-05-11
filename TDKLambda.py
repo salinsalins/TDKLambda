@@ -30,13 +30,13 @@ class TDKLambda:
     devices = []
     dev_lock = Lock()
 
-    def __init__(self, port, addr, checksum=False, baudrate=9600, **kwargs):
+    def __init__(self, port, addr, checksum=False, **kwargs):
         # parameters
         self.port = port.strip()
         self.addr = addr
         self.kwargs = kwargs
         self.check = checksum
-        self.baud = baudrate
+        #self.baud = baudrate
         self.logger = None
         self.auto_addr = True
         # create variables
@@ -79,7 +79,7 @@ class TDKLambda:
                 TDKLambda.devices.remove(self)
 
     def create_com_port(self):
-        self.com = ComPort(self.port, emulated=EmultedTDKLambdaAtComPort, baudrate=self.baud)
+        self.com = ComPort(self.port, emulated=EmultedTDKLambdaAtComPort, **self.kwargs)
         if self.com.ready:
             self.logger.debug('Port %s is ready', self.port)
         else:
