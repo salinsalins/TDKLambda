@@ -74,7 +74,6 @@ class ComPort:
                 self._device = serial.Serial(self.port, *self.args, **self.kwargs)
             else:
                 self._device = MoxaTCPComPort(self.port, *self.args, **self.kwargs)
-            del self._devices
             with ComPort.dev_lock:
                 ComPort._devices[self.port] = self
             self.logger.debug('Port %s has been initialized', self.port)
@@ -567,8 +566,8 @@ class TDKLambda:
 
 
 if __name__ == "__main__":
-    pd1 = TDKLambda("COM6", 7)
-    # pd2 = TDKLambda("FAKECOM7", 7)
+    # pd1 = TDKLambda("COM6", 7)
+    pd1 = TDKLambda("FAKECOM7", 7)
     for i in range(5):
         t_0 = time.time()
         v1 = pd1.read_float("PC?")

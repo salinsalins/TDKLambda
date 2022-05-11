@@ -57,8 +57,8 @@ class FakeComPort:
                 self.out[self.last_address] = True
             elif self.last_write.startswith(b'OUT OF') or self.last_write.startswith(b'OUT 0'):
                 self.out[self.last_address] = False
-            else:
-                self.write_error = True
+            # else:
+            #     self.write_error = True
             self.t[self.last_address] = time.perf_counter()
             return len(cmd)
         except:
