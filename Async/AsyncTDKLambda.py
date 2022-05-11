@@ -9,7 +9,7 @@ import types
 from datetime import datetime
 
 from Async.AsyncSerial import *
-from EmulatedLambda import FakeComPort
+from EmultedTDKLambdaAtComPort import EmultedTDKLambdaAtComPort
 from serial import Timeout
 
 from TDKLambda import *
@@ -66,13 +66,13 @@ def async_yield():
     yield
 
 
-class FakeAsyncComPort(FakeComPort):
+class FakeAsyncComPort(EmultedTDKLambdaAtComPort):
     SN = 9876543
     RESPONSE_DELAY = 0.0
 
     def __init__(self, port, *args, **kwargs):
-        FakeComPort.SN = FakeAsyncComPort.SN
-        FakeComPort.RESPONSE_DELAY = FakeAsyncComPort.RESPONSE_DELAY
+        EmultedTDKLambdaAtComPort.SN = FakeAsyncComPort.SN
+        EmultedTDKLambdaAtComPort.RESPONSE_DELAY = FakeAsyncComPort.RESPONSE_DELAY
         super().__init__(port, *args, **kwargs)
         self.async_lock = asyncio.Lock()
         self.s = super()

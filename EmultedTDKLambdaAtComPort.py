@@ -5,7 +5,7 @@ from threading import Lock
 
 COMMANDS = (b'DVC?', b'PV?', b'MV?', b'PC?', b'MC?', b'IDN?', b'SN?')
 
-class FakeComPort:
+class EmultedTDKLambdaAtComPort:
     SN = 123456
     RESPONSE_DELAY = 0.035
     ID = b'FAKELAMBDA GEN10-100'
@@ -34,14 +34,14 @@ class FakeComPort:
 
     def add_device(self):
         if self.last_address not in self.pv:
-            self.id[self.last_address] = FakeComPort.ID
+            self.id[self.last_address] = EmultedTDKLambdaAtComPort.ID
             self.pv[self.last_address] = 0.0
             self.pc[self.last_address] = 0.0
             self.mv[self.last_address] = 0.0
             self.mc[self.last_address] = 0.0
             self.out[self.last_address] = False
-            self.sn[self.last_address] = str(FakeComPort.SN).encode()
-            FakeComPort.SN += 1
+            self.sn[self.last_address] = str(EmultedTDKLambdaAtComPort.SN).encode()
+            EmultedTDKLambdaAtComPort.SN += 1
 
     def write(self, cmd, timeout=None):
         self.last_write = cmd
