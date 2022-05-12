@@ -74,6 +74,7 @@ class TDKLambda:
         self.init()
 
     def __del__(self):
+        self.close_com_port()
         with TDKLambda.dev_lock:
             if self in TDKLambda.devices:
                 TDKLambda.devices.remove(self)

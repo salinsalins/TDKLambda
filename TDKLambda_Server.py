@@ -114,7 +114,7 @@ class TDKLambda_Server(Device):
         baud = self.get_device_property('baudrate', 9600)
         # create TDKLambda device
         self.tdk = TDKLambda(port, addr, baudrate=baud)
-        # self.tdk.init()
+        self.tdk.logger = logger
         # check if device OK
         if self.tdk.initialized():
             # add device to list
