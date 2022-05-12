@@ -5,7 +5,7 @@ import time
 import serial
 from serial import *
 
-from TDKLambda import MoxaTCPComPort
+from Moxa import MoxaTCPComPort
 
 sys.path.append('../TangoUtils')
 from config_logger import config_logger
@@ -354,9 +354,9 @@ class IT6900:
 
 
 if __name__ == "__main__":
-    # pd1 = IT6900("COM3", baudrate=115200)
-    pd1 = IT6900("COM3", baudrate=9600)
-    pd1.detect_baud()
+    pd1 = IT6900("COM3", baudrate=115200)
+    # pd1 = IT6900("COM3", baudrate=9600)
+    # pd1.detect_baud()
     for i in range(100):
         cmd = ":*IDN?"
         t_0 = time.time()

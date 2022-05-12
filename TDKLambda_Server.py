@@ -102,34 +102,39 @@ class TDKLambda_Server(Device):
             return default
 
     def init_device(self):
-        with _lock:
-            self.error_count = 0
-            self.values = [float('NaN')] * 6
-            self.time = time.time() - 100.0
-            self.set_state(DevState.INIT)
-            Device.init_device(self)
-            self.last_level = logging.INFO
-            # get port and address from property
-            port = self.get_device_property('port', 'COM1')
-            addr = self.get_device_property('addr', 6)
-            baud = self.get_device_property('baudrate', 9600)
-            # create TDKLambda device
-            self.tdk = TDKLambda(port, addr, baudrate=baud)
-            # self.tdk.init()
-            # check if device OK
-            if self.tdk.initialized():
-                # add device to list
-                TDKLambda_Server.devices.append(self)
-                # set state to running
-                self.set_state(DevState.RUNNING)
-                msg = '%s:%d TDKLambda %s created successfully' % (self.tdk.port, self.tdk.addr, self.tdk.id)
-                logger.info(msg)
-                # self.info_stream(msg)
-            else:
-                msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
-                logger.error(msg)
-                # self.error_stream(msg)
-                self.set_state(DevState.FAULT)
+        self.error_count = 0
+        self.values = [float('NaN')] * 6
+        self.time = time.time() - 100.0
+        self.set_state(DevState.INIT)
+        Device.init_device(self)
+        self.last_level = logging.INFO
+        # get port and address from property
+        port = self.get_device_property('port', 'COM1')
+        addr = self.get_device_property('addr', 6)
+        baud = self.get_device_property('baudrate', 9600)
+        # create TDKLambda device
+        self.tdk = TDKLambda(port, addr, baudrate=baud)
+        # self.tdk.init()
+        # check if device OK
+        if self.tdk.initialized():
+            # add device to list
+            TDKLambda_Server.devices.append(self)
+            # set default parameters for attributes
+            self.programmed_voltage.set_max_value(self.tdk.max_voltage)
+            self.programmed_current.set_max_value(self.tdk.max_current)
+            self.programmed_voltage.set_write_value(self.read_programmed_voltage(self.programmed_voltage))
+            self.programmed_current.set_write_value(self.read_programmed_current(self.programmed_current))
+            self.output_state.set_write_value(self.read_output_state())
+            # set state to running
+            self.set_state(DevState.RUNNING)
+            self.set_status('Successfully initialized')
+            msg = 'TDKLambda %s created successfully at %s:%d' % (self.tdk.id, self.tdk.port, self.tdk.addr)
+            logger.info(msg)
+        else:
+            msg = '%s:%d TDKLambda device created with errors' % (self.tdk.port, self.tdk.addr)
+            logger.error(msg)
+            self.set_state(DevState.FAULT)
+            self.set_status('Initialization error')
 
     def delete_device(self):
         with _lock:
