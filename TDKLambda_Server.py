@@ -311,12 +311,12 @@ class TDKLambda_Server(TangoServerPrototype):
     @command
     def TurnOn(self):
         # turn on the actual power supply here
-        self.output_state = True
+        self.write_output_state(True)
 
     @command
     def TurnOff(self):
         # turn off the actual power supply here
-        self.output_state = False
+        self.write_output_state(False)
         # self.set_state(DevState.OFF)
 
 
