@@ -1,18 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
-
-from threading import Lock
+import logging
+import time
 from math import isnan
 
-import tango
 from tango import AttrQuality, AttrWriteType, DispLevel
 from tango import DevState
-from tango.server import Device, attribute, command
+from tango.server import attribute, command
 
 from TDKLambda import TDKLambda
 from TangoServerPrototype import TangoServerPrototype
-from Utils import *
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'TDK Lambda Python Tango Server'
