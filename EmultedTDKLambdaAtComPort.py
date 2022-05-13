@@ -14,7 +14,7 @@ class EmultedTDKLambdaAtComPort:
         self.port = port
         self.last_address = -1
         self.lock = Lock()
-        self.online = False
+        self.online = True
         self.last_write = b''
         self.pv = {}
         self.pc = {}
@@ -138,5 +138,5 @@ class EmultedTDKLambdaAtComPort:
         return True
 
     def isOpen(self):
-        return True
+        return self.online
 

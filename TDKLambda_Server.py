@@ -116,6 +116,7 @@ class TDKLambda_Server(TangoServerPrototype):
             self.set_status('Initialization error')
 
     def delete_device(self):
+        super().delete_device()
         if self in TDKLambda_Server.devices:
             TDKLambda_Server.devices.remove(self)
             self.tdk.__del__()

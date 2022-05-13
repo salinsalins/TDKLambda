@@ -3,15 +3,16 @@
 
 import logging
 import socket
+import time
 from collections import deque
 from threading import Lock, RLock
 
-import serial
-from serial import *
+from serial import SerialTimeoutException
 
 from ComPort import ComPort
 from EmultedTDKLambdaAtComPort import EmultedTDKLambdaAtComPort
 from config_logger import config_logger
+from log_exception import log_exception
 
 CR = b'\r'
 LF = b'\n'
@@ -123,15 +124,16 @@ class TDKLambda:
 
     def close_com_port(self):
         try:
-            self.com.current_addr = -1
+            # self.com.current_addr = -1
             self.com.close()
         except:
+            log_exception(self)
             pass
-        # suspend all devices with same port
-        with TDKLambda.dev_lock:
-            for d in TDKLambda.devices:
-                if d.port == self.port:
-                    d.suspend()
+        # # suspend all devices with same port
+        # with TDKLambda.dev_lock:
+        #     for d in TDKLambda.devices:
+        #         if d.port == self.port:
+        #             d.suspend()
 
     @staticmethod
     def checksum(cmd):
@@ -187,8 +189,7 @@ class TDKLambda:
             self.logger.info('Reading timeout')
             return b''
         except:
-            self.logger.info('Unexpected exception %s', sys.exc_info()[0])
-            self.logger.debug('Exception', exc_info=True)
+            log_exception(self)
             return b''
 
     def read_until(self, terminator=CR, size=None):
@@ -262,10 +263,7 @@ class TDKLambda:
             self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
             return False
         except:
-            self.logger.error('Unexpected exception %s', sys.exc_info()[0])
-            dt = (time.perf_counter() - t0) * 1000.0
-            self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
-            self.logger.debug("", exc_info=True)
+            log_exception(self)
             return False
 
     def _send_command(self, cmd):
@@ -382,8 +380,7 @@ class TDKLambda:
                 self.response = b''
                 return False
         except:
-            self.logger.error('Unexpected exception %s', sys.exc_info()[0])
-            self.logger.debug("", exc_info=True)
+            log_exception(self)
             self.suspend()
             self.response = b''
             return False
@@ -471,37 +468,34 @@ class TDKLambda:
 
 
 if __name__ == "__main__":
-    # pd1 = TDKLambda("COM6", 7)
     pd1 = TDKLambda("FAKECOM7", 7)
-    for i in range(5):
-        t_0 = time.time()
-        v1 = pd1.read_float("PC?")
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, pd1.addr, 'PC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-        t_0 = time.time()
-        v1 = pd1.read_float("MV?")
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, pd1.addr, 'MV? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-        t_0 = time.time()
-        v1 = pd1.send_command("PV 1.0")
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-        t_0 = time.time()
-        v1 = pd1.read_float("PV?")
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, pd1.addr, 'PV? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-        t_0 = time.time()
-        v1 = pd1.read_all()
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        print(pd1.port, pd1.addr, 'DVC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-        t_0 = time.time()
-        # v1 = pd2.read_float("PC?")
-        # dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        # print(pd2.port, pd2.addr, 'PC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
-        # t_0 = time.time()
-        # v1 = pd2.read_all()
-        # dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        # print(pd2.port, pd2.addr, 'DVC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
-        # time.sleep(0.5)
-        # pd1.reset()
-        # pd2.reset()
+    pd2 = TDKLambda("FAKECOM7", 6)
+    t_0 = time.time()
+    v1 = pd1.read_current()
+    dt1 = int((time.time() - t_0) * 1000.0)  # ms
+    print(pd1.port, pd1.addr, 'read_current ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+    t_0 = time.time()
+    v1 = pd1.read_voltage()
+    dt1 = int((time.time() - t_0) * 1000.0)  # ms
+    print(pd1.port, pd1.addr, 'read_voltage ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+    t_0 = time.time()
+    v1 = pd1.read_all()
+    dt1 = int((time.time() - t_0) * 1000.0)  # ms
+    print(pd1.port, pd1.addr, 'DVC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+    del pd1
+
+    t_0 = time.time()
+    v1 = pd2.read_programmed_voltage()
+    dt1 = int((time.time() - t_0) * 1000.0)  # ms
+    print(pd2.port, pd2.addr, 'read_programmed_voltage ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+    t_0 = time.time()
+    v1 = pd2.send_command("PV 1.0")
+    dt1 = int((time.time() - t_0) * 1000.0)  # ms
+    print(pd2.port, pd2.addr, 'PV 1.0 ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+    t_0 = time.time()
+    v1 = pd2.read_float("PV?")
+    dt1 = int((time.time() - t_0) * 1000.0)  # ms
+    print(pd2.port, pd2.addr, 'PV? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+    logger = pd2.logger
+    del pd2
+    print('Finished')
