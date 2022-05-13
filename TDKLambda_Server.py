@@ -15,7 +15,7 @@ from TangoServerPrototype import TangoServerPrototype
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'TDK Lambda Python Tango Server'
 APPLICATION_NAME_SHORT = 'TDKLambda_Server'
-APPLICATION_VERSION = '4.0'  # from ver 4.* Useing Python Prototype Tango Server
+APPLICATION_VERSION = '4.0'  # from ver 4.* Using Python Prototype Tango Server
 
 
 class TDKLambda_Server(TangoServerPrototype):
