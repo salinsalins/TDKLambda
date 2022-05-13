@@ -74,20 +74,6 @@ class TDKLambda:
         # further initialization (for possible async use)
         self.init()
 
-    def __del__(self):
-        self.close_com_port()
-        with TDKLambda.dev_lock:
-            if self in TDKLambda.devices:
-                TDKLambda.devices.remove(self)
-
-    def create_com_port(self):
-        self.com = ComPort(self.port, emulated=EmultedTDKLambdaAtComPort, **self.kwargs)
-        if self.com.ready:
-            self.logger.debug('Port %s is ready', self.port)
-        else:
-            self.logger.error('Port %s creation error', self.port)
-        return self.com
-
     def init(self):
         self.unsuspend()
         if not self.com.ready:
@@ -104,7 +90,7 @@ class TDKLambda:
         self.sn = self.read_serial_number()
         # read device type
         self.id = self.read_device_id()
-        if self.id.find('LAMBDA') >= 0:
+        if 'LAMBDA' in self.id:
             # determine max current and voltage from model name
             n1 = self.id.find('GEN')
             n2 = self.id.find('-')
@@ -121,6 +107,20 @@ class TDKLambda:
             return
         msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
         self.logger.debug(msg)
+
+    def __del__(self):
+        self.close_com_port()
+        with TDKLambda.dev_lock:
+            if self in TDKLambda.devices:
+                TDKLambda.devices.remove(self)
+
+    def create_com_port(self):
+        self.com = ComPort(self.port, emulated=EmultedTDKLambdaAtComPort, **self.kwargs)
+        if self.com.ready:
+            self.logger.debug('Port %s is ready', self.port)
+        else:
+            self.logger.error('Port %s creation error', self.port)
+        return self.com
 
     def close_com_port(self):
         try:
