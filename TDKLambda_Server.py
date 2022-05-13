@@ -83,6 +83,7 @@ class TDKLambda_Server(TangoServerPrototype):
         self.time = time.time() - 100.0
         self.set_state(DevState.INIT)
         self.last_level = logging.INFO
+        self.READING_VALID_TIME = self.config.get('reading_valid_time', self.READING_VALID_TIME)
         # get port and address from property
         kwargs = {}
         port = self.config.get('port', 'COM3')
