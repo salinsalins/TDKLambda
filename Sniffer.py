@@ -190,6 +190,27 @@ class MainWindow(QMainWindow):
                     r = self.dec_from_str(result)
                 self.plainTextEdit_2.appendPlainText('%s 2>1 %s' % (dt, r))
 
+    def combobox_index_changed(self):
+        n = self.comboBox.currentIndex()
+        txt = self.plainTextEdit_2.text()
+        self.plainTextEdit_2.setPlainText('')
+        lines = txt.split('\n')
+        for line in lines:
+            i1 = line.find('1>2')
+            i2 = line.find('2>1')
+            if i1 > 0 or i2 > 0:
+                head = line[:i1+1+i2+4]
+                tail = line[i1+1+i2+4:]
+                if n == 0:
+                    r = str(result)
+                elif n == 1:
+                    r = self.hex_from_str(result)
+                elif n == 2:
+                    r = self.dec_from_str(result)
+                self.plainTextEdit_2.appendPlainText('%s 1>2 %s' % (dt, r))
+            else:
+                self.plainTextEdit_2.appendPlainText(line)
+
 
 def dts():
     #return datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
