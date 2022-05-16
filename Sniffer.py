@@ -87,6 +87,10 @@ class MainWindow(QMainWindow):
         restore_settings(self, file_name=CONFIG_FILE, widgets=(self.lineEdit, self.lineEdit_2,
                                                                self.lineEdit_3, self.lineEdit_4))
         self.connect_ports()
+        self.cts1 = self.com1.cts
+        self.rts1 = self.com1.rts
+        self.cts2 = self.com2.cts
+        self.rts2 = self.com2.rts
         # Connect signals with slots
         self.pushButton.clicked.connect(self.clear_button_clicked)
         self.pushButton_2.clicked.connect(self.connect_ports)
@@ -156,18 +160,18 @@ class MainWindow(QMainWindow):
             return
         v = self.com1.cts
         if self.cts1 != v:
-            self.logger.debug('CTS1 %s', v)
+            self.logger.debug('CTS1 %s -> %s', self.cts1, v)
             self.cts1 = v
             # self.com2.rts = v
         v = self.com1.rts
         if self.rts1 != v:
-            self.logger.debug('RTS1 %s', v)
+            self.logger.debug('RTS1 %s -> %s',self.rts1, v)
             self.rts1 = v
         result = self.read_port(self.com1)
         dt = dts()
         if len(result) > 0:
             m = self.com2.write(result)
-            self.logger.debug('Port1 received %s bytes: %s %s', len(result), result, m)
+            self.logger.debug('Port1 received %s bytes: %s %s', len(result), result, hex_from_str(result))
             if self.pushButton_3.isChecked():
                 n = self.comboBox.currentIndex()
                 r = ''
@@ -181,18 +185,18 @@ class MainWindow(QMainWindow):
         # COM2
         v = self.com2.cts
         if self.cts2 != v:
-            self.logger.debug('CTS2 %s', v)
+            self.logger.debug('CTS2 %s -> %s', self.cts2, v)
             self.cts2 = v
             # self.com1.rts = v
         v = self.com2.rts
         if self.rts2 != v:
-            self.logger.debug('RTS2 %s', v)
+            self.logger.debug('RTS2 %s -> %s',self.rts2, v)
             self.rts2 = v
         result = self.read_port(self.com2)
         dt = dts()
         if len(result) > 0:
             m = self.com1.write(result)
-            self.logger.debug('Port2 received %s bytes: %s %s', len(result), result, m)
+            self.logger.debug('Port2 received %s bytes: %s %s', len(result), result, hex_from_str(result))
             if self.pushButton_3.isChecked():
                 n = self.comboBox.currentIndex()
                 r = ''
