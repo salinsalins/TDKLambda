@@ -27,6 +27,40 @@ UI_FILE = APPLICATION_NAME_SHORT + '.ui'
 TIMER_PERIOD = 50  # ms
 
 
+def hex_from_str(v):
+    h = ''
+    for i in v:
+        h += hex(i) + ' '
+    return h
+
+
+def str_from_hex(v):
+    vs = v.split(' ')
+    h = ''
+    for i in vs:
+        v = i.strip()
+        if v != '':
+            h += chr(int(v, 16))
+    return h
+
+
+def dec_from_str(v):
+    h = ''
+    for i in v:
+        h += str(i) + ' '
+    return h
+
+
+def str_from_dec(v):
+    vs = v.split(' ')
+    h = ''
+    for i in vs:
+        v = i.strip()
+        if v != '':
+            h += chr(int(v, 10))
+    return h
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         # Initialization of the superclass
@@ -56,7 +90,8 @@ class MainWindow(QMainWindow):
         # Connect signals with slots
         self.pushButton.clicked.connect(self.clear_button_clicked)
         self.pushButton_2.clicked.connect(self.connect_ports)
-        #self.pushButton_2.clicked.connect(self.connect_port)
+        self.last_index = self.comboBox.currentIndex()
+        self.comboBox.currentIndexChanged.connect(self.combobox_index_changed)
         # Defile callback task and start timer
         self.timer = QTimer()
         self.timer.timeout.connect(self.timer_handler)
@@ -99,27 +134,6 @@ class MainWindow(QMainWindow):
         except:
             self.plainTextEdit_2.setPlainText('Port %s connection error' % port)
 
-    def hex_from_str(self, v):
-        h = ''
-        for i in v:
-            h += hex(i) + ' '
-        return h
-
-    def str_from_hex(self, v):
-        vs = v.split(' ')
-        h = ''
-        for i in vs:
-            v = i.strip()
-            if v != '':
-                h += chr(int(v, 16))
-        return h
-
-    def dec_from_str(self, v):
-        h = ''
-        for i in v:
-            h += str(i) + ' '
-        return h
-
     def clear_button_clicked(self):
         self.plainTextEdit_2.setPlainText('')
 
@@ -160,9 +174,9 @@ class MainWindow(QMainWindow):
                 if n == 0:
                     r = str(result)
                 elif n == 1:
-                    r = self.hex_from_str(result)
+                    r = hex_from_str(result)
                 elif n == 2:
-                    r = self.dec_from_str(result)
+                    r = dec_from_str(result)
                 self.plainTextEdit_2.appendPlainText('%s 1>2 %s' % (dt, r))
         # COM2
         v = self.com2.cts
@@ -185,31 +199,42 @@ class MainWindow(QMainWindow):
                 if n == 0:
                     r = str(result)
                 elif n == 1:
-                    r = self.hex_from_str(result)
+                    r = hex_from_str(result)
                 elif n == 2:
-                    r = self.dec_from_str(result)
+                    r = dec_from_str(result)
                 self.plainTextEdit_2.appendPlainText('%s 2>1 %s' % (dt, r))
 
-    def combobox_index_changed(self):
-        n = self.comboBox.currentIndex()
-        txt = self.plainTextEdit_2.text()
-        self.plainTextEdit_2.setPlainText('')
-        lines = txt.split('\n')
-        for line in lines:
-            i1 = line.find('1>2')
-            i2 = line.find('2>1')
-            if i1 > 0 or i2 > 0:
-                head = line[:i1+1+i2+4]
-                tail = line[i1+1+i2+4:]
-                if n == 0:
-                    r = str(result)
-                elif n == 1:
-                    r = self.hex_from_str(result)
-                elif n == 2:
-                    r = self.dec_from_str(result)
-                self.plainTextEdit_2.appendPlainText('%s 1>2 %s' % (dt, r))
-            else:
-                self.plainTextEdit_2.appendPlainText(line)
+    def combobox_index_changed(self, n):
+        try:
+            n = self.comboBox.currentIndex()
+            txt = self.plainTextEdit_2.toPlainText()
+            self.plainTextEdit_2.setPlainText('')
+            lines = txt.split('\n')
+            for line in lines:
+                i1 = line.find('1>2')
+                i2 = line.find('2>1')
+                if i1 > 0 or i2 > 0:
+                    head = line[:i1+1+i2+4]
+                    tail = line[i1+1+i2+4:]
+                    result = ''
+                    if self.last_index == 0:
+                        result = tail[2:-1].encode()
+                    elif self.last_index == 1:
+                        result = str_from_hex(tail).encode()
+                    elif self.last_index == 2:
+                        result = str_from_dec(tail).encode()
+                    if n == 0:
+                        r = str(result)
+                    elif n == 1:
+                        r = hex_from_str(result)
+                    elif n == 2:
+                        r = dec_from_str(result)
+                    self.plainTextEdit_2.appendPlainText('%s%s' % (head, r))
+                else:
+                    self.plainTextEdit_2.appendPlainText(line)
+        except:
+            log_exception(self)
+        self.last_index = n
 
 
 def dts():
