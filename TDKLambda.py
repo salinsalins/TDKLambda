@@ -329,7 +329,7 @@ class TDKLambda:
         return False
 
     def write_value(self, cmd, value, expect=b'OK'):
-        cmd = cmd.upper().strip() + b' ' + str.encode(str(value))[:10] + CR
+        cmd = cmd.upper().strip() + b' ' + str(value)[:10].encode() + CR
         if self.send_command(cmd):
             return self.check_response(expect)
         else:

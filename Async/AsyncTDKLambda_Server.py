@@ -2,8 +2,6 @@
 """TDK Lambda Genesis series power supply tango device server"""
 from Async.AsyncTDKLambda import AsyncTDKLambda
 
-import logging
-import time
 from math import isnan
 import sys
 import asyncio
@@ -11,11 +9,11 @@ from asyncio import InvalidStateError
 import threading
 
 import tango
-from tango import AttrQuality, AttrWriteType, DispLevel, DevState, DebugIt, DeviceAttribute
+from tango import AttrWriteType, DispLevel, DevState
 from tango import GreenMode
 from tango.server import Device, attribute, command
 
-from Utils import *
+from Async.Utils import *
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Async_TDKLambda_Server'
