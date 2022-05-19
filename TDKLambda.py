@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging
-import socket
 import time
-from collections import deque
-from threading import Lock, RLock
+from threading import Lock
 
 from serial import SerialTimeoutException
 
