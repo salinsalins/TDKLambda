@@ -10,7 +10,7 @@ from PyQt5 import uic
 from PyQt5.QtCore import QTimer, QSize, QPoint
 import PyQt5.QtGui as QtGui
 
-from TangoUtils import restore_settings, save_settings
+from QtUtils import restore_settings, save_settings
 
 sys.path.append('../TangoUtils')
 from config_logger import config_logger
