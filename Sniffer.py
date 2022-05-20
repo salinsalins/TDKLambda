@@ -1,14 +1,11 @@
 # coding: utf-8
-from datetime import datetime
-import os.path
 import sys
-import time
+from datetime import datetime
 
 import serial
-from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5 import uic
 from PyQt5.QtCore import QTimer, QSize, QPoint
-import PyQt5.QtGui as QtGui
+from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from QtUtils import restore_settings, save_settings
 
@@ -233,6 +230,8 @@ class MainWindow(QMainWindow):
                         r = hex_from_str(result)
                     elif n == 2:
                         r = dec_from_str(result)
+                    else:
+                        r = ''
                     self.plainTextEdit_2.appendPlainText('%s%s' % (head, r))
                 else:
                     self.plainTextEdit_2.appendPlainText(line)
