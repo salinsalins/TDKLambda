@@ -34,7 +34,7 @@ class TDKLambda:
         self.addr = addr
         self.kwargs = kwargs
         self.check = checksum
-        #self.baud = baudrate
+        # self.baud = baudrate
         self.logger = None
         self.auto_addr = True
         # create variables
@@ -277,7 +277,7 @@ class TDKLambda:
         dt = time.perf_counter() - t0
         if result and dt < self.min_read_time:
             self.min_read_time = dt
-        self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt*1000.)
+        self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt * 1000.)
         return result
 
     def _set_addr(self):
