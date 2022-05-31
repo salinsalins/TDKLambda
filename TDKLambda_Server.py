@@ -80,6 +80,7 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def init_device(self):
         super().init_device()
+        self.debug('Initialization')
         self.configure_tango_logging()
         self.error_count = 0
         self.values = [float('NaN')] * 6
@@ -122,8 +123,8 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def delete_device(self):
         super().delete_device()
-        if self in TDKLambda_Server.devices:
-            TDKLambda_Server.devices.remove(self)
+        if self in TDKLambda_Server.device_list:
+            TDKLambda_Server.device_list.remove(self)
             self.tdk.__del__()
             msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
             self.info(msg)
