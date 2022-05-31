@@ -54,16 +54,20 @@ class TDKLambda:
         self.max_current = float('inf')
         # configure logger
         self.logger = kwargs.get('logger', config_logger())
+        # create COM port
+        self.com = self.create_com_port()
         # check device address
         if addr <= 0:
-            raise TDKLambdaException('Wrong address')
+            # raise TDKLambdaException('Wrong address')
+            self.logger.error('Wrong address')
+            return
         # check if port and address are in use
         with TDKLambda.dev_lock:
             for d in TDKLambda.devices:
                 if d.port == self.port and d.addr == self.addr and d != self:
-                    raise TDKLambdaException('Address is in use')
-        # create COM port
-        self.com = self.create_com_port()
+                    self.logger.error('Address is in use')
+                    return
+                    # raise TDKLambdaException('Address is in use')
         # add device to list
         with TDKLambda.dev_lock:
             if self not in TDKLambda.devices:
@@ -89,14 +93,13 @@ class TDKLambda:
         self.id = self.read_device_id()
         if 'LAMBDA' in self.id:
             # determine max current and voltage from model name
-            n1 = self.id.find('GEN')
-            n2 = self.id.find('-')
-            if 0 <= n1 < n2:
-                try:
-                    self.max_voltage = float(self.id[n1 + 3:n2])
-                    self.max_current = float(self.id[n2 + 1:])
-                except:
-                    pass
+            try:
+                ids = self.id.split('-')
+                mv = ids[-2].split('G')
+                self.max_current = float(ids[-1])
+                self.max_voltage = float(mv[-1][2:])
+            except:
+                self.logger.warning('Can not set max values')
         else:
             self.suspend()
             msg = 'TDKLambda: device was not initialized properly'
@@ -124,8 +127,7 @@ class TDKLambda:
             # self.com.current_addr = -1
             self.com.close()
         except:
-            log_exception(self)
-            pass
+            log_exception(self, 'COM port close exception')
         # # suspend all devices with same port
         # with TDKLambda.dev_lock:
         #     for d in TDKLambda.devices:

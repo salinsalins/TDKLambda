@@ -80,6 +80,7 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def init_device(self):
         super().init_device()
+        self.debug('Initialization')
         self.configure_tango_logging()
         self.error_count = 0
         self.values = [float('NaN')] * 6
@@ -102,8 +103,10 @@ class TDKLambda_Server(TangoServerPrototype):
         self.write_config_to_properties()
         # check if device OK
         if self.tdk.initialized():
-            self.programmed_voltage.set_max_value(self.tdk.max_voltage)
-            self.programmed_current.set_max_value(self.tdk.max_current)
+            if self.tdk.max_voltage < float('inf'):
+                self.programmed_voltage.set_max_value(self.tdk.max_voltage)
+            if self.tdk.max_current < float('inf'):
+                self.programmed_current.set_max_value(self.tdk.max_current)
             self.programmed_voltage.set_write_value(self.read_programmed_voltage(self.programmed_voltage))
             self.programmed_current.set_write_value(self.read_programmed_current(self.programmed_current))
             self.output_state.set_write_value(self.read_output_state())
@@ -120,8 +123,8 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def delete_device(self):
         super().delete_device()
-        if self in TDKLambda_Server.devices:
-            TDKLambda_Server.devices.remove(self)
+        if self in TDKLambda_Server.device_list:
+            TDKLambda_Server.device_list.remove(self)
             self.tdk.__del__()
             msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
             self.info(msg)
