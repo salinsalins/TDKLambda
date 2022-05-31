@@ -89,14 +89,13 @@ class TDKLambda:
         self.id = self.read_device_id()
         if 'LAMBDA' in self.id:
             # determine max current and voltage from model name
-            n1 = self.id.find('GEN')
-            n2 = self.id.find('-')
-            if 0 <= n1 < n2:
-                try:
-                    self.max_voltage = float(self.id[n1 + 3:n2])
-                    self.max_current = float(self.id[n2 + 1:])
-                except:
-                    pass
+            try:
+                ids = self.id.split('-')
+                mv = ids[-2].split('G')
+                self.max_current = float(ids[-1])
+                self.max_voltage = float(mv[-1][2:])
+            except:
+                self.logger.warning('Can not set max values')
         else:
             self.suspend()
             msg = 'TDKLambda: device was not initialized properly'

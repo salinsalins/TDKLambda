@@ -102,8 +102,10 @@ class TDKLambda_Server(TangoServerPrototype):
         self.write_config_to_properties()
         # check if device OK
         if self.tdk.initialized():
-            self.programmed_voltage.set_max_value(self.tdk.max_voltage)
-            self.programmed_current.set_max_value(self.tdk.max_current)
+            if self.tdk.max_voltage < float('inf'):
+                self.programmed_voltage.set_max_value(self.tdk.max_voltage)
+            if self.tdk.max_current < float('inf'):
+                self.programmed_current.set_max_value(self.tdk.max_current)
             self.programmed_voltage.set_write_value(self.read_programmed_voltage(self.programmed_voltage))
             self.programmed_current.set_write_value(self.read_programmed_current(self.programmed_current))
             self.output_state.set_write_value(self.read_output_state())
