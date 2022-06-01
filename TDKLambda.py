@@ -64,7 +64,7 @@ class TDKLambda:
         # check if port:address is in use
         with TDKLambda.dev_lock:
             for d in TDKLambda.devices:
-                if d.port == self.port and d.addr == self.addr and d != self:
+                if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
                     self.logger.error('Address is in use')
                     self.state = -2
                     # raise TDKLambdaException('Address is in use')
@@ -89,12 +89,14 @@ class TDKLambda:
             self.suspend()
             msg = 'TDKLambda: device was not initialized properly'
             self.logger.info(msg)
+            self.state = -3
             return
         # read device serial number
         self.sn = self.read_serial_number()
         # read device type
         self.id = self.read_device_id()
         if 'LAMBDA' in self.id:
+            self.state = 1
             # determine max current and voltage from model name
             try:
                 ids = self.id.split('-')
@@ -107,15 +109,18 @@ class TDKLambda:
             self.suspend()
             msg = 'TDKLambda: device was not initialized properly'
             self.logger.info(msg)
+            self.state = -4
             return
         msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
         self.logger.debug(msg)
 
     def __del__(self):
-        self.close_com_port()
+        # self.logger.info('Entry')
         with TDKLambda.dev_lock:
             if self in TDKLambda.devices:
+                self.close_com_port()
                 TDKLambda.devices.remove(self)
+        # self.logger.debug("%s %s", self, TDKLambda.devices)
 
     def create_com_port(self):
         self.com = ComPort(self.port, emulated=EmultedTDKLambdaAtComPort, **self.kwargs)
@@ -157,7 +162,7 @@ class TDKLambda:
 
     # check if suspended and try to reset
     def is_suspended(self):
-        if time.time() < self.suspend_to:  # if suspension does not expire
+        if self.state < 0 or time.time() < self.suspend_to:  # if suspension does not expire
             return True
         # suspension expires
         if self.suspend_flag:  # if it was suspended and expires
@@ -271,6 +276,8 @@ class TDKLambda:
     def _send_command(self, cmd):
         self.command = cmd
         self.response = b''
+        if self.state < 0:
+            return False
         t0 = time.perf_counter()
         with self.com.lock:
             # write command
@@ -338,9 +345,12 @@ class TDKLambda:
             return False
 
     def reset(self):
+        if self.state < 0:
+            return
         self.logger.debug('Resetting')
-        self.com.close()
-        self.com = self.create_com_port()
+        self.com.device.close()
+        self.com.device.open()
+        # self.com = self.create_com_port()
         self.init()
         return
 
@@ -463,7 +473,8 @@ class TDKLambda:
 
     # high level check state commands  ***************************
     def initialized(self):
-        return self.com.ready and self.id.find('LAMBDA') >= 0
+        # print(self.state, self.com.ready, self.id, self.state > 0 and self.com.ready and self.id.find('LAMBDA') >= 0)
+        return self.state > 0 and self.com.ready and self.id.find('LAMBDA') >= 0
 
     def alive(self):
         return self.read_device_id().find('LAMBDA') >= 0
@@ -471,7 +482,7 @@ class TDKLambda:
 
 if __name__ == "__main__":
     pd1 = TDKLambda("FAKECOM7", 7)
-    pd2 = TDKLambda("FAKECOM7", 6)
+    pd2 = TDKLambda("FAKECOM7", 7)
     t_0 = time.time()
     v1 = pd1.read_current()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
@@ -489,15 +500,15 @@ if __name__ == "__main__":
     t_0 = time.time()
     v1 = pd2.read_programmed_voltage()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    print(pd2.port, pd2.addr, 'read_programmed_voltage ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+    print(pd2.port, pd2.addr, '2 read_programmed_voltage ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
     t_0 = time.time()
     v1 = pd2.send_command("PV 1.0")
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    print(pd2.port, pd2.addr, 'PV 1.0 ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+    print(pd2.port, pd2.addr, '2 PV 1.0 ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
     t_0 = time.time()
     v1 = pd2.read_float("PV?")
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    print(pd2.port, pd2.addr, 'PV? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+    print(pd2.port, pd2.addr, '2 PV? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
     logger = pd2.logger
     del pd2
     print('Finished')
