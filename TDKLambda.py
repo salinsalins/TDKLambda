@@ -14,7 +14,7 @@ from log_exception import log_exception
 CR = b'\r'
 LF = b'\n'
 
-VERSION = '2.0'
+VERSION = '2.5'
 
 
 class TDKLambdaException(Exception):
@@ -28,55 +28,58 @@ class TDKLambda:
     devices = []
     dev_lock = Lock()
 
-    def __init__(self, port, addr, checksum=False, **kwargs):
+    def __init__(self, port, addr, checksum=False, auto_addr=True, **kwargs):
         # parameters
         self.port = port.strip()
         self.addr = addr
-        self.kwargs = kwargs
         self.check = checksum
-        #self.baud = baudrate
-        self.logger = None
-        self.auto_addr = True
+        self.auto_addr = auto_addr
+        # configure logger
+        self.logger = kwargs.get('logger', config_logger())
+        # timeouts
+        self.read_timeout = kwargs.pop('read_timeout', 0.5)
+        self.min_read_time = self.read_timeout
+        # rest arguments for COM port creation
+        self.kwargs = kwargs
         # create variables
         self.command = b''
         self.response = b''
         self.time = time.time()
         self.suspend_to = time.time()
         self.suspend_flag = False
-        # timeouts
-        self.read_timeout = 0.5
-        self.min_read_time = self.read_timeout
-        # default com port, id, and serial number
+        self.state = 0
+        # default com port, id, serial number, and ...
         self.com = None
         self.id = 'Unknown Device'
         self.sn = ''
         self.max_voltage = float('inf')
         self.max_current = float('inf')
-        # configure logger
-        self.logger = kwargs.get('logger', config_logger())
         # create COM port
-        self.com = self.create_com_port()
+        self.create_com_port()
         # check device address
         if addr <= 0:
-            # raise TDKLambdaException('Wrong address')
             self.logger.error('Wrong address')
-            return
-        # check if port and address are in use
+            self.state = -1
+            # raise TDKLambdaException('Wrong address')
+        # check if port:address is in use
         with TDKLambda.dev_lock:
             for d in TDKLambda.devices:
                 if d.port == self.port and d.addr == self.addr and d != self:
                     self.logger.error('Address is in use')
-                    return
+                    self.state = -2
                     # raise TDKLambdaException('Address is in use')
         # add device to list
         with TDKLambda.dev_lock:
             if self not in TDKLambda.devices:
                 TDKLambda.devices.append(self)
+        if self.state < 0:
+            return
         # further initialization (for possible async use)
         self.init()
 
     def init(self):
-        self.unsuspend()
+        self.suspend_to = 0.0
+        self.suspend_flag = False
         if not self.com.ready:
             self.suspend()
             return
