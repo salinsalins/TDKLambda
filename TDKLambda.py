@@ -14,7 +14,7 @@ from log_exception import log_exception
 CR = b'\r'
 LF = b'\n'
 
-VERSION = '2.5'
+VERSION = '3.0'
 
 
 class TDKLambdaException(Exception):
@@ -111,8 +111,8 @@ class TDKLambda:
             self.logger.info(msg)
             self.state = -4
             return
-        msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
-        self.logger.debug(msg)
+        # msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
+        self.logger.debug(f'TDKLambda at {self.port}:{self.addr} has been initialized')
 
     def __del__(self):
         # self.logger.info('Entry')
@@ -120,7 +120,7 @@ class TDKLambda:
             if self in TDKLambda.devices:
                 self.close_com_port()
                 TDKLambda.devices.remove(self)
-        # self.logger.debug("%s %s", self, TDKLambda.devices)
+                self.logger.debug(f'TDKLambda at {self.port}:{self.addr} has been deleted')
 
     def create_com_port(self):
         self.com = ComPort(self.port, emulated=EmultedTDKLambdaAtComPort, **self.kwargs)
@@ -473,7 +473,6 @@ class TDKLambda:
 
     # high level check state commands  ***************************
     def initialized(self):
-        # print(self.state, self.com.ready, self.id, self.state > 0 and self.com.ready and self.id.find('LAMBDA') >= 0)
         return self.state > 0 and self.com.ready and self.id.find('LAMBDA') >= 0
 
     def alive(self):

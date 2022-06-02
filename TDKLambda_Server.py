@@ -18,7 +18,7 @@ from TangoServerPrototype import TangoServerPrototype
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'TDK Lambda Python Tango Server'
 APPLICATION_NAME_SHORT = 'TDKLambda_Server'
-APPLICATION_VERSION = '4.0'  # from ver 4.* Using Python Prototype Tango Server
+APPLICATION_VERSION = '5.0'  # from ver 4.* Using Python Prototype Tango Server
 
 
 class TDKLambda_Server(TangoServerPrototype):
@@ -96,9 +96,7 @@ class TDKLambda_Server(TangoServerPrototype):
         kwargs['baudrate'] = baud
         kwargs['logger'] = self.logger
         # create TDKLambda device
-        # self.info('Step')
         self.tdk = TDKLambda(port, addr, **kwargs)
-        # self.info('Step')
         # add device to list
         if self not in TDKLambda_Server.device_list:
             TDKLambda_Server.device_list.append(self)
@@ -124,13 +122,13 @@ class TDKLambda_Server(TangoServerPrototype):
             self.set_status('Initialization error')
 
     def delete_device(self):
-        # self.info('Entry')
         super().delete_device()
         if self in TDKLambda_Server.device_list:
             TDKLambda_Server.device_list.remove(self)
             self.tdk.__del__()
             msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
             # del self.tdk
+            # self.tdk = None
             self.info(msg)
 
     def read_port(self):
