@@ -84,10 +84,12 @@ class MainWindow(QMainWindow):
         restore_settings(self, file_name=CONFIG_FILE, widgets=(self.lineEdit, self.lineEdit_2,
                                                                self.lineEdit_3, self.lineEdit_4))
         self.connect_ports()
-        self.cts1 = self.com1.cts
-        self.rts1 = self.com1.rts
-        self.cts2 = self.com2.cts
-        self.rts2 = self.com2.rts
+        if self.com1 is not None:
+            self.cts1 = self.com1.cts
+            self.rts1 = self.com1.rts
+        if self.com2 is not None:
+            self.cts2 = self.com2.cts
+            self.rts2 = self.com2.rts
         # Connect signals with slots
         self.pushButton.clicked.connect(self.clear_button_clicked)
         self.pushButton_2.clicked.connect(self.connect_ports)
