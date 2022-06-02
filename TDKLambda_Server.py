@@ -16,9 +16,9 @@ sys.path.append('../TangoUtils')
 from TangoServerPrototype import TangoServerPrototype
 
 ORGANIZATION_NAME = 'BINP'
-APPLICATION_NAME = 'TDK Lambda Python Tango Server'
+APPLICATION_NAME = 'TDK Lambda Genesis series PS Python Tango Server'
 APPLICATION_NAME_SHORT = 'TDKLambda_Server'
-APPLICATION_VERSION = '4.0'  # from ver 4.* Using Python Prototype Tango Server
+APPLICATION_VERSION = '5.0'  # from ver 4.* Using Python Prototype Tango Server
 
 
 class TDKLambda_Server(TangoServerPrototype):
@@ -80,7 +80,7 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def init_device(self):
         super().init_device()
-        self.debug('Initialization')
+        self.info('Initialization')
         self.configure_tango_logging()
         self.error_count = 0
         self.values = [float('NaN')] * 6
@@ -127,6 +127,8 @@ class TDKLambda_Server(TangoServerPrototype):
             TDKLambda_Server.device_list.remove(self)
             self.tdk.__del__()
             msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
+            # del self.tdk
+            # self.tdk = None
             self.info(msg)
 
     def read_port(self):
@@ -288,14 +290,19 @@ class TDKLambda_Server(TangoServerPrototype):
             self.set_fault()
         return result
 
-    def set_running(self, msg=''):
-        self.error_count = 0
-        super().set_running(msg)
+    def set_running(self, msg=None):
+        # self.error_count = 0
+        super().set_running()
 
-    def set_fault(self, msg=''):
-        self.error_count += 1
-        if self.error_count > 5:
-            super().set_fault(msg)
+    def set_fault(self, msg=None):
+        # self.error_count += 1
+        # if self.error_count > 5:
+        #     super().set_fault()
+        if self.tdk.initialized():
+            msg = 'R/W error!'
+        else:
+            msg = 'TDKLambda was not initialized'
+        super().set_fault(msg)
 
     @command
     def Reset(self):

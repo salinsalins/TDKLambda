@@ -14,7 +14,10 @@ from log_exception import log_exception
 CR = b'\r'
 LF = b'\n'
 
-VERSION = '2.0'
+ORGANIZATION_NAME = 'BINP'
+APPLICATION_NAME = 'TDK Lambda Genesis series PS Python API'
+APPLICATION_NAME_SHORT = 'TDKLambda'
+APPLICATION_VERSION = '3.0'
 
 
 class TDKLambdaException(Exception):
@@ -28,55 +31,58 @@ class TDKLambda:
     devices = []
     dev_lock = Lock()
 
-    def __init__(self, port, addr, checksum=False, **kwargs):
+    def __init__(self, port, addr, checksum=False, auto_addr=True, **kwargs):
         # parameters
         self.port = port.strip()
         self.addr = addr
-        self.kwargs = kwargs
         self.check = checksum
-        # self.baud = baudrate
-        self.logger = None
-        self.auto_addr = True
+        self.auto_addr = auto_addr
+        # configure logger
+        self.logger = kwargs.get('logger', config_logger())
+        # timeouts
+        self.read_timeout = kwargs.pop('read_timeout', 0.5)
+        self.min_read_time = self.read_timeout
+        # rest arguments for COM port creation
+        self.kwargs = kwargs
         # create variables
         self.command = b''
         self.response = b''
         self.time = time.time()
         self.suspend_to = time.time()
         self.suspend_flag = False
-        # timeouts
-        self.read_timeout = 0.5
-        self.min_read_time = self.read_timeout
-        # default com port, id, and serial number
+        self.state = 0
+        # default com port, id, serial number, and ...
         self.com = None
         self.id = 'Unknown Device'
         self.sn = ''
         self.max_voltage = float('inf')
         self.max_current = float('inf')
-        # configure logger
-        self.logger = kwargs.get('logger', config_logger())
         # create COM port
-        self.com = self.create_com_port()
+        self.create_com_port()
         # check device address
         if addr <= 0:
-            # raise TDKLambdaException('Wrong address')
             self.logger.error('Wrong address')
-            return
-        # check if port and address are in use
+            self.state = -1
+            # raise TDKLambdaException('Wrong address')
+        # check if port:address is in use
         with TDKLambda.dev_lock:
             for d in TDKLambda.devices:
-                if d.port == self.port and d.addr == self.addr and d != self:
+                if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
                     self.logger.error('Address is in use')
-                    return
+                    self.state = -2
                     # raise TDKLambdaException('Address is in use')
         # add device to list
         with TDKLambda.dev_lock:
             if self not in TDKLambda.devices:
                 TDKLambda.devices.append(self)
+        if self.state < 0:
+            return
         # further initialization (for possible async use)
         self.init()
 
     def init(self):
-        self.unsuspend()
+        self.suspend_to = 0.0
+        self.suspend_flag = False
         if not self.com.ready:
             self.suspend()
             return
@@ -86,12 +92,14 @@ class TDKLambda:
             self.suspend()
             msg = 'TDKLambda: device was not initialized properly'
             self.logger.info(msg)
+            self.state = -3
             return
         # read device serial number
         self.sn = self.read_serial_number()
         # read device type
         self.id = self.read_device_id()
         if 'LAMBDA' in self.id:
+            self.state = 1
             # determine max current and voltage from model name
             try:
                 ids = self.id.split('-')
@@ -104,15 +112,18 @@ class TDKLambda:
             self.suspend()
             msg = 'TDKLambda: device was not initialized properly'
             self.logger.info(msg)
+            self.state = -4
             return
-        msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
-        self.logger.debug(msg)
+        # msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
+        self.logger.debug(f'TDKLambda at {self.port}:{self.addr} has been initialized')
 
     def __del__(self):
-        self.close_com_port()
+        # self.logger.info('Entry')
         with TDKLambda.dev_lock:
             if self in TDKLambda.devices:
+                self.close_com_port()
                 TDKLambda.devices.remove(self)
+                self.logger.debug(f'TDKLambda at {self.port}:{self.addr} has been deleted')
 
     def create_com_port(self):
         self.com = ComPort(self.port, emulated=EmultedTDKLambdaAtComPort, **self.kwargs)
@@ -154,7 +165,7 @@ class TDKLambda:
 
     # check if suspended and try to reset
     def is_suspended(self):
-        if time.time() < self.suspend_to:  # if suspension does not expire
+        if self.state < 0 or time.time() < self.suspend_to:  # if suspension does not expire
             return True
         # suspension expires
         if self.suspend_flag:  # if it was suspended and expires
@@ -268,6 +279,8 @@ class TDKLambda:
     def _send_command(self, cmd):
         self.command = cmd
         self.response = b''
+        if self.state < 0:
+            return False
         t0 = time.perf_counter()
         with self.com.lock:
             # write command
@@ -279,7 +292,7 @@ class TDKLambda:
         dt = time.perf_counter() - t0
         if result and dt < self.min_read_time:
             self.min_read_time = dt
-        self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt * 1000.)
+        self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt*1000.)
         return result
 
     def _set_addr(self):
@@ -335,9 +348,12 @@ class TDKLambda:
             return False
 
     def reset(self):
+        if self.state < 0:
+            return
         self.logger.debug('Resetting')
-        self.com.close()
-        self.com = self.create_com_port()
+        self.com.device.close()
+        self.com.device.open()
+        # self.com = self.create_com_port()
         self.init()
         return
 
@@ -460,7 +476,7 @@ class TDKLambda:
 
     # high level check state commands  ***************************
     def initialized(self):
-        return self.com.ready and self.id.find('LAMBDA') >= 0
+        return self.state > 0 and self.com.ready and self.id.find('LAMBDA') >= 0
 
     def alive(self):
         return self.read_device_id().find('LAMBDA') >= 0
@@ -468,7 +484,7 @@ class TDKLambda:
 
 if __name__ == "__main__":
     pd1 = TDKLambda("FAKECOM7", 7)
-    pd2 = TDKLambda("FAKECOM7", 6)
+    pd2 = TDKLambda("FAKECOM7", 7)
     t_0 = time.time()
     v1 = pd1.read_current()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
@@ -486,15 +502,15 @@ if __name__ == "__main__":
     t_0 = time.time()
     v1 = pd2.read_programmed_voltage()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    print(pd2.port, pd2.addr, 'read_programmed_voltage ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+    print(pd2.port, pd2.addr, '2 read_programmed_voltage ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
     t_0 = time.time()
     v1 = pd2.send_command("PV 1.0")
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    print(pd2.port, pd2.addr, 'PV 1.0 ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+    print(pd2.port, pd2.addr, '2 PV 1.0 ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
     t_0 = time.time()
     v1 = pd2.read_float("PV?")
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    print(pd2.port, pd2.addr, 'PV? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+    print(pd2.port, pd2.addr, '2 PV? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
     logger = pd2.logger
     del pd2
     print('Finished')

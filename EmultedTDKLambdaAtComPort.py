@@ -27,6 +27,9 @@ class EmultedTDKLambdaAtComPort:
         self.write_error = False
         self.add_device()
 
+    def open(self):
+        pass
+
     def close(self):
         self.last_write = b''
         self.online = False
