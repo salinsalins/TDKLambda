@@ -16,7 +16,7 @@ sys.path.append('../TangoUtils')
 from TangoServerPrototype import TangoServerPrototype
 
 ORGANIZATION_NAME = 'BINP'
-APPLICATION_NAME = 'TDK Lambda Python Tango Server'
+APPLICATION_NAME = 'TDK Lambda Genesis series PS Python Tango Server'
 APPLICATION_NAME_SHORT = 'TDKLambda_Server'
 APPLICATION_VERSION = '5.0'  # from ver 4.* Using Python Prototype Tango Server
 

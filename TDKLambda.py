@@ -14,7 +14,10 @@ from log_exception import log_exception
 CR = b'\r'
 LF = b'\n'
 
-VERSION = '3.0'
+ORGANIZATION_NAME = 'BINP'
+APPLICATION_NAME = 'TDK Lambda Genesis series PS Python API'
+APPLICATION_NAME_SHORT = 'TDKLambda'
+APPLICATION_VERSION = '3.0'
 
 
 class TDKLambdaException(Exception):
