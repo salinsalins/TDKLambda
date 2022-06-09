@@ -1,11 +1,14 @@
 # coding: utf-8
 import sys
 from datetime import datetime
-
 import serial
-from PyQt5 import uic
-from PyQt5.QtCore import QTimer, QSize, QPoint
-from PyQt5.QtWidgets import QApplication, QMainWindow
+
+QT_API = 'pyside6'
+
+import qtpy
+from qtpy import uic
+from qtpy.QtCore import QTimer, QSize, QPoint
+from qtpy.QtWidgets import QApplication, QMainWindow
 
 from QtUtils import restore_settings, save_settings
 

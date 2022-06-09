@@ -22,8 +22,8 @@ APPLICATION_VERSION = '5.0'  # from ver 4.* Using Python Prototype Tango Server
 
 
 class TDKLambda_Server(TangoServerPrototype):
-    server_version = APPLICATION_VERSION
-    server_name = APPLICATION_NAME_SHORT
+    server_version_value = APPLICATION_VERSION
+    server_name_value = APPLICATION_NAME_SHORT
     READING_VALID_TIME = 1.0
 
     port = attribute(label="Port", dtype=str,
