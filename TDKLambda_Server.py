@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
 import sys
+sys.path.append('../TangoUtils')
 import logging
 import time
 from math import isnan
@@ -11,8 +12,6 @@ from tango import DevState
 from tango.server import attribute, command
 
 from TDKLambda import TDKLambda
-
-sys.path.append('../TangoUtils')
 from TangoServerPrototype import TangoServerPrototype
 
 ORGANIZATION_NAME = 'BINP'
@@ -22,8 +21,8 @@ APPLICATION_VERSION = '5.0'  # from ver 4.* Using Python Prototype Tango Server
 
 
 class TDKLambda_Server(TangoServerPrototype):
-    server_version = APPLICATION_VERSION
-    server_name = APPLICATION_NAME_SHORT
+    server_version_value = APPLICATION_VERSION
+    server_name_value = APPLICATION_NAME_SHORT
     READING_VALID_TIME = 1.0
 
     port = attribute(label="Port", dtype=str,
