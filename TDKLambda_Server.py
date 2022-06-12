@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
-import sys
-sys.path.append('../TangoUtils')
+import sys; sys.path.append('../TangoUtils')
 import logging
 import time
 from math import isnan
