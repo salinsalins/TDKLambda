@@ -81,11 +81,12 @@ class MainWindow(QMainWindow):
             self.baud = int(self.lineEdit_2.text())
             self.com = ComPort(self.port, baudrate=self.baud, timeout=0)
             self.connected = self.com.ready
-            if self.ready:
+            if self.com.ready:
                 self.plainTextEdit_2.appendPlainText('%s Port %s connected successfully' % (dts(), self.port))
             else:
                 self.plainTextEdit_2.setPlainText('Port %s connection error' % self.port)
         except:
+            log_exception(self.logger)
             self.plainTextEdit_2.setPlainText('Port %s connection error' % self.port)
 
     def hex_from_str(self, v):
@@ -147,24 +148,27 @@ class MainWindow(QMainWindow):
         save_settings(self, file_name=CONFIG_FILE, widgets=(self.lineEdit, self.lineEdit_2, self.lineEdit_3, self.lineEdit_5))
 
     def timer_handler(self):
-        if not self.connected:
-            self.plainTextEdit_2.setPlainText('Port %s connection error' % self.port)
-            return
-        result = b''
-        r = self.com.read(1)
-        while len(r) > 0:
-            result += r
+        try:
+            if not self.connected:
+                self.plainTextEdit_2.setPlainText('Port %s connection error' % self.port)
+                return
+            result = b''
             r = self.com.read(1)
-        if len(result) > 0:
-            self.logger.debug('received %s bytes: %s', len(result), str(result))
-            dt = dts()
-            self.plainTextEdit_2.appendPlainText('%s received %s bytes: %s' % (dt, len(result), result))
-            self.plainTextEdit.appendPlainText('\n%s received %s bytes:' % (dt, len(result)))
-            self.plainTextEdit.appendPlainText(str(result))
-            h = ''
-            for i in result:
-                h += hex(i) + ' '
-            self.plainTextEdit.appendPlainText(h)
+            while len(r) > 0:
+                result += r
+                r = self.com.read(1)
+            if len(result) > 0:
+                self.logger.debug('received %s bytes: %s', len(result), str(result))
+                dt = dts()
+                self.plainTextEdit_2.appendPlainText('%s received %s bytes: %s' % (dt, len(result), result))
+                self.plainTextEdit.appendPlainText('\n%s received %s bytes:' % (dt, len(result)))
+                self.plainTextEdit.appendPlainText(str(result))
+                h = ''
+                for i in result:
+                    h += hex(i) + ' '
+                self.plainTextEdit.appendPlainText(h)
+        except:
+            log_exception(self.logger)
 
 
 def dts():
