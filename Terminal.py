@@ -1,7 +1,11 @@
 # coding: utf-8
+import sys;
+
+from ComPort import ComPort
+
+sys.path.append('../TangoUtils')
 from datetime import datetime
 import os.path
-import sys
 import time
 
 import serial
@@ -10,9 +14,7 @@ from PyQt5 import uic
 from PyQt5.QtCore import QTimer, QSize, QPoint
 import PyQt5.QtGui as QtGui
 
-from TangoUtils import restore_settings, save_settings
-
-sys.path.append('../TangoUtils')
+from QtUtils import restore_settings, save_settings
 from config_logger import config_logger
 from log_exception import log_exception
 
@@ -77,9 +79,12 @@ class MainWindow(QMainWindow):
         try:
             self.port = str(self.lineEdit.text())
             self.baud = int(self.lineEdit_2.text())
-            self.com = serial.Serial(self.port, baudrate=self.baud, timeout=0)
-            self.connected = True
-            self.plainTextEdit_2.appendPlainText('%s Port %s connected successfully' % (dts(), self.port))
+            self.com = ComPort(self.port, baudrate=self.baud, timeout=0)
+            self.connected = self.com.ready
+            if self.ready:
+                self.plainTextEdit_2.appendPlainText('%s Port %s connected successfully' % (dts(), self.port))
+            else:
+                self.plainTextEdit_2.setPlainText('Port %s connection error' % self.port)
         except:
             self.plainTextEdit_2.setPlainText('Port %s connection error' % self.port)
 
