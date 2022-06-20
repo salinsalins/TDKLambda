@@ -37,6 +37,7 @@ class TDKLambda:
         self.addr = addr
         self.check = checksum
         self.auto_addr = auto_addr
+        self.protocol = kwargs.get('protocol', 'GEN')   # 'GEN' or "SCPI'
         # configure logger
         self.logger = kwargs.get('logger', config_logger())
         # timeouts
