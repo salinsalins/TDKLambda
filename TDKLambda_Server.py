@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
-import sys; sys.path.append('../TangoUtils')
+import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
+
 import logging
 import time
 from math import isnan
@@ -11,7 +12,12 @@ from tango import DevState
 from tango.server import attribute, command
 
 from TDKLambda import TDKLambda
+from IT6900 import IT6900
 from TangoServerPrototype import TangoServerPrototype
+
+IT6900.ID_OK = 'TDK_LAMBDA'
+IT6900.DEVICE_NAME = 'TDK_LAMBDA Genesys+'
+IT6900.DEVICE_FAMILY = 'TDK_LAMBDA Genesys+ family Power Supply'
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'TDK Lambda Genesis series PS Python Tango Server'
@@ -91,10 +97,14 @@ class TDKLambda_Server(TangoServerPrototype):
         port = self.config.get('port', 'COM3')
         addr = self.config.get('addr', 6)
         baud = self.config.get('baudrate', 115200)
+        protocol = self.config.get('protocol', 'GEN')
         kwargs['baudrate'] = baud
         kwargs['logger'] = self.logger
-        # create TDKLambda device
-        self.tdk = TDKLambda(port, addr, **kwargs)
+        if protocol == 'GEN':
+            # create TDKLambda device
+            self.tdk = TDKLambda(port, addr, **kwargs)
+        else:
+            self.tdk = IT6900(port, addr, **kwargs)
         # add device to list
         if self not in TDKLambda_Server.device_list:
             TDKLambda_Server.device_list.append(self)
