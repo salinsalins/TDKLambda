@@ -11,7 +11,7 @@ from tango import AttrQuality, AttrWriteType, DispLevel
 from tango import DevState
 from tango.server import attribute, command
 
-from TDKLambda import TDKLambda
+from TDKLambda import TDKLambda, TDKLambda_SCPI
 from IT6900 import IT6900_Lambda
 from TangoServerPrototype import TangoServerPrototype
 
@@ -100,7 +100,7 @@ class TDKLambda_Server(TangoServerPrototype):
             # create TDKLambda device
             self.tdk = TDKLambda(port, addr, **kwargs)
         else:
-            self.tdk = IT6900_Lambda(port, addr, **kwargs)
+            self.tdk = TDKLambda_SCPI(port, addr, **kwargs)
         # add device to list
         if self not in TDKLambda_Server.device_list:
             TDKLambda_Server.device_list.append(self)
