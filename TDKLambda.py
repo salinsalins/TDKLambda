@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
 import time
 from threading import Lock
 
@@ -8,6 +8,7 @@ from serial import SerialTimeoutException
 
 from ComPort import ComPort
 from EmultedTDKLambdaAtComPort import EmultedTDKLambdaAtComPort
+from IT6900 import IT6900
 from config_logger import config_logger
 from log_exception import log_exception
 
@@ -483,9 +484,37 @@ class TDKLambda:
         return self.read_device_id().find('LAMBDA') >= 0
 
 
+class TDKLambda_SCPI(IT6900):
+    ID_OK = 'TDK-LAMBDA'
+    DEVICE_NAME = 'TDK-LAMBDA Genesys+'
+    DEVICE_FAMILY = 'TDK-LAMBDA Genesys+ family Power Supply'
+
+    def __init__(self, port, addr, **kwargs):
+        super().__init__(port, addr, **kwargs)
+        self.addr = addr
+        self.check = kwargs.pop('checksum', False)
+        self.auto_addr = kwargs.pop('auto_addr', True)
+        self.protocol = kwargs.pop('protocol', 'GEN')   # 'GEN' or "SCPI'
+        # timeouts
+        self.read_timeout = kwargs.pop('read_timeout', 0.5)
+        self.min_read_time = self.read_timeout
+        self.time = time.time()
+        self.suspend_to = time.time()
+        self.suspend_flag = False
+
+    def read_all(self):
+        v1 = self.read_voltage()
+        v2 = self.read_programmed_voltage()
+        v3 = self.read_current()
+        v4 = self.read_programmed_current()
+        return [v1, v2, v3, v4, self.max_voltage, self.max_current]
+
+    def alive(self):
+        return self.id_ok(self.read_device_id())
+
 if __name__ == "__main__":
-    pd1 = TDKLambda("FAKECOM7", 7)
-    pd2 = TDKLambda("FAKECOM7", 7)
+    pd1 = TDKLambda("FAKECOM7", 6)
+    pd2 = TDKLambda_SCPI("192.168.1.202:8003", 7)
     t_0 = time.time()
     v1 = pd1.read_current()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
