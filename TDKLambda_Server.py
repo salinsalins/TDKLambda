@@ -181,7 +181,7 @@ class TDKLambda_Server(TangoServerPrototype):
                 self.set_running()
             else:
                 msg = '%s:%d Error switch output' % (self.tdk.port, self.tdk.addr)
-                self.log_exception(msg)
+                self.log_exception(self.logger, msg)
                 result = False
                 self.set_fault()
         return result
