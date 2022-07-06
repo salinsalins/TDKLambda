@@ -263,7 +263,7 @@ class TDKLambda_Server(TangoServerPrototype):
             result = False
             self.set_fault()
         else:
-            result = self.tdk.write_value(b'PV', value)
+            result = self.tdk.write_voltage(value)
         if result:
             self.programmed_voltage.set_quality(AttrQuality.ATTR_VALID)
             self.set_running()
@@ -282,7 +282,7 @@ class TDKLambda_Server(TangoServerPrototype):
             result = False
             self.set_fault()
         else:
-            result = self.tdk.write_value(b'PC', value)
+            result = self.tdk.write_current(value)
         if result:
             self.programmed_current.set_quality(AttrQuality.ATTR_VALID)
             self.set_running()
