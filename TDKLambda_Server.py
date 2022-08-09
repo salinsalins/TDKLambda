@@ -12,7 +12,6 @@ from tango import DevState
 from tango.server import attribute, command
 
 from TDKLambda import TDKLambda, TDKLambda_SCPI
-from IT6900 import IT6900_Lambda
 from TangoServerPrototype import TangoServerPrototype
 
 ORGANIZATION_NAME = 'BINP'
