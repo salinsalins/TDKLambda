@@ -308,14 +308,14 @@ class TDKLambda_Server(TangoServerPrototype):
         super().set_fault(msg)
 
     @command
-    def Reset(self):
+    def reset_ps(self):
         msg = '%s:%d Reset TDKLambda PS' % (self.tdk.port, self.tdk.addr)
         self.info(msg)
         self.tdk._send_command(b'RST\r')
 
-    @command(dtype_in=str, doc_in='Directly send command to the device',
-             dtype_out=str, doc_out='Response from device without final CR')
-    def SendCommand(self, cmd):
+    @command(dtype_in=str, doc_in='Directly send command to the TDKLambda PS',
+             dtype_out=str, doc_out='Response from TDKLambda PS without final <CR>')
+    def send_command(self, cmd):
         self.tdk.send_command(cmd)
         rsp = self.tdk.response.decode()
         msg = '%s:%d %s -> %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
@@ -328,12 +328,12 @@ class TDKLambda_Server(TangoServerPrototype):
         return rsp
 
     @command
-    def TurnOn(self):
+    def turn_on(self):
         # turn on the actual power supply here
         self.write_output_state(True)
 
     @command
-    def TurnOff(self):
+    def turn_off(self):
         # turn off the actual power supply here
         self.write_output_state(False)
         # self.set_state(DevState.OFF)

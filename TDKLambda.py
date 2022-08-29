@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import logging
 import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
 import time
 from threading import Lock
@@ -180,7 +181,7 @@ class TDKLambda:
         else:  # it was not suspended
             return False
 
-    def _read(self, size=1, timeout=None):
+    def _read(self, size=1, timeout=5.0):
         result = b''
         t0 = time.perf_counter()
         while len(result) < size:
@@ -189,17 +190,13 @@ class TDKLambda:
                 result += r
             else:
                 if timeout is not None and time.perf_counter() - t0 > timeout:
-                    self.logger.info('Reading timeout')
-                    raise SerialTimeoutException('Reading timeout')
+                    raise SerialTimeoutException('Reading timeout %s' % result)
         return result
 
     def read(self, size=1):
         try:
             result = self._read(size, self.read_timeout)
             return result
-        except SerialTimeoutException:
-            self.logger.info('Reading timeout')
-            return b''
         except:
             log_exception(self)
             return b''
@@ -209,7 +206,7 @@ class TDKLambda:
         t0 = time.perf_counter()
         while terminator not in result:
             r = self.read(1)
-            if len(r) <= 0:
+            if not r:
                 self.suspend()
                 return result
             result += r
@@ -218,14 +215,15 @@ class TDKLambda:
             if time.perf_counter() - t0 > self.read_timeout:
                 self.suspend()
                 break
-        self.logger.debug('%s %s bytes in %4.0f ms', result, len(result), (time.perf_counter() - t0) * 1000.0)
+        dt = (time.perf_counter() - t0) * 1000.0
+        self.logger.debug('%s %s bytes in %4.0f ms', result, len(result), dt)
         return result
 
-    def read_response(self):
-        result = self.read_until(CR)
+    def read_response(self, terminator=CR):
+        result = self.read_until(terminator)
         self.response = result
-        if CR not in result:
-            self.logger.error('Response %s without CR', result)
+        if terminator not in result:
+            self.logger.error('Response %s without %s', result, terminator)
             return False
         # if checksum used
         if not self.check:
@@ -238,7 +236,7 @@ class TDKLambda:
         else:
             cs = self.checksum(result[:m])
             if result[m + 1:] != cs:
-                self.logger.error('Incorrect checksum')
+                self.logger.error('Incorrect checksum in response')
                 return False
             self.response = result[:m]
             return True
