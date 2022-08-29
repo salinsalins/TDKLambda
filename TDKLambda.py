@@ -208,7 +208,7 @@ class TDKLambda:
             r = self.read(1)
             if not r:
                 self.suspend()
-                return result
+                break
             result += r
             if size is not None and len(result) >= size:
                 break
@@ -276,7 +276,7 @@ class TDKLambda:
             log_exception(self)
             return False
 
-    def _send_command(self, cmd):
+    def _send_command(self, cmd, terminator=CR):
         self.command = cmd
         self.response = b''
         if self.state < 0:
@@ -288,7 +288,7 @@ class TDKLambda:
                 self.logger.debug('Error during write')
                 return False
             # read response (to CR by default)
-            result = self.read_response()
+            result = self.read_response(terminator)
         dt = time.perf_counter() - t0
         if result and dt < self.min_read_time:
             self.min_read_time = dt
@@ -296,15 +296,16 @@ class TDKLambda:
         return result
 
     def _set_addr(self):
+        if not hasattr(self.com, 'current_addr'):
+            self.com.current_addr = -1
         with self.com.lock:
-            a0 = self.com.current_addr
             result = self._send_command(b'ADR %d\r' % self.addr)
             if result and self.check_response(b'OK'):
+                self.logger.debug('Address %d -> %d' % (self.com.current_addr, self.addr))
                 self.com.current_addr = self.addr
-                self.logger.debug('Address %d -> %d' % (a0, self.addr))
                 return True
             else:
-                self.logger.error('Error set address %d -> %d' % (a0, self.addr))
+                self.logger.error('Error set address %d -> %d' % (self.com.current_addr, self.addr))
                 self.com.current_addr = -1
                 return False
 
@@ -318,10 +319,10 @@ class TDKLambda:
             v = float('Nan')
         return v
 
-    def read_value(self, cmd, v_type=type(str)):
+    def read_value(self, cmd, v_type):
         try:
             if self.send_command(cmd):
-                v = v_type(self.response[:-1])
+                v = v_type(self.response[:-1].decode())
             else:
                 v = None
         except:
@@ -337,7 +338,7 @@ class TDKLambda:
             return True
         if response.upper() in (b'OFF', b'0'):
             return False
-        self.check_response(response=b'Not boolean:' + response)
+        self.logger.info('Not boolean response %s ', response)
         return False
 
     def write_value(self, cmd, value, expect=b'OK'):
@@ -362,7 +363,7 @@ class TDKLambda:
         if self.is_suspended():
             self.command = cmd
             self.response = b''
-            self.logger.debug('Command %s to suspended device ignored', cmd)
+            self.logger.debug('Ignored command %s to suspended device', cmd)
             return False
         try:
             # unify command
