@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
+import sys;
+
+sys.path.append('../TangoUtils');
+sys.path.append('../IT6900')
 import time
 from threading import Lock
 
@@ -27,6 +30,13 @@ class TDKLambdaException(Exception):
 
 
 SUSPEND_TIME = 5.0
+STATE = {
+    0: 'Pre init state',
+    1: 'Initialized',
+    -1: 'Wrong address',
+    -2: 'Address is in use',
+    -3: 'Address set error',
+    -4: 'LAMBDA device is not recognized'}
 
 
 class TDKLambda:
@@ -39,7 +49,7 @@ class TDKLambda:
         self.addr = addr
         self.check = checksum
         self.auto_addr = auto_addr
-        self.protocol = kwargs.get('protocol', 'GEN')   # 'GEN' or "SCPI'
+        self.protocol = kwargs.get('protocol', 'GEN')  # 'GEN' or "SCPI'
         # configure logger
         self.logger = kwargs.get('logger', config_logger())
         # timeouts
@@ -292,7 +302,7 @@ class TDKLambda:
         dt = time.perf_counter() - t0
         if result and dt < self.min_read_time:
             self.min_read_time = dt
-        self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt*1000.)
+        self.logger.debug('%s -> %s %s %4.0f ms', cmd, self.response, result, dt * 1000.)
         return result
 
     def _set_addr(self):
@@ -493,7 +503,7 @@ class TDKLambda_SCPI(IT6900):
         self.addr = addr
         self.check = kwargs.pop('checksum', False)
         self.auto_addr = kwargs.pop('auto_addr', True)
-        self.protocol = kwargs.pop('protocol', 'GEN')   # 'GEN' or "SCPI'
+        self.protocol = kwargs.pop('protocol', 'GEN')  # 'GEN' or "SCPI'
         # timeouts
         self.read_timeout = kwargs.pop('read_timeout', 0.5)
         self.min_read_time = self.read_timeout
@@ -510,6 +520,7 @@ class TDKLambda_SCPI(IT6900):
 
     def alive(self):
         return self.id_ok(self.read_device_id())
+
 
 if __name__ == "__main__":
     pd1 = TDKLambda("FAKECOM7", 6)
