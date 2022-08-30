@@ -122,9 +122,8 @@ class TDKLambda:
             except:
                 self.logger.warning('Can not set max values')
         else:
-            self.suspend()
-            msg = 'TDKLambda: device was not initialized properly'
-            self.logger.info(msg)
+            msg = 'LAMBDA device is not recognized'
+            self.logger.error(msg)
             self.state = -4
             return
         # msg = 'TDKLambda: %s SN:%s has been initialized' % (self.id, self.sn)
