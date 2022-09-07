@@ -47,13 +47,14 @@ class AsyncioDevice(Device):
         await super().init_device()
         self.value = time.time()
         self.set_state(DevState.RUNNING)
+        self.set_status("Device is RUNNING")
         self.task = asyncio.create_task(loop_task(), name='asyncio.all_tasks')
 
     async def dev_state(self):
-        return DevState.RUNNING
+        return self.get_state()
 
     async def dev_status(self):
-        return 'Device is at RUNNING! state'
+        return self.get_status()
 
     # @attribute
     # async def test_attribute2(self):
@@ -88,7 +89,7 @@ class AsyncioDevice(Device):
         # await asyncio.sleep(0)
         # dt = (time.time() - t0) * 1000.0
         # logger.info('Read mark3 %s %d', self, dt)
-        await asyncio.sleep(0.25)
+        #await asyncio.sleep(0.25)
         # time.sleep(0.25)
         dt = (time.time() - t0) * 1000.0
         logger.info('Read exit %s %d', self, dt)
