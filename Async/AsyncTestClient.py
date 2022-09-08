@@ -9,7 +9,7 @@ dp1 = tango.DeviceProxy(dn1)
 ping1 = dp1.ping()
 print(dn1, 'ping', ping1, 's')
 an = 'test_attribute'
-for i in range(1000):
+for i in range(10):
     t0 = time.time()
     v1 = dp1.read_attribute(an)
     dt = (time.time()-t0)*1000.0

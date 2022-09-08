@@ -48,7 +48,7 @@ class AsyncioDevice(Device):
         self.value = time.time()
         self.set_state(DevState.RUNNING)
         self.set_status("Device is RUNNING")
-        self.task = asyncio.create_task(loop_task(), name='asyncio.all_tasks')
+        # self.task = asyncio.create_task(loop_task(), name='asyncio.all_tasks')
 
     async def dev_state(self):
         return self.get_state()
@@ -89,7 +89,7 @@ class AsyncioDevice(Device):
         # await asyncio.sleep(0)
         # dt = (time.time() - t0) * 1000.0
         # logger.info('Read mark3 %s %d', self, dt)
-        #await asyncio.sleep(0.25)
+        await asyncio.sleep(0.25)
         # time.sleep(0.25)
         dt = (time.time() - t0) * 1000.0
         logger.info('Read exit %s %d', self, dt)

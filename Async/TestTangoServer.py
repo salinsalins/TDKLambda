@@ -10,7 +10,7 @@ from tango.server import Device, attribute
 class TestDevice(Device):
 
     def init_device(self):
-        await super().init_device()
+        super().init_device()
         self.value = 0.0
         self.set_state(DevState.RUNNING)
 
@@ -19,17 +19,17 @@ class TestDevice(Device):
         t0 = time.time()
         logger.info('Read entry %s', self)
         dt = (time.time() - t0) * 1000.0
-        logger.info('Read exit %s', self, int(dt))
+        logger.info('Read exit %s %d', self, int(dt))
         return self.value
 
     @test_attribute.write
-    async def write_test_attribute(self, value):
+    def write_test_attribute(self, value):
         t0 = time.time()
         logger.info('Write entry %s', self)
         self.value = value
         # time.sleep(0.5)
         dt = (time.time() - t0) * 1000.0
-        logger.info('Write exit %s', self, int(dt))
+        logger.info('Write exit %s %d', self, int(dt))
         return ('Write of %s finished in %d ms' % (value, dt))
 
 
