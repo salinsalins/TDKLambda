@@ -172,7 +172,7 @@ class TDKLambda_Server(TangoServerPrototype):
             self.debug(msg)
             self.output_state.set_quality(AttrQuality.ATTR_INVALID)
             result = False
-            self.set_fault()
+            self.set_fault(msg)
         else:
             if self.tdk.write_output(value):
                 self.output_state.set_quality(AttrQuality.ATTR_VALID)
@@ -182,7 +182,7 @@ class TDKLambda_Server(TangoServerPrototype):
                 msg = '%s:%d Error switch output' % (self.tdk.port, self.tdk.addr)
                 self.log_exception(self.logger, msg)
                 result = False
-                self.set_fault()
+                self.set_fault(msg)
         return result
 
     def read_all(self):
@@ -295,16 +295,17 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def set_running(self, msg=None):
         # self.error_count = 0
-        super().set_running()
+        super().set_running(msg)
 
     def set_fault(self, msg=None):
         # self.error_count += 1
         # if self.error_count > 5:
         #     super().set_fault()
-        if self.tdk.initialized():
-            msg = 'R/W error!'
-        else:
-            msg = 'TDKLambda was not initialized'
+        if not msg:
+            if self.tdk.initialized():
+                msg = 'R/W error!'
+            else:
+                msg = 'TDKLambda was not initialized'
         super().set_fault(msg)
 
     @command
