@@ -51,6 +51,7 @@ class TDKLambda:
         self.logger = kwargs.get('logger', config_logger())
         # timeouts
         self.read_timeout = kwargs.pop('read_timeout', 0.5)
+        self.read_reties = kwargs.pop('read_reties', 1)
         self.min_read_time = self.read_timeout
         # rest arguments for COM port creation
         self.kwargs = kwargs
@@ -187,7 +188,7 @@ class TDKLambda:
         else:  # it was not suspended
             return False
 
-    def _read(self, size=1, timeout=5.0):
+    def _read(self, size=1, timeout=1.0):
         result = b''
         t0 = time.perf_counter()
         while len(result) < size:
@@ -218,9 +219,9 @@ class TDKLambda:
             result += r
             if size is not None and len(result) >= size:
                 break
-            if time.perf_counter() - t0 > self.read_timeout:
-                self.suspend()
-                break
+            # if time.perf_counter() - t0 > self.read_timeout:
+            #     self.suspend()
+            #     break
         dt = (time.perf_counter() - t0) * 1000.0
         self.logger.debug('%s %s bytes in %4.0f ms', result, len(result), dt)
         return result
@@ -235,6 +236,9 @@ class TDKLambda:
         if not self.check:
             return True
         # checksum calculation
+        return self.verify_checksum(result)
+
+    def verify_checksum(self, result):
         m = result.find(b'$')
         if m < 0:
             self.logger.error('No expected checksum in response')
@@ -380,9 +384,7 @@ class TDKLambda:
             if not cmd.endswith(CR):
                 cmd += CR
             # add checksum
-            if self.check:
-                cs = self.checksum(cmd[:-1])
-                cmd = b'%s$%s\r' % (cmd[:-1], cs)
+            cmd = self.add_checksum(cmd)
             with self.com.lock:
                 if self.auto_addr and self.com.current_addr != self.addr:
                     result = self._set_addr()
@@ -393,13 +395,17 @@ class TDKLambda:
                 result = self._send_command(cmd)
                 if result:
                     return True
-                self.logger.warning('Command %s error, repeat' % cmd)
-                result = self._send_command(cmd)
-                if result:
-                    return True
-                self.logger.error('Repeated command %s error' % cmd)
+                self.logger.warning('Send command %s error' % cmd)
+                n = self.read_reties
+                while n > 1:
+                    n -= 1
+                    result = self._send_command(cmd)
+                    if result:
+                        return True
+                    self.logger.warning('Repeated send command %s error' % cmd)
                 self.suspend()
                 self.response = b''
+                self.logger.error('Can not send command %s' % cmd)
                 return False
         except:
             log_exception(self)
@@ -408,6 +414,12 @@ class TDKLambda:
             return False
 
     # high level read commands ***************************
+    def add_checksum(self, cmd):
+        if self.check:
+            cs = self.checksum(cmd[:-1])
+            cmd = b'%s$%s\r' % (cmd[:-1], cs)
+        return cmd
+
     def read_device_id(self):
         try:
             if self.send_command(b'IDN?'):
