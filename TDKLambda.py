@@ -511,7 +511,7 @@ class TDKLambda_SCPI(IT6900):
         self.addr = addr
         self.check = kwargs.pop('checksum', False)
         self.auto_addr = kwargs.pop('auto_addr', True)
-        self.protocol = kwargs.pop('protocol', 'GEN')  # 'GEN' or "SCPI'
+        self.protocol = kwargs.pop('protocol', 'SCPI')  # 'GEN' or 'SCPI'
         # timeouts
         self.read_timeout = kwargs.pop('read_timeout', 0.5)
         self.min_read_time = self.read_timeout
@@ -527,7 +527,7 @@ class TDKLambda_SCPI(IT6900):
         return [v1, v2, v3, v4, self.max_voltage, self.max_current]
 
     def alive(self):
-        return self.id_ok(self.read_device_id())
+        return self.ID_OK in self.read_device_id()
 
 
 if __name__ == "__main__":

@@ -79,12 +79,12 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def init_device(self):
         super().init_device()
-        self.info('Initialization')
+        self.info('TDKLambda Initialization')
         self.configure_tango_logging()
         self.error_count = 0
         self.values = [float('NaN')] * 6
         self.time = time.time() - 100.0
-        self.set_state(DevState.INIT)
+        self.set_state(DevState.INIT, 'TDKLambda Initialization')
         self.last_level = logging.INFO
         self.READING_VALID_TIME = self.config.get('reading_valid_time', self.READING_VALID_TIME)
         # get port and address from property
@@ -95,8 +95,8 @@ class TDKLambda_Server(TangoServerPrototype):
         kwargs['baudrate'] = baud
         kwargs['logger'] = self.logger
         protocol = self.config.pop('protocol', 'GEN')
+        # create TDKLambda device
         if protocol == 'GEN':
-            # create TDKLambda device
             self.tdk = TDKLambda(port, addr, **kwargs)
         else:
             self.tdk = TDKLambda_SCPI(port, addr, **kwargs)
@@ -110,8 +110,8 @@ class TDKLambda_Server(TangoServerPrototype):
                 self.programmed_voltage.set_max_value(self.tdk.max_voltage)
             if self.tdk.max_current < float('inf'):
                 self.programmed_current.set_max_value(self.tdk.max_current)
-            self.programmed_voltage.set_write_value(self.read_programmed_voltage(self.programmed_voltage))
-            self.programmed_current.set_write_value(self.read_programmed_current(self.programmed_current))
+            self.programmed_voltage.set_write_value(self.read_programmed_voltage())
+            self.programmed_current.set_write_value(self.read_programmed_current())
             self.output_state.set_write_value(self.read_output_state())
             # set state to running
             self.set_state(DevState.RUNNING)
@@ -158,7 +158,7 @@ class TDKLambda_Server(TangoServerPrototype):
             else:
                 qual = AttrQuality.ATTR_INVALID
                 value = False
-                self.set_fault()
+                self.set_fault('Output read error')
         else:
             value = False
             qual = AttrQuality.ATTR_INVALID
@@ -172,7 +172,7 @@ class TDKLambda_Server(TangoServerPrototype):
             self.debug(msg)
             self.output_state.set_quality(AttrQuality.ATTR_INVALID)
             result = False
-            self.set_fault()
+            self.set_fault(msg)
         else:
             if self.tdk.write_output(value):
                 self.output_state.set_quality(AttrQuality.ATTR_VALID)
@@ -182,7 +182,7 @@ class TDKLambda_Server(TangoServerPrototype):
                 msg = '%s:%d Error switch output' % (self.tdk.port, self.tdk.addr)
                 self.log_exception(self.logger, msg)
                 result = False
-                self.set_fault()
+                self.set_fault(msg)
         return result
 
     def read_all(self):
@@ -227,10 +227,11 @@ class TDKLambda_Server(TangoServerPrototype):
             self.set_running()
         return val
 
-    def read_programmed_voltage(self, attr):
+    def read_programmed_voltage(self):
         if time.time() - self.time > self.READING_VALID_TIME:
             self.read_all()
         val = self.values[1]
+        attr = self.programmed_voltage
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
@@ -241,10 +242,11 @@ class TDKLambda_Server(TangoServerPrototype):
             self.set_running()
         return val
 
-    def read_programmed_current(self, attr):
+    def read_programmed_current(self):
         if time.time() - self.time > self.READING_VALID_TIME:
             self.read_all()
         val = self.values[3]
+        attr = self.programmed_current
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
@@ -295,16 +297,17 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def set_running(self, msg=None):
         # self.error_count = 0
-        super().set_running()
+        super().set_running(msg)
 
     def set_fault(self, msg=None):
         # self.error_count += 1
         # if self.error_count > 5:
         #     super().set_fault()
-        if self.tdk.initialized():
-            msg = 'R/W error!'
-        else:
-            msg = 'TDKLambda was not initialized'
+        if not msg:
+            if self.tdk.initialized():
+                msg = 'R/W error!'
+            else:
+                msg = 'TDKLambda was not initialized'
         super().set_fault(msg)
 
     @command
