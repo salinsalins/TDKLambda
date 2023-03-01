@@ -128,12 +128,11 @@ class TDKLambda:
         self.logger.debug(f'TDKLambda at {self.port}:{self.addr} has been initialized')
 
     def __del__(self):
-        # self.logger.info('Entry')
         with TDKLambda.dev_lock:
             if self in TDKLambda.devices:
                 self.close_com_port()
                 TDKLambda.devices.remove(self)
-                self.logger.debug(f'TDKLambda at {self.port}:{self.addr} has been deleted')
+                self.logger.debug(f'Device at {self.port}:{self.addr} has been deleted')
 
     def create_com_port(self):
         self.com = ComPort(self.port, emulated=EmultedTDKLambdaAtComPort, **self.kwargs)
