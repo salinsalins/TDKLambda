@@ -1,12 +1,16 @@
-import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
+import sys;
+import time
+
+sys.path.append('../TangoUtils');
+sys.path.append('../IT6900')
 from TDKLambda import TDKLambda
 
 
 class Adam(TDKLambda):
 
     def init(self):
-        if isinstance(self.adr, int):
-            self.adr = ('%X' % self.adr).encode()
+        if isinstance(self.addr, int):
+            self.addr = ('%02X' % self.addr)[:2].encode()
             self.head_ok = b'!' + self.addr
             self.head_err = b'?' + self.addr
         self.suspend_to = 0.0
@@ -58,3 +62,21 @@ class Adam(TDKLambda):
         except:
             return 'Unknown Device'
 
+
+if __name__ == "__main__":
+    pd1 = Adam("COM12", 16, baudrate=38400)
+    pd2 = Adam("COM12", 11, baudrate=38400)
+
+    t_0 = time.time()
+    v1 = pd1.read_device_id()
+    dt1 = int((time.time() - t_0) * 1000.0)  # ms
+    print(pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+
+    t_0 = time.time()
+    v2 = pd2.read_device_id()
+    dt2 = int((time.time() - t_0) * 1000.0)  # ms
+    print(pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2, '%5.3f' % pd2.min_read_time)
+
+    del pd1
+    del pd2
+    print('Finished')
