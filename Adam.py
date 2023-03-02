@@ -45,10 +45,25 @@ class Adam(TDKLambda):
         return True
 
     def send_command(self, cmd, prefix=b'$', addr=True) -> bool:
+        if isinstance(cmd, str):
+            cmd = cmd.encode()
         cmd_out = prefix
         if addr:
             cmd_out += self.addr_hex
         return super().send_command(cmd_out + cmd)
+
+    def check_response(self, expected=b'', response=None):
+        if response is None:
+            response = self.response
+        if not expected:
+            expected = self.head_ok
+        if not response.startswith(expected):
+            if response.startswith(self.head_err):
+                msg = 'Error response %s' % response
+            msg = 'Unexpected response %s (not %s)' % (response, expected)
+            self.logger.info(msg)
+            return False
+        return True
 
     def read_device_id(self):
         try:
@@ -59,6 +74,25 @@ class Adam(TDKLambda):
         except:
             return 'Unknown Device'
 
+    def read_di(self, chan=None):
+        v = None
+        try:
+            if self.send_command(b'6'):
+                if not self.check_response(expected=b'!'):
+                    return None
+                if chan is None:
+                    chan = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+                if isinstance(chan, (list, tuple)):
+                    v = []
+                    for i in chan:
+                        v.append(bool(int(self.response[1:3], 16) & (2 ** i)))
+                else:
+                    v = bool(int(self.response[1:3], 16) & (2 ** chan))
+        except:
+            self.logger.info('Wrong response %s format', self.response)
+            return None
+        return v
+
 
 if __name__ == "__main__":
     pd1 = Adam("COM12", 16, baudrate=38400)
@@ -67,14 +101,18 @@ if __name__ == "__main__":
     v1 = pd1.read_device_id()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
     pd1.logger.debug('test')
-    a='%s %s %s %s %s %s'%(pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+    a = '%s %s %s %s %s %s' % (
+    pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
     pd1.logger.debug(a)
 
     t_0 = time.time()
     v2 = pd2.read_device_id()
     dt2 = int((time.time() - t_0) * 1000.0)  # ms
     pd2.logger.debug('test')
-    pd2.logger.debug('%s %s %s %s %s %s', pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2, '%5.3f' % pd2.min_read_time)
+    pd2.logger.debug('%s %s %s %s %s %s', pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2,
+                     '%5.3f' % pd2.min_read_time)
+    v2 = pd2.read_di((0,1,2,3,4,5,6))
+    print(v2, pd2.response)
 
     del pd1
     del pd2
