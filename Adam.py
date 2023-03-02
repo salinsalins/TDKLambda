@@ -71,6 +71,8 @@ class Adam(TDKLambda):
                 return self.response[:-1]
             else:
                 return 'Unknown Device'
+        except KeyboardInterrupt:
+            raise
         except:
             return 'Unknown Device'
 
@@ -78,20 +80,37 @@ class Adam(TDKLambda):
         v = None
         try:
             if self.send_command(b'6'):
-                if not self.check_response(expected=b'!'):
+                if not self.response.startswith(b'!') or not self.response.endswith(b'00\r'):
+                    self.logger.info('Wrong response format %s', self.response)
                     return None
+                val = self.response[1:-3]
                 if chan is None:
-                    chan = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+                    chan = [i for i in range(len(val) * 8)]
                 if isinstance(chan, (list, tuple)):
                     v = []
                     for i in chan:
-                        v.append(bool(int(self.response[1:3], 16) & (2 ** i)))
+                        v.append(bool(int(val, 16) & (2 ** i)))
                 else:
-                    v = bool(int(self.response[1:3], 16) & (2 ** chan))
+                    v = bool(int(val, 16) & (2 ** chan))
+        except KeyboardInterrupt:
+            raise
         except:
             self.logger.info('Wrong response %s format', self.response)
             return None
         return v
+
+    def write_do(self, chan, value):
+        cmd = b'#' + self.addr_hex + (b'1%01X' % chan)
+        try:
+            if self.send_command(cmd + b'0%01X' % value, prefix=b'', addr=False):
+                if self.response.startswith(b'>'):
+                    return True
+                self.logger.info('Wrong response %s', self.response)
+                return False
+        except KeyboardInterrupt:
+            raise
+        except:
+            self.logger.info('Wrong response %s', self.response)
 
 
 if __name__ == "__main__":
@@ -111,7 +130,7 @@ if __name__ == "__main__":
     pd2.logger.debug('test')
     pd2.logger.debug('%s %s %s %s %s %s', pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2,
                      '%5.3f' % pd2.min_read_time)
-    v2 = pd2.read_di((0,1,2,3,4,5,6))
+    v2 = pd2.read_di(3)
     print(v2, pd2.response)
 
     del pd1

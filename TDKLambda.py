@@ -203,6 +203,8 @@ class TDKLambda:
         try:
             result = self._read(size, self.read_timeout)
             return result
+        except KeyboardInterrupt:
+            raise
         except:
             log_exception(self)
             return b''
@@ -276,6 +278,8 @@ class TDKLambda:
             dt = (time.perf_counter() - t0) * 1000.0
             self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
             return result
+        except KeyboardInterrupt:
+            raise
         except SerialTimeoutException:
             self.logger.error('Writing timeout')
             dt = (time.perf_counter() - t0) * 1000.0
@@ -323,6 +327,8 @@ class TDKLambda:
             if not self.send_command(cmd):
                 return float('Nan')
             v = float(self.response[:-1])
+        except KeyboardInterrupt:
+            raise
         except:
             self.logger.debug('%s is not a float' % self.response)
             v = float('Nan')
@@ -334,6 +340,8 @@ class TDKLambda:
                 v = v_type(self.response[:-1].decode())
             else:
                 v = None
+        except KeyboardInterrupt:
+            raise
         except:
             self.logger.info('Can not convert %s to %s', self.response, v_type)
             v = None
@@ -406,6 +414,8 @@ class TDKLambda:
                 self.response = b''
                 self.logger.error('Can not send command %s' % cmd)
                 return False
+        except KeyboardInterrupt:
+            raise
         except:
             log_exception(self)
             self.suspend()
@@ -425,6 +435,8 @@ class TDKLambda:
                 return self.response[:-1].decode()
             else:
                 return 'Unknown Device'
+        except KeyboardInterrupt:
+            raise
         except:
             return 'Unknown Device'
 
@@ -435,6 +447,8 @@ class TDKLambda:
                 return serial_number
             else:
                 return ''
+        except KeyboardInterrupt:
+            raise
         except:
             return ''
 
