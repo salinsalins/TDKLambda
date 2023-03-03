@@ -44,13 +44,13 @@ class Adam(TDKLambda):
     def verify_checksum(self, result):
         return True
 
-    def send_command(self, cmd, prefix=b'$', addr=True) -> bool:
+    def send_command(self, cmd, prefix=b'$', addr=True, value=b'') -> bool:
         if isinstance(cmd, str):
             cmd = cmd.encode()
         cmd_out = prefix
         if addr:
             cmd_out += self.addr_hex
-        return super().send_command(cmd_out + cmd)
+        return super().send_command(cmd_out + cmd + value)
 
     def check_response(self, expected=b'', response=None):
         if response is None:
@@ -60,7 +60,8 @@ class Adam(TDKLambda):
         if not response.startswith(expected):
             if response.startswith(self.head_err):
                 msg = 'Error response %s' % response
-            msg = 'Unexpected response %s (not %s)' % (response, expected)
+            else:
+                msg = 'Unexpected response %s (not %s)' % (response, expected)
             self.logger.info(msg)
             return False
         return True
@@ -99,7 +100,7 @@ class Adam(TDKLambda):
             return None
         return v
 
-    def write_do(self, chan, value):
+    def write_do(self, chan=None, value=None):
         cmd = b'#' + self.addr_hex + (b'1%01X' % chan)
         try:
             if self.send_command(cmd + b'0%01X' % value, prefix=b'', addr=False):

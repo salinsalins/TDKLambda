@@ -298,7 +298,7 @@ class TDKLambda:
         with self.com.lock:
             # write command
             if not self.write(cmd):
-                self.logger.debug('Error during write')
+                self.logger.debug('Error during write to %s', self.com.port)
                 return False
             # read response (to CR by default)
             result = self.read_response(terminator)
