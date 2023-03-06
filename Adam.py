@@ -1,5 +1,7 @@
 import sys;
 
+from log_exception import log_exception
+
 sys.path.append('../TangoUtils');
 sys.path.append('../IT6900')
 import time
@@ -77,6 +79,7 @@ ADAM_BAUDS = {
     b'0B': 230400
 }
 
+
 class Adam(TDKLambda):
 
     def init(self):
@@ -152,28 +155,46 @@ class Adam(TDKLambda):
         except:
             return b'Unknown Device'
 
-    def read_di(self, chan=None):
-        v = None
+    def read_di_do(self):
+        do = []
+        di = []
         try:
             if self.send_command(b'6'):
                 if not self.response.startswith(b'!') or not self.response.endswith(b'00\r'):
-                    self.logger.info('Wrong response format %s', self.response)
+                    self.logger.info('Wrong response %s', self.response)
                     return None
                 val = self.response[1:-3]
-                if chan is None:
-                    chan = [i for i in range(len(val) * 8)]
-                if isinstance(chan, (list, tuple)):
-                    v = []
-                    for i in chan:
-                        v.append(bool(int(val, 16) & (2 ** i)))
-                else:
-                    v = bool(int(val, 16) & (2 ** chan))
+                ival = int(val, 16)
+                for i in range(8):
+                    do.append(bool(ival & (2 ** i)))
+                    di.append(bool(ival & (2 ** (2 * i))))
         except KeyboardInterrupt:
             raise
         except:
-            self.logger.info('Wrong response %s format', self.response)
+            log_exception(self.logger, 'Error reading DI/DO')
+        return do, di
+
+    def read_di(self, chan=None):
+        try:
+            do, di = self.read_di_do()
+            if chan is None:
+                return di
+            return di[chan]
+        except KeyboardInterrupt:
+            raise
+        except:
             return None
-        return v
+
+    def read_do(self, chan=None):
+        try:
+            do, di = self.read_di_do()
+            if chan is None:
+                return do
+            return do[chan]
+        except KeyboardInterrupt:
+            raise
+        except:
+            return None
 
     def write_do(self, chan=None, value=None):
         cmd = b'#' + self.addr_hex + (b'1%01X' % chan)
@@ -193,6 +214,7 @@ class Adam(TDKLambda):
             cmd = b'#' + self.addr_hex
         else:
             cmd = b'#' + self.addr_hex + (b'%01X' % chan)
+        val = b''
         try:
             if self.send_command(cmd):
                 if not self.response.startswith(b'>') or not self.response.endswith(b'\r'):
@@ -209,6 +231,21 @@ class Adam(TDKLambda):
             self.logger.info('Wrong response %s', self.response)
             return None
         return val
+
+    def write_ao(self, chan: int, value: float):
+        # cmd = b'#' + self.addr_hex + (b'C%1d%+f' % (chan, value))
+        cmd = b'#%sC%1d%+.3f' % (self.addr_hex, chan, value)
+        try:
+            if self.send_command(cmd):
+                if not self.response.startswith(b'>') or not self.response.endswith(b'\r'):
+                    self.logger.info('Wrong response %s', self.response)
+                    return False
+            return True
+        except KeyboardInterrupt:
+            raise
+        except:
+            self.logger.info('Wrong response %s', self.response)
+            return False
 
 
 if __name__ == "__main__":
@@ -239,6 +276,8 @@ if __name__ == "__main__":
     v2 = pd1.read_ai(3)
     print('Read ai3 =', v2, pd1.response)
     v2 = pd1.read_ai()
+    print(v2, pd1.response)
+    v2 = pd1.read_di()
     print(v2, pd1.response)
 
     del pd1
