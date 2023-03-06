@@ -7,6 +7,7 @@ import time
 from TDKLambda import TDKLambda
 
 ADAM_DEVICES = {
+    b'0000': {'di': 0, 'do': 0, 'ai': 0, 'ao': 0},
     b'4055': {'di': 8, 'do': 8, 'ai': 0, 'ao': 0},
     b'4118': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
     b'4018': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0}
@@ -91,13 +92,23 @@ class Adam(TDKLambda):
             return
         # read device type
         self.id = self.read_device_id()
+        self.name = b'0000'
         if self.id.startswith(self.head_ok):
             self.state = 1
-        else:
+            name = self.id[-4:]
+            self.name = name
+            if name not in ADAM_DEVICES:
+                self.name = b'0000'
+                for key in ADAM_DEVICES:
+                    if name[:-2] == key[:-2]:
+                        self.logger.info(f'Using {key} instead of {name} for devise type')
+                        self.name = key
+                        break
+        if self.name == b'0000':
             self.logger.error(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
             return
-        self.logger.debug(f'ADAM at {self.port}:{self.addr} has been initialized')
+        self.logger.debug(f'ADAM-{self.name.decode()} at {self.port}:{self.addr} has been initialized')
 
     def _set_addr(self):
         return True

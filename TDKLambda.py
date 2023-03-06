@@ -223,8 +223,8 @@ class TDKLambda:
             # if time.perf_counter() - t0 > self.read_timeout:
             #     self.suspend()
             #     break
-        dt = (time.perf_counter() - t0) * 1000.0
-        self.logger.debug('%s %s bytes in %4.0f ms', result, len(result), dt)
+        # dt = (time.perf_counter() - t0) * 1000.0
+        # self.logger.debug('%s %s bytes in %4.0f ms', result, len(result), dt)
         return result
 
     def read_response(self, terminator=CR):
@@ -275,8 +275,8 @@ class TDKLambda:
                 result = True
             else:
                 result = False
-            dt = (time.perf_counter() - t0) * 1000.0
-            self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
+            # dt = (time.perf_counter() - t0) * 1000.0
+            # self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
             return result
         except KeyboardInterrupt:
             raise
