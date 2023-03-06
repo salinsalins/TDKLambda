@@ -192,7 +192,7 @@ class TDKLambda:
         t0 = time.perf_counter()
         while len(result) < size:
             r = self.com.read(1)
-            if len(r) > 0:
+            if r:
                 result += r
             else:
                 if timeout is not None and time.perf_counter() - t0 > timeout:
@@ -309,9 +309,9 @@ class TDKLambda:
         return result
 
     def _set_addr(self):
-        if not hasattr(self.com, 'current_addr'):
-            self.com.current_addr = -1
         with self.com.lock:
+            if not hasattr(self.com, 'current_addr'):
+                self.com.current_addr = -1
             result = self._send_command(b'ADR %d\r' % self.addr)
             if result and self.check_response(b'OK'):
                 self.logger.debug('Address %d -> %d' % (self.com.current_addr, self.addr))
@@ -331,7 +331,7 @@ class TDKLambda:
             raise
         except:
             self.logger.debug('%s is not a float' % self.response)
-            v = float('Nan')
+            return float('Nan')
         return v
 
     def read_value(self, cmd, v_type):

@@ -1,10 +1,80 @@
 import sys;
-import time
 
 sys.path.append('../TangoUtils');
 sys.path.append('../IT6900')
+import time
+
 from TDKLambda import TDKLambda
 
+ADAM_DEVICES = {
+    b'4055': {'di': 8, 'do': 8, 'ai': 0, 'ao': 0},
+    b'4118': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
+    b'4018': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0}
+}
+
+ADAM_RANGES = {
+    b'00': [-15, 15, 'mV'],
+    b'01': [-50, 50, 'mV'],
+    b'02': [-100, 100, 'mV'],
+    b'03': [-500, 500, 'mV'],
+    b'04': [-1, 1, 'V'],
+    b'05': [-2.5, 2.5, 'V'],
+    b'06': [-20, 20, 'mA'],
+    b'07': [4, 20, 'mA'],
+    b'08': [-10, 10, 'V'],
+    b'09': [-5, 5, 'V'],
+    b'0A': [-1, 1, 'V'],
+    b'0B': [-500, 500, 'mV'],
+    b'0C': [-150, 150, 'mV'],
+    b'0D': [-20, 20, 'mA'],
+    b'0E': [0, 760, 'C'],
+    b'0F': [0, 1370, 'C'],
+    b'10': [-100, 400, 'C'],
+    b'11': [0, 1000, 'C'],
+    b'12': [500, 1750, 'C'],
+    b'13': [500, 1750, 'C'],
+    b'14': [500, 1800, 'C'],
+    b'15': [-15, 15, 'V'],
+    b'18': [-200, 1300, 'C'],
+    b'20': [-50, 150, 'C'],
+    b'21': [0, 100, 'C'],
+    b'22': [0, 200, 'C'],
+    b'23': [0, 400, 'C'],
+    b'24': [-200, 200, 'C'],
+    b'25': [-50, 150, 'C'],
+    b'26': [0, 100, 'C'],
+    b'27': [0, 200, 'C'],
+    b'28': [0, 400, 'C'],
+    b'29': [-200, 200, 'C'],
+    b'2A': [-40, 160, 'C'],
+    b'2B': [-30, 120, 'C'],
+    b'40': [0, 15, 'mV'],
+    b'41': [0, 50, 'mV'],
+    b'42': [0, 100, 'mV'],
+    b'43': [0, 500, 'mV'],
+    b'44': [0, 1, 'V'],
+    b'45': [0, 2.5, 'V'],
+    b'46': [0, 20, 'mV'],
+    b'48': [0, 10, 'V'],
+    b'49': [0, 5, 'V'],
+    b'4A': [0, 1, 'V'],
+    b'4B': [0, 500, 'mV'],
+    b'4C': [0, 150, 'mV'],
+    b'4D': [0, 20, 'mV'],
+    b'55': [0, 15, 'V']
+}
+
+ADAM_BAUDS = {
+    b'03': 1200,
+    b'04': 2400,
+    b'05': 4800,
+    b'06': 9600,
+    b'07': 19200,
+    b'08': 38400,
+    b'09': 57600,
+    b'0A': 115200,
+    b'0B': 230400
+}
 
 class Adam(TDKLambda):
 
@@ -14,6 +84,8 @@ class Adam(TDKLambda):
         self.head_err = b'?' + self.addr_hex
         self.suspend_to = 0.0
         self.suspend_flag = False
+        self.id = b'Uninitialized'
+        # self.state = 0
         if not self.com.ready:
             self.suspend()
             return
@@ -21,14 +93,6 @@ class Adam(TDKLambda):
         self.id = self.read_device_id()
         if self.id.startswith(self.head_ok):
             self.state = 1
-            # determine max current and voltage from model name
-            # try:
-            #     ids = self.id.split('-')
-            #     mv = ids[-2].split('G')
-            #     self.max_current = float(ids[-1])
-            #     self.max_voltage = float(mv[-1][2:])
-            # except:
-            #     self.logger.warning('Can not set max values')
         else:
             self.logger.error(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
@@ -71,11 +135,11 @@ class Adam(TDKLambda):
             if self.send_command(b'M'):
                 return self.response[:-1]
             else:
-                return 'Unknown Device'
+                return b'Unknown Device'
         except KeyboardInterrupt:
             raise
         except:
-            return 'Unknown Device'
+            return b'Unknown Device'
 
     def read_di(self, chan=None):
         v = None
@@ -113,6 +177,28 @@ class Adam(TDKLambda):
         except:
             self.logger.info('Wrong response %s', self.response)
 
+    def read_ai(self, chan=None):
+        if chan is None:
+            cmd = b'#' + self.addr_hex
+        else:
+            cmd = b'#' + self.addr_hex + (b'%01X' % chan)
+        try:
+            if self.send_command(cmd):
+                if not self.response.startswith(b'>') or not self.response.endswith(b'\r'):
+                    self.logger.info('Wrong response %s', self.response)
+                    return None
+                val = self.response[1:-1]
+            if chan is None:
+                val = val.replace(b'+', b';+')
+                val = val.replace(b'-', b';-')
+                val = val.split(b';')[1:]
+        except KeyboardInterrupt:
+            raise
+        except:
+            self.logger.info('Wrong response %s', self.response)
+            return None
+        return val
+
 
 if __name__ == "__main__":
     pd1 = Adam("COM12", 16, baudrate=38400)
@@ -120,19 +206,29 @@ if __name__ == "__main__":
     t_0 = time.time()
     v1 = pd1.read_device_id()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    pd1.logger.debug('test')
     a = '%s %s %s %s %s %s' % (
-    pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
-    pd1.logger.debug(a)
+        pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+    # pd1.logger.debug(a)
+    print(a)
 
     t_0 = time.time()
     v2 = pd2.read_device_id()
     dt2 = int((time.time() - t_0) * 1000.0)  # ms
-    pd2.logger.debug('test')
-    pd2.logger.debug('%s %s %s %s %s %s', pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2,
-                     '%5.3f' % pd2.min_read_time)
+    # pd2.logger.debug('%s %s %s %s %s %s', pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2,
+    #                  '%5.3f' % pd2.min_read_time)
+    a = '%s %s %s %s %s %s' % (
+        pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2, '%5.3f' % pd2.min_read_time)
+    print(a)
     v2 = pd2.read_di(3)
     print(v2, pd2.response)
+    v2 = pd2.read_di()
+    print(v2, pd2.response)
+    v2 = pd2.write_do(3, True)
+    print(v2, pd2.response)
+    v2 = pd1.read_ai(3)
+    print('Read ai3 =', v2, pd1.response)
+    v2 = pd1.read_ai()
+    print(v2, pd1.response)
 
     del pd1
     del pd2
