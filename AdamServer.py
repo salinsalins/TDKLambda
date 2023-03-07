@@ -55,7 +55,7 @@ class AdamServer(TangoServerPrototype):
         super().init_device()
         self.logger.info('Adam Initialization')
         self.set_state(DevState.INIT, 'Adam Initialization')
-        self.configure_tango_logging()
+        # self.configure_tango_logging()
         self.lock = Lock()
         self.init_io = True
         self.attributes = {}

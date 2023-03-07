@@ -100,8 +100,9 @@ class Adam(TDKLambda):
             return
         # read device type
         self.id = self.read_device_id()
-        self.name = self.id
+        self.name = '0000'
         if self.id != 'Unknown Device':
+            self.name = self.id
             self.state = 1
             if self.id not in ADAM_DEVICES:
                 self.name = '0000'
