@@ -3,6 +3,7 @@
 """TDK Lambda Genesis series power supply tango device server"""
 import json
 import sys
+from threading import Lock
 
 sys.path.append('../TangoUtils')
 sys.path.append('../IT6900')
@@ -52,6 +53,7 @@ class AdamServer(TangoServerPrototype):
         self.info('Adam Initialization')
         self.set_state(DevState.INIT, 'Adam Initialization')
         self.configure_tango_logging()
+        self.lock = Lock()
         self.error_count = 0
         self.values = [float('NaN')] * 6
         self.time = time.time() - 100.0
@@ -60,7 +62,7 @@ class AdamServer(TangoServerPrototype):
         name = self.config.get('name', '')
         description = json.loads(self.config.get('description', '[]'))
         if name and description:
-            ADAM_DEVICES.update({name.decode(): description})
+            ADAM_DEVICES.update({name: description})
         port = self.config.get('port', 'COM3')
         addr = self.config.get('addr', 6)
         baud = self.config.get('baudrate', 38400)
@@ -156,7 +158,7 @@ class AdamServer(TangoServerPrototype):
             ndi = 0
             ndo = 0
             try:
-                if self.adam.name == b'0000':
+                if self.adam.name == '0000':
                     self.error_time = time.time()
                     self.error_count += 1
                     msg = '%s No IO attributes added for unknown device' % self.get_name()
@@ -174,7 +176,7 @@ class AdamServer(TangoServerPrototype):
                     for k in range(self.adam.ai_n):
                         try:
                             attr_name = 'ai%02d' % k
-                            if self.adam.ai_masks[k] or self.show_disabled_channels:
+                            if True:
                                 attr = tango.server.attribute(name=attr_name, dtype=float,
                                                               dformat=tango.AttrDataFormat.SCALAR,
                                                               access=tango.AttrWriteType.READ,
@@ -198,19 +200,6 @@ class AdamServer(TangoServerPrototype):
                             msg = '%s Exception adding AI %s' % (self.get_name(), attr_name)
                             self.logger.warning(msg)
                             self.logger.debug('', exc_info=True)
-                    attr = tango.server.attribute(name='all_ai', dtype=float,
-                                                  dformat=tango.AttrDataFormat.SPECTRUM,
-                                                  access=tango.AttrWriteType.READ,
-                                                  max_dim_x=self.adam.ai_n, max_dim_y=0,
-                                                  fget=self.read_all,
-                                                  label=attr_name,
-                                                  doc='All analog inputs',
-                                                  unit='',
-                                                  display_unit=1.0,
-                                                  format='%f')
-                    # add attr to device
-                    self.add_attribute(attr)
-                    self.attributes[attr_name] = attr
                     msg = '%s %d of %d analog inputs initialized' % (self.get_name(), nai, self.adam.ai_n)
                     self.logger.info(msg)
                     # self.info_stream(msg)
@@ -220,7 +209,7 @@ class AdamServer(TangoServerPrototype):
                     for k in range(self.adam.ao_n):
                         try:
                             attr_name = 'ao%02d' % k
-                            if self.adam.ao_masks[k] or self.show_disabled_channels:
+                            if True:
                                 attr = tango.server.attribute(name=attr_name, dtype=float,
                                                               dformat=tango.AttrDataFormat.SCALAR,
                                                               access=tango.AttrWriteType.READ_WRITE,
@@ -244,19 +233,6 @@ class AdamServer(TangoServerPrototype):
                             msg = '%s Exception adding AO %s' % (self.get_name(), attr_name)
                             self.logger.warning(msg)
                             self.logger.debug('', exc_info=True)
-                    attr = tango.server.attribute(name='all_ao', dtype=float,
-                                                  dformat=tango.AttrDataFormat.SPECTRUM,
-                                                  access=tango.AttrWriteType.READ,
-                                                  max_dim_x=self.adam.ao_n, max_dim_y=0,
-                                                  fget=self.read_all,
-                                                  label=attr_name,
-                                                  doc='All analog outputs. ONLY FOR READ',
-                                                  unit='',
-                                                  display_unit=1.0,
-                                                  format='%f')
-                    # add attr to device
-                    self.add_attribute(attr)
-                    self.attributes[attr_name] = attr
                     msg = '%s %d of %d analog outputs initialized' % (self.get_name(), nao, self.adam.ao_n)
                     self.logger.info(msg)
                     # self.info_stream(msg)
@@ -284,19 +260,6 @@ class AdamServer(TangoServerPrototype):
                             msg = '%s Exception adding IO channel %s' % (self.get_name(), attr_name)
                             self.logger.warning(msg)
                             self.logger.debug('', exc_info=True)
-                    attr = tango.server.attribute(name='all_di', dtype=bool,
-                                                  dformat=tango.AttrDataFormat.SPECTRUM,
-                                                  access=tango.AttrWriteType.READ,
-                                                  max_dim_x=self.adam.di_n, max_dim_y=0,
-                                                  fget=self.read_all,
-                                                  label=attr_name,
-                                                  doc='All digital inputs. ONLY FOR READ',
-                                                  unit='',
-                                                  display_unit=1.0,
-                                                  format='%s')
-                    # add attr to device
-                    self.add_attribute(attr)
-                    self.attributes[attr_name] = attr
                     msg = '%s %d digital inputs initialized' % (self.get_name(), ndi)
                     self.logger.info(msg)
                     # self.info_stream(msg)
@@ -325,19 +288,6 @@ class AdamServer(TangoServerPrototype):
                             msg = '%s Exception adding IO channel %s' % (self.get_name(), attr_name)
                             self.logger.warning(msg)
                             self.logger.debug('', exc_info=True)
-                    attr = tango.server.attribute(name='all_do', dtype=bool,
-                                                  dformat=tango.AttrDataFormat.SPECTRUM,
-                                                  access=tango.AttrWriteType.READ,
-                                                  max_dim_x=self.adam.do_n, max_dim_y=0,
-                                                  fget=self.read_all,
-                                                  label=attr_name,
-                                                  doc='All digital outputs. ONLY FOR READ',
-                                                  unit='',
-                                                  display_unit=1.0,
-                                                  format='%s')
-                    # add attr to device
-                    self.add_attribute(attr)
-                    self.attributes[attr_name] = attr
                     msg = '%s %d digital outputs initialized' % (self.get_name(), ndo)
                     self.logger.info(msg)
                     # self.info_stream(msg)
@@ -371,5 +321,23 @@ class AdamServer(TangoServerPrototype):
                 # self.set_state(DevState.FAULT)
 
 
+def looping():
+    # AdamServer.LOGGER.debug('loop entry')
+    for dev in AdamServer.device_list:
+        if dev.init_io:
+            dev.add_io()
+        # if dev.error_time > 0.0 and dev.error_time - time.time() > dev.reconnect_timeout:
+        #     dev.reconnect()
+    time.sleep(1.0)
+    # AdamServer.LOGGER.debug('loop exit')
+
+
+# def post_init_callback():
+#     print('post_init_callback')
+#     pass
+
+
 if __name__ == "__main__":
+    # AdamServer.run_server(post_init_callback=post_init_callback)
+    # AdamServer.run_server(event_loop=looping)
     AdamServer.run_server()

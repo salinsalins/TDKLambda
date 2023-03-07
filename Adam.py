@@ -113,8 +113,18 @@ class Adam(TDKLambda):
             self.logger.error(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
             return
-        self.ai_ranges = [self.read_range(c) for c in range(ADAM_DEVICES[self.name]['ai'])]
-        self.ao_ranges = [self.read_range(c) for c in range(ADAM_DEVICES[self.name]['ao'])]
+        self.ai_n = ADAM_DEVICES[self.name]['ai']
+        self.ao_n = ADAM_DEVICES[self.name]['ao']
+        self.di_n = ADAM_DEVICES[self.name]['di']
+        self.do_n = ADAM_DEVICES[self.name]['do']
+        self.ai_ranges = [self.read_range(c) for c in range(self.ai_n)]
+        self.ai_min = [i[0] for i in self.ai_ranges]
+        self.ai_max = [i[1] for i in self.ai_ranges]
+        self.ai_units = [i[2] for i in self.ai_ranges]
+        self.ao_ranges = [self.read_range(c) for c in range(self.ao_n)]
+        self.ao_min = [i[0] for i in self.ao_ranges]
+        self.ao_max = [i[1] for i in self.ao_ranges]
+        self.ao_units = [i[2] for i in self.ao_ranges]
         self.logger.debug(f'ADAM-{self.name} at {self.port}:{self.addr} has been initialized')
 
     def _set_addr(self):
