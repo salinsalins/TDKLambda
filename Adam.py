@@ -87,6 +87,7 @@ ADAM_BAUDS = {
 class Adam(TDKLambda):
 
     def init(self):
+        self._initialized = False
         self.addr_hex = (b'%02X' % self.addr)[:2]
         self.head_ok = b'!' + self.addr_hex
         self.head_err = b'?' + self.addr_hex
@@ -125,7 +126,11 @@ class Adam(TDKLambda):
         self.ao_min = [i[0] for i in self.ao_ranges]
         self.ao_max = [i[1] for i in self.ao_ranges]
         self.ao_units = [i[2] for i in self.ao_ranges]
+        self._initialized = True
         self.logger.debug(f'ADAM-{self.name} at {self.port}:{self.addr} has been initialized')
+
+    def initialized(self):
+        return self._initialized
 
     def _set_addr(self):
         return True
