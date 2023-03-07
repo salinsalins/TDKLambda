@@ -9,10 +9,11 @@ import time
 from TDKLambda import TDKLambda
 
 ADAM_DEVICES = {
-    b'0000': {'di': 0, 'do': 0, 'ai': 0, 'ao': 0},
-    b'4055': {'di': 8, 'do': 8, 'ai': 0, 'ao': 0},
-    b'4118': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
-    b'4018': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0}
+    '0000': {'di': 0, 'do': 0, 'ai': 0, 'ao': 0},
+    '4117': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
+    '4118': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
+    '4024': {'di': 4, 'do': 0, 'ai': 0, 'ao': 4},
+    '4055': {'di': 8, 'do': 8, 'ai': 0, 'ao': 0}
 }
 
 ADAM_RANGES = {
@@ -52,6 +53,9 @@ ADAM_RANGES = {
     b'2A': [-40, 160, 'C'],
     b'2B': [-30, 120, 'C'],
     b'40': [0, 15, 'mV'],
+    b'30': [0, 20, 'mA'],
+    b'31': [4, 20, 'mA'],
+    b'32': [-10, 10, 'V'],
     b'41': [0, 50, 'mV'],
     b'42': [0, 100, 'mV'],
     b'43': [0, 500, 'mV'],
@@ -95,23 +99,23 @@ class Adam(TDKLambda):
             return
         # read device type
         self.id = self.read_device_id()
-        self.name = b'0000'
-        if self.id.startswith(self.head_ok):
+        self.name = self.id
+        if self.id != 'Unknown Device':
             self.state = 1
-            name = self.id[-4:]
-            self.name = name
-            if name not in ADAM_DEVICES:
-                self.name = b'0000'
+            if self.id not in ADAM_DEVICES:
+                self.name = '0000'
                 for key in ADAM_DEVICES:
-                    if name[:-2] == key[:-2]:
-                        self.logger.info(f'Using {key} instead of {name} for devise type')
+                    if self.id[-2:] == key[-2:]:
+                        self.logger.info(f'Using {key} instead of {self.id} for devise type')
                         self.name = key
                         break
-        if self.name == b'0000':
+        if self.name == '0000':
             self.logger.error(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
             return
-        self.logger.debug(f'ADAM-{self.name.decode()} at {self.port}:{self.addr} has been initialized')
+        self.ai_ranges = [self.read_range(c) for c in range(ADAM_DEVICES[self.name]['ai'])]
+        self.ao_ranges = [self.read_range(c) for c in range(ADAM_DEVICES[self.name]['ao'])]
+        self.logger.debug(f'ADAM-{self.name} at {self.port}:{self.addr} has been initialized')
 
     def _set_addr(self):
         return True
@@ -146,14 +150,14 @@ class Adam(TDKLambda):
 
     def read_device_id(self):
         try:
-            if self.send_command(b'M'):
-                return self.response[:-1]
+            if self.send_command(b'M') and self.check_response():
+                return self.response[3:-1].decode()
             else:
-                return b'Unknown Device'
+                return 'Unknown Device'
         except KeyboardInterrupt:
             raise
         except:
-            return b'Unknown Device'
+            return 'Unknown Device'
 
     def read_di_do(self):
         do = []
@@ -216,7 +220,7 @@ class Adam(TDKLambda):
             cmd = b'#' + self.addr_hex + (b'%01X' % chan)
         val = b''
         try:
-            if self.send_command(cmd):
+            if self.send_command(cmd, prefix=b'', addr=False):
                 if not self.response.startswith(b'>') or not self.response.endswith(b'\r'):
                     self.logger.info('Wrong response %s', self.response)
                     return None
@@ -225,6 +229,9 @@ class Adam(TDKLambda):
                 val = val.replace(b'+', b';+')
                 val = val.replace(b'-', b';-')
                 val = val.split(b';')[1:]
+                val = [float(i) for i in val]
+            else:
+                val = float(val)
         except KeyboardInterrupt:
             raise
         except:
@@ -233,11 +240,11 @@ class Adam(TDKLambda):
         return val
 
     def write_ao(self, chan: int, value: float):
-        # cmd = b'#' + self.addr_hex + (b'C%1d%+f' % (chan, value))
-        cmd = b'#%sC%1d%+.3f' % (self.addr_hex, chan, value)
+        cmd = b'#%sC%1d%+07.3f' % (self.addr_hex, chan, value)
+        rsp = b'!%s' % self.addr_hex
         try:
-            if self.send_command(cmd):
-                if not self.response.startswith(b'>') or not self.response.endswith(b'\r'):
+            if self.send_command(cmd, prefix=b'', addr=False):
+                if not self.response.startswith(rsp):
                     self.logger.info('Wrong response %s', self.response)
                     return False
             return True
@@ -247,10 +254,56 @@ class Adam(TDKLambda):
             self.logger.info('Wrong response %s', self.response)
             return False
 
+    def read_ao(self, chan: int):
+        cmd = b'$%s6C%1d' % (self.addr_hex, chan)
+        rsp = b'!%s' % self.addr_hex
+        try:
+            if self.send_command(cmd, prefix=b'', addr=False):
+                if not self.response.startswith(rsp):
+                    self.logger.info('Wrong response %s', self.response)
+                    return None
+            return float(self.response[3:])
+        except KeyboardInterrupt:
+            raise
+        except:
+            self.logger.info('Wrong response %s', self.response)
+            return None
+
+    def read_config(self):
+        try:
+            if self.send_command(b'2'):
+                if not self.check_response():
+                    return None
+            type_code = self.response[3:5]
+            baud = ADAM_BAUDS[self.response[5:7]]
+            data_format = self.response[7:9]
+            return type_code, baud, data_format
+        except KeyboardInterrupt:
+            raise
+        except:
+            log_exception(self)
+
+    def read_range(self, chan):
+        cmd = b'$%s8C%X' % (self.addr_hex, chan)
+        rsp = b'!%sC%X' % (self.addr_hex, chan)
+        try:
+            if self.send_command(cmd, prefix=b'', addr=False):
+                if not self.response.startswith(rsp):
+                    return None
+            if self.response[5:6] == b'R':
+                r = ADAM_RANGES[self.response[6:8]]
+            else:
+                r = ADAM_RANGES[self.response[5:7]]
+            return r
+        except KeyboardInterrupt:
+            raise
+        except:
+            log_exception(self)
+
 
 if __name__ == "__main__":
     pd1 = Adam("COM12", 16, baudrate=38400)
-    pd2 = Adam("COM12", 11, baudrate=38400)
+    pd2 = Adam("COM12", 14, baudrate=38400)
     t_0 = time.time()
     v1 = pd1.read_device_id()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
@@ -279,6 +332,10 @@ if __name__ == "__main__":
     print(v2, pd1.response)
     v2 = pd1.read_di()
     print(v2, pd1.response)
+    v2 = pd2.write_ao(1, -16.0)
+    print(v2, pd2.response)
+    v2 = pd2.read_ao(1)
+    print(v2, pd2.response)
 
     del pd1
     del pd2
