@@ -12,7 +12,7 @@ ADAM_DEVICES = {
     '0000': {'di': 0, 'do': 0, 'ai': 0, 'ao': 0},
     '4117': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
     '4118': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
-    '4024': {'di': 4, 'do': 0, 'ai': 0, 'ao': 4},
+    '4024': {'di': 0, 'do': 0, 'ai': 0, 'ao': 4},
     '4055': {'di': 8, 'do': 8, 'ai': 0, 'ao': 0}
 }
 
@@ -182,12 +182,13 @@ class Adam(TDKLambda):
             if self.send_command(b'6'):
                 if not self.response.startswith(b'!') or not self.response.endswith(b'00\r'):
                     self.logger.info('Wrong response %s', self.response)
-                    return None
+                    return do, di
                 val = self.response[1:-3]
                 ival = int(val, 16)
                 for i in range(8):
-                    do.append(bool(ival & (2 ** i)))
-                    di.append(bool(ival & (2 ** (2 * i))))
+                    di.append(bool(ival & (2 ** i)))
+                    if len(val) > 2:
+                        do.append(bool(ival & (2 ** (i + 8))))
         except KeyboardInterrupt:
             raise
         except:
@@ -318,7 +319,7 @@ class Adam(TDKLambda):
 
 
 if __name__ == "__main__":
-    pd1 = Adam("COM12", 16, baudrate=38400)
+    pd1 = Adam("COM12", 11, baudrate=38400)
     pd2 = Adam("COM12", 14, baudrate=38400)
     t_0 = time.time()
     v1 = pd1.read_device_id()
@@ -336,22 +337,38 @@ if __name__ == "__main__":
     a = '%s %s %s %s %s %s' % (
         pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2, '%5.3f' % pd2.min_read_time)
     print(a)
-    v2 = pd2.read_di(3)
-    print(v2, pd2.response)
-    v2 = pd2.read_di()
-    print(v2, pd2.response)
-    v2 = pd2.write_do(3, True)
-    print(v2, pd2.response)
+    d = pd1
+    v = d.read_di(3)
+    print(d.name, 'r di[3]=', v, d.response)
+    v = d.read_di()
+    print(d.name, 'r di[*]=', v, d.response)
+    v = d.read_do()
+    print(d.name, 'r do=[*]', v, d.response)
+    v = d.write_do(3, False)
+    print(d.name, 'w do[3]=', v, d.response)
+    v = d.read_di()
+    print(d.name, 'r di=[*]', v, d.response)
+    v = d.read_do()
+    print(d.name, 'r do=[*]', v, d.response)
+    v = d.read_di(3)
+    print(d.name, 'r di[3]=', v, d.response)
+    v = d.read_do(3)
+    print(d.name, 'r do[3]=', v, d.response)
+    v = d.read_do()
+    print(d.name, 'r do=[*]', v, d.response)
+    #
     v2 = pd1.read_ai(3)
-    print('Read ai3 =', v2, pd1.response)
+    print(pd1.name, 'r ai[3]=', v2, pd1.response)
     v2 = pd1.read_ai()
-    print(v2, pd1.response)
+    print(pd1.name, 'r ai[*]=', v2, pd1.response)
     v2 = pd1.read_di()
-    print(v2, pd1.response)
-    v2 = pd2.write_ao(1, -16.0)
-    print(v2, pd2.response)
+    print(pd1.name, 'r di[*]=', v2, pd1.response)
+    #
+    ao = -1.5
+    v2 = pd2.write_ao(1, ao)
+    print(pd2.name, 'w ao[1]=', v2, ao, pd2.response)
     v2 = pd2.read_ao(1)
-    print(v2, pd2.response)
+    print(pd2.name, 'r ao[1]=', v2, pd2.response)
 
     del pd1
     del pd2

@@ -8,6 +8,8 @@ from threading import Lock
 
 import tango
 
+from log_exception import log_exception
+
 sys.path.append('../TangoUtils')
 sys.path.append('../IT6900')
 
@@ -78,6 +80,13 @@ class AdamServer(TangoServerPrototype):
         # add device to list
         if self not in AdamServer.device_list:
             AdamServer.device_list.append(self)
+        init_command = self.config.get('init_command', '')
+        if init_command:
+            commands = init_command.split(';')
+            stat = ''
+            for c in commands:
+                s = self.send_command(c)
+                stat += s
         self.write_config_to_properties()
         # check if device OK
         if self.adam.initialized():
@@ -156,8 +165,7 @@ class AdamServer(TangoServerPrototype):
 
     def read_general(self, attr: tango.Attribute):
         with self.lock:
-            attr_name = attr.get_name()
-            print(attr_name)
+            # attr_name = attr.get_name()
             if self.is_connected():
                 val = self._read_io(attr)
             else:
@@ -165,7 +173,6 @@ class AdamServer(TangoServerPrototype):
                 msg = '%s %s Waiting for reconnect' % (self.get_name(), attr.get_name())
                 self.logger.debug(msg)
             self.set_attribute_value(attr, val)
-            print(val, type(val))
             return val
 
     def write_general(self, attr: tango.WAttribute):
@@ -236,11 +243,6 @@ class AdamServer(TangoServerPrototype):
         rsp = self.adam.response[:-1].decode()
         msg = '%s:%d %s -> %s' % (self.adam.port, self.adam.addr, cmd, rsp)
         self.logger.debug(msg)
-        # if self.adam.com is None:
-        #     msg = '%s COM port is None' % self
-        #     self.logger.debug(msg)
-        #     self.set_state(DevState.FAULT)
-        #     return
         return rsp
 
     def add_io(self):
@@ -251,15 +253,11 @@ class AdamServer(TangoServerPrototype):
             ndo = 0
             try:
                 if self.adam.name == '0000':
-                    self.logger.error_time = time.time()
-                    self.logger.error_count += 1
                     msg = '%s No IO attributes added for unknown device' % self.get_name()
                     self.logger.warning(msg)
-                    # self.logger.error_stream(msg)
                     self.set_state(DevState.FAULT, msg)
+                    self.init_io = False
                     return
-                self.logger.error_time = 0.0
-                self.logger.error_count = 0
                 self.set_state(DevState.INIT, 'Attributes creation')
                 attr_name = ''
                 # ai
@@ -289,12 +287,9 @@ class AdamServer(TangoServerPrototype):
                             else:
                                 self.logger.info('%s is disabled', attr_name)
                         except:
-                            msg = '%s Exception adding AI %s' % (self.get_name(), attr_name)
-                            self.logger.warning(msg)
-                            self.logger.debug('', exc_info=True)
+                            log_exception('%s Exception adding AI %s' % (self.get_name(), attr_name))
                     msg = '%s %d of %d analog inputs initialized' % (self.get_name(), nai, self.adam.ai_n)
                     self.logger.info(msg)
-                    # self.logger.info_stream(msg)
                 # ao
                 nao = 0
                 if self.adam.ao_n > 0:
@@ -317,17 +312,16 @@ class AdamServer(TangoServerPrototype):
                                                  max_value=self.adam.ao_max[k])
                                 self.add_attribute(attr)
                                 self.attributes[attr_name] = attr
+                                # a = getattr(self, attr_name)
+                                # a.set_write_value(attr_name, self.read_general(attr))
                                 # self.restore_polling(attr_name)
                                 nao += 1
                             else:
                                 self.logger.info('%s is disabled', attr_name)
                         except:
-                            msg = '%s Exception adding AO %s' % (self.get_name(), attr_name)
-                            self.logger.warning(msg)
-                            self.logger.debug('', exc_info=True)
+                            log_exception('%s Exception adding IO channel %s' % (self.get_name(), attr_name))
                     msg = '%s %d of %d analog outputs initialized' % (self.get_name(), nao, self.adam.ao_n)
                     self.logger.info(msg)
-                    # self.logger.info_stream(msg)
                 # di
                 ndi = 0
                 if self.adam.di_n > 0:
@@ -349,12 +343,9 @@ class AdamServer(TangoServerPrototype):
                             # self.restore_polling(attr_name)
                             ndi += 1
                         except:
-                            msg = '%s Exception adding IO channel %s' % (self.get_name(), attr_name)
-                            self.logger.warning(msg)
-                            self.logger.debug('', exc_info=True)
+                            log_exception('%s Exception adding IO channel %s' % (self.get_name(), attr_name))
                     msg = '%s %d digital inputs initialized' % (self.get_name(), ndi)
                     self.logger.info(msg)
-                    # self.logger.info_stream(msg)
                 # do
                 ndo = 0
                 if self.adam.do_n > 0:
@@ -374,25 +365,18 @@ class AdamServer(TangoServerPrototype):
                                              format='')
                             self.add_attribute(attr)
                             self.attributes[attr_name] = attr
+                            # a = getattr(self, attr_name)
+                            # a.set_write_value(attr_name, self.read_general(attr))
                             # self.restore_polling(attr_name)
                             ndo += 1
                         except:
-                            msg = '%s Exception adding IO channel %s' % (self.get_name(), attr_name)
-                            self.logger.warning(msg)
-                            self.logger.debug('', exc_info=True)
+                            log_exception('%s Exception adding IO channel %s' % (self.get_name(), attr_name))
                     msg = '%s %d digital outputs initialized' % (self.get_name(), ndo)
                     self.logger.info(msg)
-                    # self.logger.info_stream(msg)
-                self.set_state(DevState.RUNNING)
+                self.set_state(DevState.RUNNING, 'IO addition completed')
             except:
-                self.logger.error_time = time.time()
-                self.logger.error_count += 1
-                msg = '%s Error adding IO channels' % self.get_name()
-                self.logger.error(msg)
-                self.logger.debug('', exc_info=True)
-                # self.logger.error_stream(msg)
-                self.set_state(DevState.FAULT)
-                return
+                log_exception('%s Error adding IO channels' % self.get_name())
+                self.set_state(DevState.FAULT, msg)
             self.init_io = False
             return nai + nao + ndi + ndo
 
@@ -403,33 +387,31 @@ class AdamServer(TangoServerPrototype):
                     self.remove_attribute(attr_name)
                     self.logger.debug('%s attribute %s removed' % (self.get_name(), attr_name))
                 self.attributes = {}
-                self.set_state(DevState.UNKNOWN)
+                self.set_state(DevState.CLOSE, 'All IO channels removed')
                 self.init_io = True
             except:
-                msg = '%s Error deleting IO channels' % self.get_name()
-                self.logger.error(msg)
-                self.logger.debug('', exc_info=True)
-                # self.logger.error_stream(msg)
+                log_exception(self.logger, '%s Error deleting IO channels' % self.get_name())
                 # self.set_state(DevState.FAULT)
 
 
 def looping():
-    print('loop entry')
+    # print('loop entry')
     for dev in AdamServer.device_list:
         if dev.init_io:
             dev.add_io()
         # if dev.error_time > 0.0 and dev.error_time - time.time() > dev.reconnect_timeout:
         #     dev.reconnect()
     time.sleep(1.0)
-    print('loop exit')
+    # print('loop exit')
 
 
-def post_init_callback():
-    print('post_init_callback')
-    pass
+# def post_init_callback():
+#     # called once at server initiation
+#     print('post_init_callback')
+#     pass
 
 
 if __name__ == "__main__":
-    AdamServer.run_server(event_loop=looping, post_init_callback=post_init_callback)
-    # AdamServer.run_server(event_loop=looping)
+    # AdamServer.run_server(event_loop=looping, post_init_callback=post_init_callback)
+    AdamServer.run_server(event_loop=looping)
     # AdamServer.run_server()
