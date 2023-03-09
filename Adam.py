@@ -116,7 +116,13 @@ class Adam(TDKLambda):
             self.state = -4
             return
         self.ai_n = ADAM_DEVICES[self.name]['ai']
+        self.ai_masks = [True] * self.ai_n
+        if self.ai_n > 0:
+            self.ai_masks = self.read_masks()
         self.ao_n = ADAM_DEVICES[self.name]['ao']
+        self.ao_masks = [True] * self.ao_n
+        # if self.ao_n > 0:
+        #     self.ao_masks = self.read_masks()
         self.di_n = ADAM_DEVICES[self.name]['di']
         self.do_n = ADAM_DEVICES[self.name]['do']
         self.ai_ranges = [self.read_range(c) for c in range(self.ai_n)]
@@ -195,6 +201,23 @@ class Adam(TDKLambda):
             log_exception(self.logger, 'Error reading DI/DO')
         return do, di
 
+    def read_masks(self):
+        result = []
+        try:
+            if self.send_command(b'6'):
+                if not self.check_response():
+                    self.logger.info('Wrong response %s', self.response)
+                    return result
+                val = self.response[3:-1]
+                ival = int(val, 16)
+                for i in range(8):
+                    result.append(bool(ival & (2 ** i)))
+        except KeyboardInterrupt:
+            raise
+        except:
+            log_exception(self.logger, 'Error reading DI/DO')
+        return result
+
     def read_di(self, chan=None):
         try:
             do, di = self.read_di_do()
@@ -223,12 +246,12 @@ class Adam(TDKLambda):
             if self.send_command(cmd + b'0%01X' % value, prefix=b'', addr=False):
                 if self.response.startswith(b'>'):
                     return True
-                self.logger.info('Wrong response %s', self.response)
+                self.logger.debug('Wrong response %s', self.response)
                 return False
         except KeyboardInterrupt:
             raise
         except:
-            self.logger.info('Wrong response %s', self.response)
+            self.logger.debug('Wrong response %s', self.response)
 
     def read_ai(self, chan=None):
         if chan is None:
@@ -239,7 +262,7 @@ class Adam(TDKLambda):
         try:
             if self.send_command(cmd, prefix=b'', addr=False):
                 if not self.response.startswith(b'>') or not self.response.endswith(b'\r'):
-                    self.logger.info('Wrong response %s', self.response)
+                    self.logger.debug('Wrong response %s', self.response)
                     return None
                 val = self.response[1:-1]
             if chan is None:
@@ -252,7 +275,7 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
-            self.logger.info('Wrong response %s', self.response)
+            self.logger.debug('Wrong response %s', self.response)
             return None
         return val
 
@@ -262,13 +285,13 @@ class Adam(TDKLambda):
         try:
             if self.send_command(cmd, prefix=b'', addr=False):
                 if not self.response.startswith(rsp):
-                    self.logger.info('Wrong response %s', self.response)
+                    self.logger.debug('Wrong response %s', self.response)
                     return False
             return True
         except KeyboardInterrupt:
             raise
         except:
-            self.logger.info('Wrong response %s', self.response)
+            self.logger.debug('Wrong response %s', self.response)
             return False
 
     def read_ao(self, chan: int):
@@ -277,13 +300,13 @@ class Adam(TDKLambda):
         try:
             if self.send_command(cmd, prefix=b'', addr=False):
                 if not self.response.startswith(rsp):
-                    self.logger.info('Wrong response %s', self.response)
+                    self.logger.debug('Wrong response %s', self.response)
                     return None
             return float(self.response[3:])
         except KeyboardInterrupt:
             raise
         except:
-            self.logger.info('Wrong response %s', self.response)
+            self.logger.debug('Wrong response %s', self.response)
             return None
 
     def read_config(self):

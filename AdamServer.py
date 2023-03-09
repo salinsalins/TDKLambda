@@ -27,7 +27,7 @@ from TangoServerPrototype import TangoServerPrototype
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Adam I/O modules Tango Server'
 APPLICATION_NAME_SHORT = 'AdamServer'
-APPLICATION_VERSION = '1.0'
+APPLICATION_VERSION = '1.1'
 
 
 class AdamServer(TangoServerPrototype):
@@ -71,9 +71,12 @@ class AdamServer(TangoServerPrototype):
         port = self.config.get('port', 'COM3')
         addr = self.config.get('addr', 6)
         baud = self.config.get('baudrate', 38400)
+        read_retries = self.config.get('read_retries', 2)
         kwargs = {}
         kwargs['baudrate'] = baud
         kwargs['logger'] = self.logger
+        kwargs['read_retries'] = read_retries
+        self.show_disabled_channels = bool(self.config.get('show_disabled_channels', 1))
         self.adam = Adam(port, addr, **kwargs)
         # add device to list
         if self not in AdamServer.device_list:
@@ -219,11 +222,11 @@ class AdamServer(TangoServerPrototype):
         elif ad == 'ao':
             val = self.adam.read_ao(chan)
         else:
+            msg = "%s Unknown attribute %s" % (self.get_name(), attr_name)
+            self.logger.error(msg)
             return float('nan')
         if val is not None and not math.isnan(val):
             return val
-        # self.error_count += 1
-        # self.error_time = time.time()
         msg = "%s Error reading %s %s" % (self.get_name(), attr_name, val)
         self.logger.error(msg)
         return float('nan')
@@ -264,7 +267,7 @@ class AdamServer(TangoServerPrototype):
                     for k in range(self.adam.ai_n):
                         try:
                             attr_name = 'ai%02d' % k
-                            if True:
+                            if self.adam.ai_masks[k] or self.show_disabled_channels:
                                 attr = attribute(name=attr_name, dtype=float,
                                                  dformat=AttrDataFormat.SCALAR,
                                                  access=AttrWriteType.READ,

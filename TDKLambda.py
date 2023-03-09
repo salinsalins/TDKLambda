@@ -50,8 +50,8 @@ class TDKLambda:
         # configure logger
         self.logger = kwargs.get('logger', config_logger())
         # timeouts
-        self.read_timeout = kwargs.pop('read_timeout', 0.5)
-        self.read_reties = kwargs.pop('read_reties', 1)
+        self.read_timeout = kwargs.pop('read_timeout', 1.0)
+        self.read_retries = kwargs.pop('read_retries', 1)
         self.min_read_time = self.read_timeout
         # rest arguments for COM port creation
         self.kwargs = kwargs
@@ -215,7 +215,7 @@ class TDKLambda:
         while terminator not in result:
             r = self.read(1)
             if not r:
-                self.suspend()
+                # self.suspend()
                 break
             result += r
             if size is not None and len(result) >= size:
@@ -231,7 +231,7 @@ class TDKLambda:
         result = self.read_until(terminator)
         self.response = result
         if terminator not in result:
-            self.logger.error('Response %s without %s', result, terminator)
+            self.logger.debug('Response %s without %s', result, terminator)
             return False
         # if checksum used
         if not self.check:
@@ -257,7 +257,7 @@ class TDKLambda:
             response = self.response
         if not response.startswith(expected):
             msg = 'Unexpected response %s (not %s)' % (response, expected)
-            self.logger.info(msg)
+            self.logger.debug(msg)
             return False
         return True
 
@@ -402,8 +402,8 @@ class TDKLambda:
                 result = self._send_command(cmd)
                 if result:
                     return True
-                self.logger.warning('Send command %s error' % cmd)
-                n = self.read_reties
+                self.logger.info('Send command %s error' % cmd)
+                n = self.read_retries
                 while n > 1:
                     n -= 1
                     result = self._send_command(cmd)
@@ -417,7 +417,7 @@ class TDKLambda:
         except KeyboardInterrupt:
             raise
         except:
-            log_exception(self)
+            log_exception(self.logger)
             self.suspend()
             self.response = b''
             return False
