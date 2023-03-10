@@ -192,6 +192,7 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
+            log_exception(self.logger)
             return 'Unknown Device'
 
     def read_di_do(self):
@@ -228,7 +229,7 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
-            log_exception(self.logger, 'Error reading DI/DO')
+            log_exception(self.logger)
         return result
 
     def read_di(self, chan=None):
@@ -240,6 +241,7 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
+            log_exception(self.logger)
             return None
 
     def read_do(self, chan=None):
@@ -251,6 +253,7 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
+            log_exception(self.logger)
             return None
 
     def write_do(self, chan=None, value=None):
@@ -264,7 +267,7 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
-            self.logger.debug('Wrong response %s', self.response)
+            log_exception(self.logger)
 
     def read_ai(self, chan=None):
         if chan is None:
@@ -288,7 +291,7 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
-            self.logger.debug('Wrong response %s', self.response)
+            log_exception(self.logger)
             return None
         return val
 
@@ -304,7 +307,7 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
-            self.logger.debug('Wrong response %s', self.response)
+            log_exception(self.logger)
             return False
 
     def read_ao(self, chan: int):
@@ -319,7 +322,7 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
-            self.logger.debug('Wrong response %s', self.response)
+            log_exception(self.logger)
             return None
 
     def read_config(self):
