@@ -26,18 +26,9 @@ class TDKLambdaException(Exception):
     pass
 
 
-STATE = {
-    0: 'Pre init state',
-    1: 'Initialized',
-    -1: 'Wrong address',
-    -2: 'Address is in use',
-    -3: 'Address set error',
-    -4: 'LAMBDA device is not recognized'}
-
-
 class TDKLambda:
-    devices = []
-    dev_lock = Lock()
+    _devices = []
+    _lock = Lock()
     SUSPEND_TIME = 5.0
     STATE = {
         0: 'Pre init state',
@@ -53,14 +44,15 @@ class TDKLambda:
         self.addr = addr
         self.check = checksum
         self.auto_addr = auto_addr
-        self.protocol = kwargs.get('protocol', 'GEN')  # 'GEN' or 'SCPI'
+        self.protocol = kwargs.pop('protocol', 'GEN')  # 'GEN' or 'SCPI'
+        self.read_timeout = kwargs.pop('read_timeout', 1.0)
+        self.read_retries = kwargs.pop('read_retries', 1)
+        self.suspend_time = kwargs.pop('suspend_time', TDKLambda.SUSPEND_TIME)
         # configure logger
         self.logger = kwargs.get('logger', config_logger())
         # timeouts
-        self.read_timeout = kwargs.pop('read_timeout', 1.0)
-        self.read_retries = kwargs.pop('read_retries', 1)
         self.min_read_time = self.read_timeout
-        # rest arguments for COM port creation
+        #arguments for COM port creation
         self.kwargs = kwargs
         # create variables
         self.command = b''
@@ -83,16 +75,16 @@ class TDKLambda:
             self.state = -1
             # raise TDKLambdaException('Wrong address')
         # check if port:address is in use
-        with TDKLambda.dev_lock:
-            for d in TDKLambda.devices:
+        with TDKLambda._lock:
+            for d in TDKLambda._devices:
                 if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
                     self.logger.error('Address is in use')
                     self.state = -2
                     # raise TDKLambdaException('Address is in use')
         # add device to list
-        with TDKLambda.dev_lock:
-            if self not in TDKLambda.devices:
-                TDKLambda.devices.append(self)
+        with TDKLambda._lock:
+            if self not in TDKLambda._devices:
+                TDKLambda._devices.append(self)
         if self.state < 0:
             return
         # further initialization (for possible async use)
@@ -135,18 +127,18 @@ class TDKLambda:
         self.logger.debug(f'TDKLambda at {self.port}:{self.addr} has been initialized')
 
     def __del__(self):
-        with TDKLambda.dev_lock:
-            if self in TDKLambda.devices:
+        with TDKLambda._lock:
+            if self in TDKLambda._devices:
                 self.close_com_port()
-                TDKLambda.devices.remove(self)
+                TDKLambda._devices.remove(self)
                 self.logger.debug(f'Device at {self.port}:{self.addr} has been deleted')
 
     def create_com_port(self):
         self.com = ComPort(self.port, emulated=EmultedTDKLambdaAtComPort, **self.kwargs)
-        if self.com.ready:
-            self.logger.debug('Port %s is ready', self.port)
-        else:
-            self.logger.error('Port %s creation error', self.port)
+        # if self.com.ready:
+        #     self.logger.debug('Port %s is ready', self.port)
+        # else:
+        #     self.logger.error('Port %s creation error', self.port)
         return self.com
 
     def close_com_port(self):
@@ -156,7 +148,7 @@ class TDKLambda:
         except:
             log_exception(self, 'COM port close exception')
         # # suspend all devices with same port
-        # with TDKLambda.dev_lock:
+        # with TDKLambda._lock:
         #     for d in TDKLambda.devices:
         #         if d.port == self.port:
         #             d.suspend()
@@ -171,10 +163,10 @@ class TDKLambda:
 
     def suspend(self, duration=None):
         if duration is None:
-            duration=self.SUSPEND_TIME
+            duration=self.suspend_time
         self.suspend_to = time.time() + duration
         self.suspend_flag = True
-        self.logger.info('Suspended for %5.2f sec', duration)
+        self.logger.debug('%s:%s suspended for %5.2f sec', self.port, self.addr, duration)
 
     def unsuspend(self):
         self.suspend_to = 0.0

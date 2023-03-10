@@ -485,7 +485,7 @@ class AsyncTDKLambda(TDKLambda):
             await self.init()
             return
         # check working devices on same port
-        for d in TDKLambda.devices:
+        for d in TDKLambda._devices:
             if d.port == self.port and d.initialized() and d != self:
                 if asyncio.iscoroutinefunction(d.read_device_id):
                     did = await d.read_device_id()

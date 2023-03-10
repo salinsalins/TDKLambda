@@ -119,14 +119,10 @@ class AdamServer(TangoServerPrototype):
             self.logger.info(msg)
 
     def read_port(self):
-        if self.adam.initialized():
-            return self.adam.port
-        return "Unknown"
+        return self.adam.port
 
     def read_address(self):
-        if self.adam.initialized():
-            return str(self.adam.addr)
-        return "-1"
+        return str(self.adam.addr)
 
     def read_device_type(self):
         if self.adam.initialized():

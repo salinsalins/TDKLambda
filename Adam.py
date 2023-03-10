@@ -87,13 +87,9 @@ ADAM_BAUDS = {
 class Adam(TDKLambda):
 
     def init(self):
-        self._initialized = False
         self.addr_hex = (b'%02X' % self.addr)[:2]
         self.head_ok = b'!' + self.addr_hex
         self.head_err = b'?' + self.addr_hex
-        self.suspend_to = 0.0
-        self.suspend_flag = False
-        self.id = 'Uninitialized'
         self.name = '0000'
         self.ai_n = 0
         self.ao_n = 0
@@ -116,7 +112,6 @@ class Adam(TDKLambda):
         self.id = self.read_device_id()
         if self.id != 'Unknown Device':
             self.name = self.id
-            self.state = 1
             if self.id not in ADAM_DEVICES:
                 self.name = '0000'
                 for key in ADAM_DEVICES:
@@ -146,11 +141,11 @@ class Adam(TDKLambda):
         self.ao_min = [i[0] for i in self.ao_ranges]
         self.ao_max = [i[1] for i in self.ao_ranges]
         self.ao_units = [i[2] for i in self.ao_ranges]
-        self._initialized = True
+        self.state = 1
         self.logger.debug(f'ADAM-{self.name} at {self.port}:{self.addr} has been initialized')
 
     def initialized(self):
-        return self._initialized
+        return self.state > 0
 
     def _set_addr(self):
         return True
