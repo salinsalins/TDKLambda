@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 import logging
 import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
+
 import time
 from threading import Lock
 
 from serial import SerialTimeoutException
-
 from ComPort import ComPort
 from EmultedTDKLambdaAtComPort import EmultedTDKLambdaAtComPort
 from IT6900 import IT6900
@@ -58,7 +58,7 @@ class TDKLambda:
         self.command = b''
         self.response = b''
         self.time = time.time()
-        self.suspend_to = time.time()
+        self.suspend_to = 0.0
         self.suspend_flag = False
         self.state = 0
         # default com port, id, serial number, and ...
@@ -69,28 +69,26 @@ class TDKLambda:
         self.max_current = float('inf')
         # create COM port
         self.create_com_port()
+        # add device to list
+        with TDKLambda._lock:
+            if self not in TDKLambda._devices:
+                TDKLambda._devices.append(self)
+        # further initialization (for possible async use)
+        self.init()
+
+    def init(self):
         # check device address
-        if addr <= 0:
+        if self.addr <= 0:
             self.logger.error('Wrong address')
             self.state = -1
-            # raise TDKLambdaException('Wrong address')
+            return
         # check if port:address is in use
         with TDKLambda._lock:
             for d in TDKLambda._devices:
                 if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
                     self.logger.error('Address is in use')
                     self.state = -2
-                    # raise TDKLambdaException('Address is in use')
-        # add device to list
-        with TDKLambda._lock:
-            if self not in TDKLambda._devices:
-                TDKLambda._devices.append(self)
-        if self.state < 0:
-            return
-        # further initialization (for possible async use)
-        self.init()
-
-    def init(self):
+                    return
         self.suspend_to = 0.0
         self.suspend_flag = False
         if not self.com.ready:
@@ -143,15 +141,11 @@ class TDKLambda:
 
     def close_com_port(self):
         try:
-            # self.com.current_addr = -1
             self.com.close()
+        except KeyboardInterrupt:
+            raise
         except:
             log_exception(self, 'COM port close exception')
-        # # suspend all devices with same port
-        # with TDKLambda._lock:
-        #     for d in TDKLambda.devices:
-        #         if d.port == self.port:
-        #             d.suspend()
 
     @staticmethod
     def checksum(cmd):
@@ -370,11 +364,10 @@ class TDKLambda:
         if self.state < 0:
             return
         self.logger.debug('Resetting')
-        self.com.device.close()
-        self.com.device.open()
-        # self.com = self.create_com_port()
-        self.init()
-        return
+        if self.com.ready:
+            self.init()
+            return True
+        return False
 
     # high level general command  ***************************
     def send_command(self, cmd) -> bool:

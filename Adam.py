@@ -1,11 +1,7 @@
-import sys;
-
-from log_exception import log_exception
-
-sys.path.append('../TangoUtils');
-sys.path.append('../IT6900')
+import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
 import time
 
+from log_exception import log_exception
 from TDKLambda import TDKLambda
 
 ADAM_DEVICES = {
@@ -105,6 +101,18 @@ class Adam(TDKLambda):
         self.ao_min = []
         self.ao_max = []
         self.ao_units = []
+        # check device address
+        if self.addr <= 0:
+            self.logger.error('Wrong address')
+            self.state = -1
+            return
+        # check if port:address is in use
+        with TDKLambda._lock:
+            for d in TDKLambda._devices:
+                if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
+                    self.logger.error('Address is in use')
+                    self.state = -2
+                    return
         if not self.com.ready:
             self.suspend()
             return
