@@ -26,7 +26,6 @@ class TDKLambdaException(Exception):
     pass
 
 
-SUSPEND_TIME = 5.0
 STATE = {
     0: 'Pre init state',
     1: 'Initialized',
@@ -39,6 +38,14 @@ STATE = {
 class TDKLambda:
     devices = []
     dev_lock = Lock()
+    SUSPEND_TIME = 5.0
+    STATE = {
+        0: 'Pre init state',
+        1: 'Initialized',
+        -1: 'Wrong address',
+        -2: 'Address is in use',
+        -3: 'Address set error',
+        -4: 'LAMBDA device is not recognized'}
 
     def __init__(self, port, addr, checksum=False, auto_addr=True, **kwargs):
         # parameters
@@ -162,7 +169,9 @@ class TDKLambda:
         result = str.encode(hex(s)[-2:].upper())
         return result
 
-    def suspend(self, duration=SUSPEND_TIME):
+    def suspend(self, duration=None):
+        if duration is None:
+            duration=self.SUSPEND_TIME
         self.suspend_to = time.time() + duration
         self.suspend_flag = True
         self.logger.info('Suspended for %5.2f sec', duration)

@@ -78,6 +78,7 @@ class AdamServer(TangoServerPrototype):
         kwargs['read_retries'] = read_retries
         self.show_disabled_channels = bool(self.config.get('show_disabled_channels', 1))
         self.adam = Adam(port, addr, **kwargs)
+        self.adam.SUSPEND_TIME = self.config.get('suspend_time', 15.0)
         # add device to list
         if self not in AdamServer.device_list:
             AdamServer.device_list.append(self)
@@ -133,7 +134,7 @@ class AdamServer(TangoServerPrototype):
         return "Uninitialized"
 
     def is_connected(self):
-        # if self.et is None or self.et.type == 0:
+        # if self.adam is None or self.adam.name == '0000':
         #     if self.error_time > 0.0 and self.error_time - time.time() > self.reconnect_timeout:
         #         self.reconnect()
         #     return False
