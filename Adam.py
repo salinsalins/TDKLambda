@@ -93,14 +93,27 @@ class Adam(TDKLambda):
         self.head_err = b'?' + self.addr_hex
         self.suspend_to = 0.0
         self.suspend_flag = False
-        self.id = b'Uninitialized'
-        # self.state = 0
+        self.id = 'Uninitialized'
+        self.name = '0000'
+        self.ai_n = 0
+        self.ao_n = 0
+        self.di_n = 0
+        self.do_n = 0
+        self.ao_masks = []
+        self.ai_masks = []
+        self.ai_ranges = []
+        self.ai_min = []
+        self.ai_max = []
+        self.ai_units = []
+        self.ao_ranges = []
+        self.ao_min = []
+        self.ao_max = []
+        self.ao_units = []
         if not self.com.ready:
             self.suspend()
             return
         # read device type
         self.id = self.read_device_id()
-        self.name = '0000'
         if self.id != 'Unknown Device':
             self.name = self.id
             self.state = 1
