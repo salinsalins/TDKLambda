@@ -56,32 +56,30 @@ class AdamServer(TangoServerPrototype):
     def init_device(self):
         super().init_device()
         self.set_state(DevState.INIT, 'Adam Initialization')
-        # self.configure_tango_logging()
+        self.configure_tango_logging()
         self.lock = Lock()
         self.init_io = True
         self.attributes = {}
         self.values = [float('NaN')] * 6
         self.time = time.time() - 100.0
-        self.READING_VALID_TIME = self.config.get('reading_valid_time', self.READING_VALID_TIME)
-        # get port and address from property
+        self.READING_VALID_TIME = self.config.get('reading_valid_time', AdamServer.READING_VALID_TIME)
         name = self.config.get('name', '')
         description = json.loads(self.config.get('description', '[]'))
         if name and description:
             ADAM_DEVICES.update({name: description})
+        self.show_disabled_channels = bool(self.config.get('show_disabled_channels', 1))
+        # create adam device
         port = self.config.get('port', 'COM3')
         addr = self.config.get('addr', 6)
-        baud = self.config.get('baudrate', 38400)
-        read_retries = self.config.get('read_retries', 2)
-        kwargs = {}
-        kwargs['baudrate'] = baud
-        kwargs['logger'] = self.logger
-        kwargs['read_retries'] = read_retries
-        self.show_disabled_channels = bool(self.config.get('show_disabled_channels', 1))
+        kwargs = {'baudrate': self.config.get('baudrate', 38400),
+                  'logger': self.logger,
+                  'read_retries': self.config.get('read_retries', 2),
+                  'suspend_time': self.config.get('suspend_time', 10.0)}
         self.adam = Adam(port, addr, **kwargs)
-        self.adam.SUSPEND_TIME = self.config.get('suspend_time', 15.0)
         # add device to list
         if self not in AdamServer.device_list:
             AdamServer.device_list.append(self)
+        # execute init sequence
         init_command = self.config.get('init_command', '')
         if init_command:
             commands = init_command.split(';')
@@ -92,14 +90,7 @@ class AdamServer(TangoServerPrototype):
         self.write_config_to_properties()
         # check if device OK
         if self.adam.initialized():
-            # if self.adam.max_voltage < float('inf'):
-            #     self.programmed_voltage.set_max_value(self.adam.max_voltage)
-            # if self.adam.max_current < float('inf'):
-            #     self.programmed_current.set_max_value(self.adam.max_current)
-            # self.programmed_voltage.set_write_value(self.read_programmed_voltage())
-            # self.programmed_current.set_write_value(self.read_programmed_current())
-            # self.output_state.set_write_value(self.read_output_state())
-            # # set state to running
+            # change state to running
             self.set_state(DevState.RUNNING, f'Adam {self.adam.id} initialized')
             msg = 'Adam %s created successfully at %s:%d' % (self.adam.id, self.adam.port, self.adam.addr)
             self.logger.info(msg)
@@ -314,8 +305,8 @@ class AdamServer(TangoServerPrototype):
                                 attr.get_attribute(self).set_write_value(v)
                                 # self.restore_polling(attr_name)
                                 nao += 1
-                            else:
-                                self.logger.info('%s is disabled', attr_name)
+                            # else:
+                            #     self.logger.info('%s is disabled', attr_name)
                         except:
                             log_exception('%s Exception adding IO channel %s' % (self.get_name(), attr_name))
                     msg = '%s %d of %d analog outputs initialized' % (self.get_name(), nao, self.adam.ao_n)
