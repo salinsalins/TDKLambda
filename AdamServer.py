@@ -27,7 +27,7 @@ from TangoServerPrototype import TangoServerPrototype
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Adam I/O modules Tango Server'
 APPLICATION_NAME_SHORT = 'AdamServer'
-APPLICATION_VERSION = '1.1'
+APPLICATION_VERSION = '1.2'
 
 
 class AdamServer(TangoServerPrototype):
@@ -313,8 +313,8 @@ class AdamServer(TangoServerPrototype):
                                                  max_value=self.adam.ao_max[k])
                                 self.add_attribute(attr)
                                 self.attributes[attr_name] = attr
-                                # a = getattr(self, attr_name)
-                                # a.set_write_value(attr_name, self.read_general(attr))
+                                v = self.adam.read_ao(k)
+                                attr.get_attribute(self).set_write_value(v)
                                 # self.restore_polling(attr_name)
                                 nao += 1
                             else:
@@ -366,8 +366,8 @@ class AdamServer(TangoServerPrototype):
                                              format='')
                             self.add_attribute(attr)
                             self.attributes[attr_name] = attr
-                            # a = getattr(self, attr_name)
-                            # a.set_write_value(attr_name, self.read_general(attr))
+                            v = self.adam.read_do(k)
+                            attr.get_attribute(self).set_write_value(v)
                             # self.restore_polling(attr_name)
                             ndo += 1
                         except:

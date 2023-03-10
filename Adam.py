@@ -204,10 +204,10 @@ class Adam(TDKLambda):
                     return do, di
                 val = self.response[1:-3]
                 ival = int(val, 16)
-                for i in range(8):
+                for i in range(self.di_n):
                     di.append(bool(ival & (2 ** i)))
-                    if len(val) > 2:
-                        do.append(bool(ival & (2 ** (i + 8))))
+                for i in range(self.do_n):
+                    do.append(bool(ival & (2 ** (i + 8))))
         except KeyboardInterrupt:
             raise
         except:
