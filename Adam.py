@@ -105,6 +105,7 @@ class Adam(TDKLambda):
         if self.addr <= 0:
             self.logger.error('Wrong address')
             self.state = -1
+            self.suspend()
             return
         # check if port:address is in use
         with TDKLambda._lock:
@@ -112,6 +113,7 @@ class Adam(TDKLambda):
                 if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
                     self.logger.error('Address is in use')
                     self.state = -2
+                    self.suspend()
                     return
         if not self.com.ready:
             self.suspend()
@@ -130,6 +132,7 @@ class Adam(TDKLambda):
         if self.name == '0000':
             self.logger.error(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
+            self.suspend()
             return
         self.ai_n = ADAM_DEVICES[self.name]['ai']
         self.ai_masks = [True] * self.ai_n
