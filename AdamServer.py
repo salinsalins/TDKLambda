@@ -56,7 +56,7 @@ class AdamServer(TangoServerPrototype):
     def init_device(self):
         super().init_device()
         self.set_state(DevState.INIT, 'Adam Initialization')
-        self.configure_tango_logging()
+        # self.configure_tango_logging()
         self.lock = Lock()
         self.init_io = True
         self.attributes = {}
@@ -331,6 +331,8 @@ class AdamServer(TangoServerPrototype):
                             self.attributes[attr_name] = attr
                             # self.restore_polling(attr_name)
                             ndi += 1
+                        except KeyboardInterrupt:
+                            raise
                         except:
                             log_exception('%s Exception adding IO channel %s' % (self.get_name(), attr_name))
                     msg = '%s %d digital inputs initialized' % (self.get_name(), ndi)
@@ -358,6 +360,8 @@ class AdamServer(TangoServerPrototype):
                             attr.get_attribute(self).set_write_value(v)
                             # self.restore_polling(attr_name)
                             ndo += 1
+                        except KeyboardInterrupt:
+                            raise
                         except:
                             log_exception('%s Exception adding IO channel %s' % (self.get_name(), attr_name))
                     msg = '%s %d digital outputs initialized' % (self.get_name(), ndo)
@@ -378,29 +382,33 @@ class AdamServer(TangoServerPrototype):
                 self.attributes = {}
                 self.set_state(DevState.CLOSE, 'All IO channels removed')
                 self.init_io = True
+            except KeyboardInterrupt:
+                raise
             except:
                 log_exception(self.logger, '%s Error deleting IO channels' % self.get_name())
                 # self.set_state(DevState.FAULT)
 
 
-def looping():
-    # print('loop entry')
+# def looping():
+#     # print('loop entry')
+#     for dev in AdamServer.device_list:
+#         if dev.init_io:
+#             dev.add_io()
+#         # if dev.error_time > 0.0 and dev.error_time - time.time() > dev.reconnect_timeout:
+#         #     dev.reconnect()
+#     time.sleep(1.0)
+#     # print('loop exit')
+
+
+def post_init_callback():
+    # called once at server initiation
     for dev in AdamServer.device_list:
         if dev.init_io:
             dev.add_io()
-        # if dev.error_time > 0.0 and dev.error_time - time.time() > dev.reconnect_timeout:
-        #     dev.reconnect()
-    time.sleep(1.0)
-    # print('loop exit')
-
-
-# def post_init_callback():
-#     # called once at server initiation
-#     print('post_init_callback')
-#     pass
 
 
 if __name__ == "__main__":
+    AdamServer.run_server(post_init_callback=post_init_callback)
     # AdamServer.run_server(event_loop=looping, post_init_callback=post_init_callback)
-    AdamServer.run_server(event_loop=looping)
+    # AdamServer.run_server(event_loop=looping)
     # AdamServer.run_server()

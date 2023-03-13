@@ -79,6 +79,8 @@ ADAM_BAUDS = {
     b'0B': 230400
 }
 
+# os.environ["TANGO_HOST"] = '192.168.1.41:10000'
+# db = tango.Database('192.168.1.41', '10000')
 
 class Adam(TDKLambda):
 

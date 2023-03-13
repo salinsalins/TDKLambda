@@ -78,8 +78,9 @@ class TDKLambda_Server(TangoServerPrototype):
                                    doc="Programmed current")
 
     def init_device(self):
+        # self.logger.info('TDKLambda Initialization start')
         super().init_device()
-        self.info('TDKLambda Initialization')
+        # self.logger.info('TDKLambda Initialization')
         self.configure_tango_logging()
         self.error_count = 0
         self.values = [float('NaN')] * 6
@@ -117,10 +118,10 @@ class TDKLambda_Server(TangoServerPrototype):
             self.set_state(DevState.RUNNING)
             self.set_status('Successfully initialized')
             msg = 'TDKLambda %s created successfully at %s:%d' % (self.tdk.id, self.tdk.port, self.tdk.addr)
-            self.info(msg)
+            self.logger.info(msg)
         else:
             msg = 'TDKLambda %s at %s:%d created with errors' % (self.tdk.id, self.tdk.port, self.tdk.addr)
-            self.error(msg)
+            self.logger.error(msg)
             self.set_state(DevState.FAULT)
             self.set_status('Initialization error')
 
@@ -132,7 +133,7 @@ class TDKLambda_Server(TangoServerPrototype):
             msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
             # del self.tdk
             # self.tdk = None
-            self.info(msg)
+            self.logger.info(msg)
 
     def read_port(self):
         if self.tdk.initialized():
@@ -169,7 +170,7 @@ class TDKLambda_Server(TangoServerPrototype):
     def write_output_state(self, value):
         if self.tdk.com is None:
             msg = '%s:%d Switch output for offline device' % (self.tdk.port, self.tdk.addr)
-            self.debug(msg)
+            self.logger.debug(msg)
             self.output_state.set_quality(AttrQuality.ATTR_INVALID)
             result = False
             self.set_fault(msg)
@@ -193,7 +194,7 @@ class TDKLambda_Server(TangoServerPrototype):
             self.time = time.time()
             msg = '%s:%d read_all %s ms %s' % \
                   (self.tdk.port, self.tdk.addr, int((self.time - t0) * 1000.0), values)
-            self.debug(msg)
+            self.logger.debug(msg)
         except:
             self.set_fault()
             msg = '%s:%d read_all error' % (self.tdk.port, self.tdk.addr)
@@ -206,7 +207,7 @@ class TDKLambda_Server(TangoServerPrototype):
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
-            self.warning("Output voltage read error")
+            self.logger.warning("Output voltage read error")
             self.set_fault()
         else:
             attr.set_quality(AttrQuality.ATTR_VALID)
@@ -220,7 +221,7 @@ class TDKLambda_Server(TangoServerPrototype):
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
-            self.warning("Output current read error")
+            self.logger.warning("Output current read error")
             self.set_fault()
         else:
             attr.set_quality(AttrQuality.ATTR_VALID)
@@ -235,7 +236,7 @@ class TDKLambda_Server(TangoServerPrototype):
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
-            self.warning("Programmed voltage read error")
+            self.logger.warning("Programmed voltage read error")
             self.set_fault()
         else:
             attr.set_quality(AttrQuality.ATTR_VALID)
@@ -250,7 +251,7 @@ class TDKLambda_Server(TangoServerPrototype):
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
-            self.warning("Programmed current  read error")
+            self.logger.warning("Programmed current  read error")
             self.set_fault()
         else:
             attr.set_quality(AttrQuality.ATTR_VALID)
@@ -261,7 +262,7 @@ class TDKLambda_Server(TangoServerPrototype):
         if self.tdk.com is None:
             self.programmed_voltage.set_quality(AttrQuality.ATTR_INVALID)
             msg = "%s Writing to offline device" % self
-            self.warning(msg)
+            self.logger.warning(msg)
             result = False
             self.set_fault()
         else:
@@ -272,7 +273,7 @@ class TDKLambda_Server(TangoServerPrototype):
         else:
             self.programmed_voltage.set_quality(AttrQuality.ATTR_INVALID)
             msg = "%s Error writing programmed voltage" % self
-            self.warning(msg)
+            self.logger.warning(msg)
             self.set_fault()
         return result
 
@@ -280,7 +281,7 @@ class TDKLambda_Server(TangoServerPrototype):
         if self.tdk.com is None:
             self.programmed_current.set_quality(AttrQuality.ATTR_INVALID)
             msg = "%s Writing to offline device" % self
-            self.warning(msg)
+            self.logger.warning(msg)
             result = False
             self.set_fault()
         else:
@@ -291,7 +292,7 @@ class TDKLambda_Server(TangoServerPrototype):
         else:
             self.programmed_current.set_quality(AttrQuality.ATTR_INVALID)
             msg = "%s Error writing programmed current" % self
-            self.warning(msg)
+            self.logger.warning(msg)
             self.set_fault()
         return result
 
@@ -313,7 +314,7 @@ class TDKLambda_Server(TangoServerPrototype):
     @command
     def reset_ps(self):
         msg = '%s:%d Reset TDKLambda PS' % (self.tdk.port, self.tdk.addr)
-        self.info(msg)
+        self.logger.info(msg)
         self.tdk._send_command(b'RST\r')
 
     @command(dtype_in=str, doc_in='Directly send command to the TDKLambda PS',
@@ -322,10 +323,10 @@ class TDKLambda_Server(TangoServerPrototype):
         self.tdk.send_command(cmd)
         rsp = self.tdk.response.decode()
         msg = '%s:%d %s -> %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
-        self.debug(msg)
+        self.logger.debug(msg)
         if self.tdk.com is None:
             msg = '%s COM port is None' % self
-            self.debug(msg)
+            self.logger.debug(msg)
             self.set_state(DevState.FAULT)
             return
         return rsp
