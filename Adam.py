@@ -156,7 +156,11 @@ class Adam(TDKLambda):
         self.logger.debug(f'ADAM-{self.name} at {self.port}:{self.addr} has been initialized')
 
     def initialized(self):
-        return self.state > 0
+        if self.state > 0:
+            return True
+        if self.is_suspended():
+            return False
+        return True
 
     def _set_addr(self):
         return True
