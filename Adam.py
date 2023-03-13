@@ -247,7 +247,9 @@ class Adam(TDKLambda):
             do, di = self.read_di_do()
             if chan is None:
                 return di
-            return di[chan]
+            if len(di) > chan:
+                return di[chan]
+            return None
         except KeyboardInterrupt:
             raise
         except:
@@ -259,7 +261,9 @@ class Adam(TDKLambda):
             do, di = self.read_di_do()
             if chan is None:
                 return do
-            return do[chan]
+            if len(do) > chan:
+                return do[chan]
+            return None
         except KeyboardInterrupt:
             raise
         except:
@@ -297,7 +301,11 @@ class Adam(TDKLambda):
                 val = val.split(b';')[1:]
                 val = [float(i) for i in val]
             else:
-                val = float(val)
+                if val:
+                    val = float(val)
+                else:
+                    self.logger.debug('Empty response')
+                    return None
         except KeyboardInterrupt:
             raise
         except:
