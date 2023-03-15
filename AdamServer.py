@@ -401,9 +401,12 @@ class AdamServer(TangoServerPrototype):
             if attr_name is None or attr_name == name:
                 pp = self.get_saved_polling_period(name)
                 if pp > 0:
-                    dp.poll_attribute(name, pp)
-                    print(dp.polling_status())
-                    time.sleep(0.2)
+                    try:
+                        dp.poll_attribute(name, pp)
+                        # print(dp.polling_status())
+                        time.sleep(0.2)
+                    except:
+                        print('eeeee')
                     self.logger.debug(f'Polling for {name} of {pp} restored')
         self.init_po = False
 
