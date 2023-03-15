@@ -3,6 +3,7 @@
 """TDK Lambda Genesis series power supply tango device server"""
 import json
 import math
+import os
 import sys
 from threading import Lock
 
@@ -17,7 +18,7 @@ import logging
 import time
 from math import isnan
 
-from tango import AttrQuality, AttrWriteType, DispLevel
+from tango import AttrQuality, AttrWriteType, DispLevel, WAttribute
 from tango import DevState, AttrDataFormat
 from tango.server import attribute, command
 
@@ -28,6 +29,19 @@ ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Adam I/O modules Tango Server'
 APPLICATION_NAME_SHORT = 'AdamServer'
 APPLICATION_VERSION = '1.2'
+
+# db = tango.Database('192.168.1.41', '10000')
+# dn = 'binp/nbi/adam4055'
+# pn = 'polled_attr'
+# pr = db.get_device_property(dn, pn)
+# db.delete_device_property(dn, pn)
+# tango.ApiUtil.get_env_var("TANGO_HOST")
+# tango.__version_info__
+# dp = tango.DeviceProxy('tango://192.168.1.41:10000/binp/nbi/adam4055')
+# an = 'do00'
+# dp.is_attribute_polled(an)
+# dp.get_attribute_poll_period(an)
+# dp.poll_attribute(an, 2000)
 
 
 class AdamServer(TangoServerPrototype):
@@ -59,6 +73,7 @@ class AdamServer(TangoServerPrototype):
         # self.configure_tango_logging()
         self.lock = Lock()
         self.init_io = True
+        self.init_po = False
         self.attributes = {}
         self.values = [float('NaN')] * 6
         self.time = time.time() - 100.0
@@ -100,14 +115,22 @@ class AdamServer(TangoServerPrototype):
             self.set_state(DevState.FAULT, 'Adam initialization error')
 
     def delete_device(self):
-        super().delete_device()
         if self in AdamServer.device_list:
             AdamServer.device_list.remove(self)
+            db = tango.Database()
+            pr = db.get_device_property(self.get_name(), 'polled_attr')
+            db.delete_device_property(self.get_name(), 'polled_attr')
+            po = {'_polled_attr': pr['polled_attr']}
+            # print(pr, po)
+            db.put_device_property(self.get_name(), po)
+            self.stop_polling()
+            # db.delete_device_property(self.get_name(), 'polled_attr')
             self.adam.__del__()
             msg = ' %s:%d Adam device has been deleted' % (self.adam.port, self.adam.addr)
             # del self.adam
             # self.adam = None
             self.logger.info(msg)
+        super().delete_device()
 
     def read_port(self):
         return self.adam.port
@@ -303,7 +326,6 @@ class AdamServer(TangoServerPrototype):
                                 self.attributes[attr_name] = attr
                                 v = self.adam.read_ao(k)
                                 attr.get_attribute(self).set_write_value(v)
-                                # self.restore_polling(attr_name)
                                 nao += 1
                             # else:
                             #     self.logger.info('%s is disabled', attr_name)
@@ -329,7 +351,6 @@ class AdamServer(TangoServerPrototype):
                                              format='')
                             self.add_attribute(attr)
                             self.attributes[attr_name] = attr
-                            # self.restore_polling(attr_name)
                             ndi += 1
                         except KeyboardInterrupt:
                             raise
@@ -358,7 +379,6 @@ class AdamServer(TangoServerPrototype):
                             self.attributes[attr_name] = attr
                             v = self.adam.read_do(k)
                             attr.get_attribute(self).set_write_value(v)
-                            # self.restore_polling(attr_name)
                             ndo += 1
                         except KeyboardInterrupt:
                             raise
@@ -371,7 +391,32 @@ class AdamServer(TangoServerPrototype):
                 log_exception('%s Error adding IO channels' % self.get_name())
                 self.set_state(DevState.FAULT, msg)
             self.init_io = False
+            self.init_po = True
+            # self.restore_polling()
             return nai + nao + ndi + ndo
+
+    def restore_polling(self, attr_name=None):
+        dp = tango.DeviceProxy(self.get_name())
+        for name in self.attributes:
+            if attr_name is None or attr_name == name:
+                pp = self.get_saved_polling_period(name)
+                if pp > 0:
+                    dp.poll_attribute(name, pp)
+                    print(dp.polling_status())
+                    time.sleep(0.2)
+                    self.logger.debug(f'Polling for {name} of {pp} restored')
+        self.init_po = False
+
+    def get_saved_polling_period(self, attr_name):
+        try:
+            pa = self.properties.get('_polled_attr')
+            i = pa.index(attr_name)
+            if i < 0:
+                return -1
+            t = int(pa[i + 1])
+        except:
+            t = -1
+        return t
 
     def remove_io(self):
         with self.lock:
@@ -389,15 +434,17 @@ class AdamServer(TangoServerPrototype):
                 # self.set_state(DevState.FAULT)
 
 
-# def looping():
-#     # print('loop entry')
-#     for dev in AdamServer.device_list:
-#         if dev.init_io:
-#             dev.add_io()
-#         # if dev.error_time > 0.0 and dev.error_time - time.time() > dev.reconnect_timeout:
-#         #     dev.reconnect()
-#     time.sleep(1.0)
-#     # print('loop exit')
+def looping():
+    # print('loop entry')
+    for dev in AdamServer.device_list:
+        if dev.init_io:
+            dev.add_io()
+        # if dev.init_po:
+            dev.restore_polling()
+        # if dev.error_time > 0.0 and dev.error_time - time.time() > dev.reconnect_timeout:
+        #     dev.reconnect()
+    time.sleep(1.0)
+    # print('loop exit')
 
 
 def post_init_callback():
@@ -405,9 +452,26 @@ def post_init_callback():
     for dev in AdamServer.device_list:
         if dev.init_io:
             dev.add_io()
+    for dev in AdamServer.device_list:
+        if dev.init_po:
+            dev.restore_polling()
 
 
 if __name__ == "__main__":
+    db = tango.Database()
+    sn = 'AdamServer'
+    pn = 'polled_attr'
+    dcl = db.get_device_class_list(sn + '/' + sys.argv[1])
+    i = 0
+    st = dcl.value_string
+    for s in st:
+        if s == sn:
+            dn = st[i - 1]
+            pr = db.get_device_property(dn, pn)[pn]
+            if (len(pr) % 2) != 0:
+                db.delete_device_property(dn, pn)
+                print('Cleaning', pn, 'for', dn, pr)
+        i += 1
     AdamServer.run_server(post_init_callback=post_init_callback)
     # AdamServer.run_server(event_loop=looping, post_init_callback=post_init_callback)
     # AdamServer.run_server(event_loop=looping)
