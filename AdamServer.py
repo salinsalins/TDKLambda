@@ -392,7 +392,7 @@ class AdamServer(TangoServerPrototype):
                 pp = self.get_saved_polling_period(name)
                 if pp > 0:
                     dp.poll_attribute(name, pp)
-                    # print(dp.polling_status())
+                    # workaround to prevent tango feature
                     time.sleep(self.POLLING_ENABLE_DELAY)
                     self.logger.info(f'Polling for {name} of {pp} restored')
         self.init_po = False
@@ -424,6 +424,30 @@ class AdamServer(TangoServerPrototype):
                 # self.set_state(DevState.FAULT)
 
 
+def correct_polled_attr_for_server(server_name = 'AdamServer'):
+    d_b = tango.Database()
+    # server_name = 'AdamServer'
+    pr_n = 'polled_attr'
+    dev_cl = d_b.get_device_class_list(server_name + '/' + sys.argv[1])
+    vst = dev_cl.value_string
+    i = 0
+    for st in vst:
+        if st == server_name:
+            dev_n = vst[i - 1]
+            # d_b.delete_device_property(dev_n, pr_n)
+            pr_v = d_b.get_device_property(dev_n, pr_n)[pr_n]
+            result = []
+            for j in range(len(pr_v)):
+                try:
+                    val = int(pr_v[j + 1])
+                    result.append(pr_v[j])
+                    result.append(pr_v[j+1])
+                    j += 1
+                except:
+                    print('Wrong syntax for', pr_v[j], dev_n)
+            d_b.put_device_property(dev_n, {pr_n: result})
+
+
 def looping():
     # print('loop entry')
     for dev in AdamServer.device_list:
@@ -452,14 +476,15 @@ if __name__ == "__main__":
     sn = 'AdamServer'
     pn = 'polled_attr'
     dcl = db.get_device_class_list(sn + '/' + sys.argv[1])
-    i = 0
     st = dcl.value_string
+    i = 0
     for s in st:
         if s == sn:
             dn = st[i - 1]
+            db.delete_device_property(dn, pn)
             pr = db.get_device_property(dn, pn)[pn]
             if (len(pr) % 2) != 0:
-                db.delete_device_property(dn, pn)
+                # db.delete_device_property(dn, pn)
                 print('Cleaning', pn, 'for', dn, pr)
         i += 1
     AdamServer.run_server(post_init_callback=post_init_callback)
