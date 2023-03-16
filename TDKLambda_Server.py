@@ -17,7 +17,7 @@ from TangoServerPrototype import TangoServerPrototype
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'TDK Lambda Genesis series PS Python Tango Server'
 APPLICATION_NAME_SHORT = 'TDKLambda_Server'
-APPLICATION_VERSION = '5.0'  # from ver 4.* Using Python Prototype Tango Server
+APPLICATION_VERSION = '5.1'  # from ver 4.* Using Python Prototype Tango Server
 
 
 class TDKLambda_Server(TangoServerPrototype):
@@ -115,25 +115,21 @@ class TDKLambda_Server(TangoServerPrototype):
             self.programmed_current.set_write_value(self.read_programmed_current())
             self.output_state.set_write_value(self.read_output_state())
             # set state to running
-            self.set_state(DevState.RUNNING)
-            self.set_status('Successfully initialized')
             msg = 'TDKLambda %s created successfully at %s:%d' % (self.tdk.id, self.tdk.port, self.tdk.addr)
+            self.set_state(DevState.RUNNING, msg)
             self.logger.info(msg)
         else:
             msg = 'TDKLambda %s at %s:%d created with errors' % (self.tdk.id, self.tdk.port, self.tdk.addr)
+            self.set_state(DevState.FAULT, msg)
             self.logger.error(msg)
-            self.set_state(DevState.FAULT)
-            self.set_status('Initialization error')
 
     def delete_device(self):
-        super().delete_device()
         if self in TDKLambda_Server.device_list:
             TDKLambda_Server.device_list.remove(self)
             self.tdk.__del__()
             msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
-            # del self.tdk
-            # self.tdk = None
             self.logger.info(msg)
+        super().delete_device()
 
     def read_port(self):
         if self.tdk.initialized():
@@ -311,36 +307,36 @@ class TDKLambda_Server(TangoServerPrototype):
                 msg = 'TDKLambda was not initialized'
         super().set_fault(msg)
 
-    @command
+    @command(doc_in='Reset power supply by sending RST command',
+             dtype_out=str, doc_out='Response from TDKLambda PS without final <CR>')
     def reset_ps(self):
-        msg = '%s:%d Reset TDKLambda PS' % (self.tdk.port, self.tdk.addr)
+        msg = '%s:%d Resetting TDKLambda PS' % (self.tdk.port, self.tdk.addr)
         self.logger.info(msg)
-        self.tdk._send_command(b'RST\r')
+        rsp = self.send_command(b'RST')
+        return rsp
 
     @command(dtype_in=str, doc_in='Directly send command to the TDKLambda PS',
              dtype_out=str, doc_out='Response from TDKLambda PS without final <CR>')
     def send_command(self, cmd):
-        self.tdk.send_command(cmd)
+        result = self.tdk.send_command(cmd)
         rsp = self.tdk.response.decode()
-        msg = '%s:%d %s -> %s' % (self.tdk.port, self.tdk.addr, cmd, rsp)
-        self.logger.debug(msg)
-        if self.tdk.com is None:
-            msg = '%s COM port is None' % self
+        if result:
+            msg = f'Command {cmd} OK, result {rsp}'
             self.logger.debug(msg)
-            self.set_state(DevState.FAULT)
-            return
-        return rsp
+            self.set_state(DevState.RUNNING, msg)
+        else:
+            msg = f'Command {cmd} ERROR, result {rsp}'
+            self.logger.warning(msg)
+            self.set_state(DevState.FAULT, msg)
+        return msg
 
     @command
     def turn_on(self):
-        # turn on the actual power supply here
         self.write_output_state(True)
 
     @command
     def turn_off(self):
-        # turn off the actual power supply here
         self.write_output_state(False)
-        # self.set_state(DevState.OFF)
 
 
 if __name__ == "__main__":

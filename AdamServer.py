@@ -117,8 +117,8 @@ class AdamServer(TangoServerPrototype):
     def delete_device(self):
         if self in AdamServer.device_list:
             self.save_polling_state()
-            tango.Database().delete_device_property(self.get_name(), 'polled_attr')
             self.stop_polling()
+            tango.Database().delete_device_property(self.get_name(), 'polled_attr')
             AdamServer.device_list.remove(self)
             self.adam.__del__()
             msg = ' %s:%d Adam device has been deleted' % (self.adam.port, self.adam.addr)

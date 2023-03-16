@@ -61,6 +61,7 @@ class TDKLambda:
         self.suspend_to = 0.0
         self.suspend_flag = False
         self.state = 0
+        self.status = ''
         # default com port, id, serial number, and ...
         self.com = None
         self.id = 'Unknown Device'
@@ -115,14 +116,19 @@ class TDKLambda:
                 self.max_current = float(ids[-1])
                 self.max_voltage = float(mv[-1][2:])
             except:
-                self.logger.warning('Can not set max values')
+                msg = 'Can not set max values'
+                self.logger.warning(msg)
+                self.status = msg
         else:
             msg = 'LAMBDA device is not recognized'
             self.logger.error(msg)
             self.suspend()
             self.state = -4
+            self.status = msg
             return
-        self.logger.debug(f'TDKLambda at {self.port}:{self.addr} has been initialized')
+        msg = f'TDKLambda at {self.port}:{self.addr} has been initialized'
+        self.logger.debug(msg)
+        self.status = msg
 
     def __del__(self):
         with TDKLambda._lock:
