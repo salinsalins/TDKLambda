@@ -125,11 +125,11 @@ class AdamServer(TangoServerPrototype):
             self.logger.info(msg)
         super().delete_device()
 
-    def save_polling_state(self, target_property='_polled_attr'):
-        db = tango.Database()
-        pr = db.get_device_property(self.get_name(), 'polled_attr')
-        po = {target_property: pr['polled_attr']}
-        db.put_device_property(self.get_name(), po)
+    # def save_polling_state(self, target_property='_polled_attr'):
+    #     db = tango.Database()
+    #     pr = db.get_device_property(self.get_name(), 'polled_attr')
+    #     po = {target_property: pr['polled_attr']}
+    #     db.put_device_property(self.get_name(), po)
 
     def read_port(self):
         return self.adam.port
