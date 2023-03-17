@@ -385,16 +385,16 @@ class AdamServer(TangoServerPrototype):
             # self.restore_polling()
             return nai + nao + ndi + ndo
 
-    def restore_polling(self, attr_name=None):
-        dp = tango.DeviceProxy(self.get_name())
-        for name in self.ceated_attributes:
-            if attr_name is None or attr_name == name:
-                pp = self.get_saved_polling_period(name)
-                if pp > 0:
-                    dp.poll_attribute(name, pp)
-                    # workaround to prevent tango feature
-                    time.sleep(self.POLLING_ENABLE_DELAY)
-                    self.logger.info(f'Polling for {self.get_name()} {name} of {pp} restored')
+    # def restore_polling(self, attr_name=None):
+    #     dp = tango.DeviceProxy(self.get_name())
+    #     for name in self.ceated_attributes:
+    #         if attr_name is None or attr_name == name:
+    #             pp = self.get_saved_polling_period(name)
+    #             if pp > 0:
+    #                 dp.poll_attribute(name, pp)
+    #                 # workaround to prevent tango feature
+    #                 time.sleep(self.POLLING_ENABLE_DELAY)
+    #                 self.logger.info(f'Polling for {self.get_name()} {name} of {pp} restored')
 
     # def get_saved_polling_period(self, attr_name, prop_name='_polled_attr'):
     #     try:
