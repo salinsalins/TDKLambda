@@ -282,6 +282,8 @@ class AdamServer(TangoServerPrototype):
                                 nai += 1
                             else:
                                 self.logger.info('%s is disabled', attr_name)
+                        except KeyboardInterrupt:
+                            raise
                         except:
                             log_exception('%s Exception adding AI %s' % (self.get_name(), attr_name))
                     msg = '%s %d of %d analog inputs initialized' % (self.get_name(), nai, self.adam.ai_n)
@@ -313,6 +315,8 @@ class AdamServer(TangoServerPrototype):
                                 nao += 1
                             # else:
                             #     self.logger.info('%s is disabled', attr_name)
+                        except KeyboardInterrupt:
+                            raise
                         except:
                             log_exception('%s Exception adding IO channel %s' % (self.get_name(), attr_name))
                     msg = '%s %d of %d analog outputs initialized' % (self.get_name(), nao, self.adam.ao_n)
@@ -371,6 +375,8 @@ class AdamServer(TangoServerPrototype):
                     msg = '%s %d digital outputs initialized' % (self.get_name(), ndo)
                     self.logger.info(msg)
                 self.set_state(DevState.RUNNING, 'IO addition completed')
+            except KeyboardInterrupt:
+                raise
             except:
                 log_exception('%s Error adding IO channels' % self.get_name())
                 self.set_state(DevState.FAULT, msg)
@@ -388,19 +394,17 @@ class AdamServer(TangoServerPrototype):
                     dp.poll_attribute(name, pp)
                     # workaround to prevent tango feature
                     time.sleep(self.POLLING_ENABLE_DELAY)
-                    self.logger.info(f'Polling for {name} of {pp} restored')
-        self.init_po = False
+                    self.logger.info(f'Polling for {self.get_name()} {name} of {pp} restored')
 
-    def get_saved_polling_period(self, attr_name, prop_name='_polled_attr'):
-        try:
-            pa = self.properties.get(prop_name)
-            i = pa.index(attr_name)
-            if i < 0:
-                return -1
-            t = int(pa[i + 1])
-        except:
-            t = -1
-        return t
+    # def get_saved_polling_period(self, attr_name, prop_name='_polled_attr'):
+    #     try:
+    #         pa = self.properties.get(prop_name)
+    #         i = pa.index(attr_name)
+    #         if i < 0:
+    #             return -1
+    #         return int(pa[i + 1])
+    #     except:
+    #         return -1
 
     def remove_io(self):
         with self.lock:
@@ -439,6 +443,7 @@ def post_init_callback():
     for dev in AdamServer.device_list:
         if dev.init_po:
             dev.restore_polling()
+            dev.init_po = False
 
 
 if __name__ == "__main__":
