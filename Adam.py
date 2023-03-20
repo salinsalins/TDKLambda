@@ -1,4 +1,7 @@
-import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
+import sys;
+
+sys.path.append('../TangoUtils');
+sys.path.append('../IT6900')
 import time
 
 from log_exception import log_exception
@@ -78,6 +81,7 @@ ADAM_BAUDS = {
     b'0A': 115200,
     b'0B': 230400
 }
+
 
 # os.environ["TANGO_HOST"] = '192.168.1.41:10000'
 # db = tango.Database('192.168.1.41', '10000')
