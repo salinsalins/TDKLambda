@@ -137,14 +137,6 @@ class AdamServer(TangoServerPrototype):
             return self.adam.id
         return "Uninitialized"
 
-    def is_connected(self):
-        # if self.adam is None or self.adam.name == '0000':
-        #     if self.error_time > 0.0 and self.error_time - time.time() > self.reconnect_timeout:
-        #         self.reconnect()
-        #     return False
-        # return True
-        return self.adam.ready
-
     def set_error_attribute_value(self, attr: tango.Attribute):
         v = None
         if attr.get_data_format() == tango.DevBoolean:
@@ -246,6 +238,7 @@ class AdamServer(TangoServerPrototype):
                     self.logger.warning(msg)
                     self.set_state(DevState.FAULT, msg)
                     self.init_io = False
+                    self.init_po = False
                     return
                 self.set_state(DevState.INIT, 'Attributes creation')
                 attr_name = ''

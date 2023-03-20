@@ -105,21 +105,23 @@ class Adam(TDKLambda):
         self.ao_units = []
         # check device address
         if self.addr <= 0:
-            self.logger.error('Wrong address')
             self.state = -1
+            self.logger.error(self.STATES[self.state])
             self.suspend()
-            return
+            return False
         # check if port:address is in use
         with TDKLambda._lock:
             for d in TDKLambda._devices:
                 if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
-                    self.logger.error('Address is in use')
                     self.state = -2
+                    self.logger.error(self.STATES[self.state])
                     self.suspend()
-                    return
+                    return False
         if not self.com.ready:
+            self.state = -5
+            self.logger.error(self.STATES[self.state])
             self.suspend()
-            return
+            return False
         # read device type
         self.id = self.read_device_id()
         if self.id != 'Unknown Device':
@@ -135,7 +137,7 @@ class Adam(TDKLambda):
             self.logger.error(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
             self.suspend()
-            return
+            return False
         self.ai_n = ADAM_DEVICES[self.name]['ai']
         self.ai_masks = [True] * self.ai_n
         if self.ai_n > 0:
@@ -156,11 +158,7 @@ class Adam(TDKLambda):
         self.ao_units = [i[2] for i in self.ao_ranges]
         self.state = 1
         self.logger.debug(f'ADAM-{self.name} at {self.port}:{self.addr} has been initialized')
-
-    def initialized(self):
-        # if self.state > 0:
-        #     return True
-        return self.ready
+        return True
 
     def _set_addr(self):
         return True

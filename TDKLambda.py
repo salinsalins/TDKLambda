@@ -89,7 +89,6 @@ class TDKLambda:
         with TDKLambda._lock:
             for d in TDKLambda._devices:
                 if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
-                    self.logger.error('Address is in use')
                     self.state = -2
                     self.logger.error(self.STATES[self.state])
                     self.suspend()
