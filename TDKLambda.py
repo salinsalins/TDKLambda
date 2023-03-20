@@ -30,13 +30,14 @@ class TDKLambda:
     _devices = []
     _lock = Lock()
     SUSPEND_TIME = 5.0
-    STATE = {
-        0: 'Pre init state',
+    STATES = {
         1: 'Initialized',
+        0: 'Pre init state',
         -1: 'Wrong address',
         -2: 'Address is in use',
         -3: 'Address set error',
-        -4: 'LAMBDA device is not recognized'}
+        -4: 'LAMBDA device is not recognized',
+        -5: 'COM port not ready'}
 
     def __init__(self, port, addr, checksum=False, auto_addr=True, **kwargs):
         # parameters
@@ -80,29 +81,33 @@ class TDKLambda:
     def init(self):
         # check device address
         if self.addr <= 0:
-            self.logger.error('Wrong address')
             self.state = -1
+            self.logger.error(self.STATES[self.state])
             self.suspend()
-            return
+            return False
         # check if port:address is in use
         with TDKLambda._lock:
             for d in TDKLambda._devices:
                 if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
                     self.logger.error('Address is in use')
                     self.state = -2
+                    self.logger.error(self.STATES[self.state])
                     self.suspend()
-                    return
+                    return False
         self.suspend_to = 0.0
         self.suspend_flag = False
         if not self.com.ready:
+            self.state = -5
+            self.logger.error(self.STATES[self.state])
             self.suspend()
-            return
+            return False
         # set device address
         response = self._set_addr()
         if not response:
-            self.suspend()
             self.state = -3
-            return
+            self.logger.error(self.STATES[self.state])
+            self.suspend()
+            return False
         # read device serial number
         self.sn = self.read_serial_number()
         # read device type
@@ -116,19 +121,16 @@ class TDKLambda:
                 self.max_current = float(ids[-1])
                 self.max_voltage = float(mv[-1][2:])
             except:
-                msg = 'Can not set max values'
+                msg = 'Can not set max values for LAMBDA PS'
                 self.logger.warning(msg)
-                self.status = msg
         else:
-            msg = 'LAMBDA device is not recognized'
-            self.logger.error(msg)
-            self.suspend()
             self.state = -4
-            self.status = msg
-            return
+            self.logger.error(self.STATES[self.state])
+            self.suspend()
+            return False
         msg = f'TDKLambda at {self.port}:{self.addr} has been initialized'
         self.logger.debug(msg)
-        self.status = msg
+        return True
 
     def __del__(self):
         with TDKLambda._lock:
@@ -187,6 +189,10 @@ class TDKLambda:
                 return False
         else:  # it was not suspended
             return False
+
+    @property
+    def ready(self):
+        return not self.is_suspended()
 
     def _read(self, size=1, timeout=1.0):
         result = b''
@@ -368,7 +374,7 @@ class TDKLambda:
 
     # high level general command  ***************************
     def send_command(self, cmd) -> bool:
-        if self.is_suspended():
+        if not self.ready:
             self.command = cmd
             self.response = b''
             self.logger.debug('Ignored command %s to suspended device', cmd)
@@ -504,7 +510,7 @@ class TDKLambda:
 
     # high level check state commands  ***************************
     def initialized(self):
-        return self.state > 0 and self.com.ready and self.id.find('LAMBDA') >= 0
+        return self.ready
 
     def alive(self):
         return self.read_device_id().find('LAMBDA') >= 0

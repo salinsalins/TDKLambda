@@ -99,12 +99,13 @@ class AdamServer(TangoServerPrototype):
             commands = init_command.split(';')
             stat = ''
             for c in commands:
-                s = self.send_command(c)
-                stat += f'; {s}'
+                s = self.send_adam_command(c)
+                stat += f'{s}; '
             self.logger.debug(f'Initialization commands {init_command} executed with result {stat}')
+        #
         self.write_config_to_properties()
         # check if device OK
-        if self.adam.initialized():
+        if self.adam.ready:
             # change state to running
             msg = 'Adam %s created successfully at %s:%d' % (self.adam.id, self.adam.port, self.adam.addr)
             self.set_state(DevState.RUNNING, msg)
@@ -125,12 +126,6 @@ class AdamServer(TangoServerPrototype):
             self.logger.info(msg)
         super().delete_device()
 
-    # def save_polling_state(self, target_property='_polled_attr'):
-    #     db = tango.Database()
-    #     pr = db.get_device_property(self.get_name(), 'polled_attr')
-    #     po = {target_property: pr['polled_attr']}
-    #     db.put_device_property(self.get_name(), po)
-
     def read_port(self):
         return self.adam.port
 
@@ -138,7 +133,7 @@ class AdamServer(TangoServerPrototype):
         return str(self.adam.addr)
 
     def read_device_type(self):
-        if self.adam.initialized():
+        if self.adam.ready:
             return self.adam.id
         return "Uninitialized"
 
@@ -148,7 +143,7 @@ class AdamServer(TangoServerPrototype):
         #         self.reconnect()
         #     return False
         # return True
-        return self.adam.initialized()
+        return self.adam.ready
 
     def set_error_attribute_value(self, attr: tango.Attribute):
         v = None
@@ -174,12 +169,9 @@ class AdamServer(TangoServerPrototype):
 
     def read_general(self, attr: tango.Attribute):
         with self.lock:
-            # attr_name = attr.get_name()
-            if self.is_connected():
-                val = self._read_io(attr)
-            else:
-                val = None
-                msg = '%s %s Waiting for reconnect' % (self.get_name(), attr.get_name())
+            val = self._read_io(attr)
+            if val is None:
+                msg = '%s ADAM is not ready reading %s' % (self.get_name(), attr.get_name())
                 self.logger.debug(msg)
             self.set_attribute_value(attr, val)
             return val
@@ -197,10 +189,11 @@ class AdamServer(TangoServerPrototype):
             else:
                 msg = "%s Write to unknown attribute %s" % (self.get_name(), attr_name)
                 self.logger.error(msg)
+                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
                 return
             if result:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
-            # else:
+            else:
             #     if mask:
             #         self.error_time = time.time()
             #         self.error_count += 1
@@ -208,7 +201,7 @@ class AdamServer(TangoServerPrototype):
             #         self.logger.error(msg)
             #         # self.error_stream(msg)
             #         self.set_error_attribute_value(attr)
-            #         # attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+                attr.set_quality(tango.AttrQuality.ATTR_INVALID)
 
     def _read_io(self, attr: tango.Attribute):
         attr_name = attr.get_name()
@@ -272,7 +265,7 @@ class AdamServer(TangoServerPrototype):
                                                  doc='Analog input %s' % k,
                                                  unit=self.adam.ai_units[k],
                                                  display_unit=1.0,
-                                                 format='%f',
+                                                 format='%6.3f',
                                                  min_value=self.adam.ai_min[k],
                                                  max_value=self.adam.ai_max[k])
                                 # add attr to device
@@ -305,7 +298,7 @@ class AdamServer(TangoServerPrototype):
                                                  doc='Analog output %s' % k,
                                                  unit=self.adam.ao_units[k],
                                                  display_unit=1.0,
-                                                 format='%f',
+                                                 format='%6.3f',
                                                  min_value=self.adam.ao_min[k],
                                                  max_value=self.adam.ao_max[k])
                                 self.add_attribute(attr)
