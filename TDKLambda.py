@@ -36,7 +36,7 @@ class TDKLambda:
         -1: 'Wrong address',
         -2: 'Address is in use',
         -3: 'Address set error',
-        -4: 'LAMBDA device is not recognized',
+        -4: 'Device is not recognized',
         -5: 'COM port not ready'}
 
     def __init__(self, port, addr, checksum=False, auto_addr=True, **kwargs):
