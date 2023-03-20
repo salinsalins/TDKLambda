@@ -410,19 +410,14 @@ class AdamServer(TangoServerPrototype):
 
 def looping():
     # print('loop entry')
-    for dev in AdamServer.device_list:
-        if dev.init_io:
-            dev.add_io()
-            # if dev.init_po:
-            dev.restore_polling()
-        # if dev.error_time > 0.0 and dev.error_time - time.time() > dev.reconnect_timeout:
-        #     dev.reconnect()
+    post_init_callback()
     time.sleep(1.0)
     # print('loop exit')
 
 
 def post_init_callback():
     # called once at server initiation
+    print('post_init_callback entry')
     for dev in AdamServer.device_list:
         if dev.init_io:
             dev.add_io()
