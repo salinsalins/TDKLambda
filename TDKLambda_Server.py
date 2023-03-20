@@ -104,7 +104,7 @@ class TDKLambda_Server(TangoServerPrototype):
         # add device to list
         if self not in TDKLambda_Server.device_list:
             TDKLambda_Server.device_list.append(self)
-        self.write_config_to_properties()
+        # self.write_config_to_properties()
         # check if device OK
         if self.tdk.initialized():
             if self.tdk.max_voltage < float('inf'):

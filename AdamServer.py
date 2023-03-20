@@ -103,7 +103,7 @@ class AdamServer(TangoServerPrototype):
                 stat += f'{s}; '
             self.logger.debug(f'Initialization commands {init_command} executed with result {stat}')
         #
-        self.write_config_to_properties()
+        # self.write_config_to_properties()
         # check if device OK
         if self.adam.ready:
             # change state to running
