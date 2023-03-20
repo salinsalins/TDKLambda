@@ -80,8 +80,8 @@ class TDKLambda_Server(TangoServerPrototype):
     def init_device(self):
         # self.logger.info('TDKLambda Initialization start')
         super().init_device()
-        # self.logger.info('TDKLambda Initialization')
-        self.configure_tango_logging()
+        self.logger.info('TDKLambda Initialization')
+        # self.configure_tango_logging()
         self.error_count = 0
         self.values = [float('NaN')] * 6
         self.time = time.time() - 100.0
@@ -292,15 +292,15 @@ class TDKLambda_Server(TangoServerPrototype):
             self.set_fault()
         return result
 
-    def set_running(self, msg=None):
-        # self.error_count = 0
-        super().set_running(msg)
-
+    # def set_running(self, msg=None):
+    #     # self.error_count = 0
+    #     super().set_running(msg)
+    #
     def set_fault(self, msg=None):
         # self.error_count += 1
         # if self.error_count > 5:
         #     super().set_fault()
-        if not msg:
+        if msg is None:
             if self.tdk.initialized():
                 msg = 'R/W error!'
             else:
