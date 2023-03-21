@@ -427,7 +427,7 @@ def looping():
 
 def post_init_callback():
     # called once at server initiation
-    print('post_init_callback entry')
+    # print('post_init_callback entry')
     for dev in AdamServer.device_list:
         if dev.init_io:
             dev.add_io()
