@@ -127,15 +127,26 @@ class AdamServer(TangoServerPrototype):
         super().delete_device()
 
     def read_port(self):
+        if self.adam.ready:
+            self.set_running()
+        else:
+            self.set_fault()
         return self.adam.port
 
     def read_address(self):
+        if self.adam.ready:
+            self.set_running()
+        else:
+            self.set_fault()
         return str(self.adam.addr)
 
     def read_device_type(self):
         if self.adam.ready:
+            self.set_running()
             return self.adam.id
-        return "Uninitialized"
+        else:
+            self.set_fault()
+            return "Uninitialized"
 
     def set_error_attribute_value(self, attr: tango.Attribute):
         v = None
