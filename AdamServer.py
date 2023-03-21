@@ -7,13 +7,12 @@ import os
 import sys
 import time
 from threading import Lock
+sys.path.append('../TangoUtils')
+sys.path.append('../IT6900')
 
 import tango
 
 from log_exception import log_exception
-
-sys.path.append('../TangoUtils')
-sys.path.append('../IT6900')
 
 from tango import AttrQuality, AttrWriteType, DispLevel
 from tango import DevState, AttrDataFormat
