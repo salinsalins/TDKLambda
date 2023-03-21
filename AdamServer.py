@@ -25,7 +25,7 @@ from TangoServerPrototype import TangoServerPrototype
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Adam I/O modules Tango Server'
 APPLICATION_NAME_SHORT = 'AdamServer'
-APPLICATION_VERSION = '2.0'
+APPLICATION_VERSION = '2.1'
 
 
 # db = tango.Database('192.168.1.41', '10000')
@@ -440,10 +440,10 @@ if __name__ == "__main__":
         if s == sn:
             dn = st[i - 1]
             db.delete_device_property(dn, pn)
-            pr = db.get_device_property(dn, pn)[pn]
-            if (len(pr) % 2) != 0:
-                # db.delete_device_property(dn, pn)
-                print('Cleaning', pn, 'for', dn, pr)
+            # pr = db.get_device_property(dn, pn)[pn]
+            # if (len(pr) % 2) != 0:
+            #     # db.delete_device_property(dn, pn)
+            #     print('Cleaning', pn, 'for', dn, pr)
         i += 1
     #
     AdamServer.run_server(post_init_callback=post_init_callback)
