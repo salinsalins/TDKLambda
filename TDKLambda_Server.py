@@ -133,18 +133,25 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def read_port(self):
         if self.tdk.initialized():
-            return self.tdk.port
-        return "Unknown"
+            self.set_running()
+        else:
+            self.set_fault()
+        return self.tdk.port
 
     def read_address(self):
         if self.tdk.initialized():
-            return str(self.tdk.addr)
-        return "-1"
+            self.set_running()
+        else:
+            self.set_fault()
+        return str(self.tdk.addr)
 
     def read_device_type(self):
         if self.tdk.initialized():
+            self.set_running()
             return self.tdk.id
-        return "Uninitialized"
+        else:
+            self.set_fault()
+            return "Uninitialized"
 
     def read_output_state(self):
         if self.tdk.initialized():
