@@ -19,7 +19,7 @@ LF = b'\n'
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'TDK Lambda Genesis series PS Python API'
 APPLICATION_NAME_SHORT = 'TDKLambda'
-APPLICATION_VERSION = '3.0'
+APPLICATION_VERSION = '4.0' # reconnect corrected
 
 
 class TDKLambdaException(Exception):
