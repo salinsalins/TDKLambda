@@ -1,7 +1,4 @@
-import sys;
-
-sys.path.append('../TangoUtils');
-sys.path.append('../IT6900')
+# import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
 import time
 
 from log_exception import log_exception
