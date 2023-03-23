@@ -1,19 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
+import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
 import json
 import math
 import os
-import sys
+
 import time
 from threading import Lock
 
 import tango
 
 from log_exception import log_exception
-
-sys.path.append('../TangoUtils')
-sys.path.append('../IT6900')
 
 from tango import AttrQuality, AttrWriteType, DispLevel
 from tango import DevState, AttrDataFormat
