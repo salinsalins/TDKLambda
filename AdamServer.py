@@ -418,6 +418,11 @@ class AdamServer(TangoServerPrototype):
                 log_exception(self.logger, '%s Error deleting IO channels' % self.get_name())
                 # self.set_state(DevState.FAULT)
 
+    def save_polling_state(self, target_property='_polled_attr'):
+        if self.adam.name == '0000':
+            self.logger.info(f'Polling was not saved for unknown device {self.dev_name}')
+            return False
+        super().save_polling_state(target_property)
 
 def looping():
     # print('loop entry')
@@ -428,7 +433,6 @@ def looping():
 
 def post_init_callback():
     # called once at server initiation
-    print('post_init_callback entry')
     for dev in AdamServer.device_list:
         if dev.init_io:
             dev.add_io()
