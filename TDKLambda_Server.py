@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
-import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
+import sys
+if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
+if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 
 import logging
 import time
