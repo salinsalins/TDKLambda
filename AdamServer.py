@@ -419,10 +419,15 @@ class AdamServer(TangoServerPrototype):
                 # self.set_state(DevState.FAULT)
 
     def save_polling_state(self, target_property='_polled_attr'):
-        if self.adam.name == '0000':
-            self.logger.info(f'Polling was not saved for unknown device {self.dev_name}')
-            return False
-        super().save_polling_state(target_property)
+        try:
+            if self.adam.name == '0000':
+                self.logger.info(f'Polling was not saved for unknown device {self.get_name()}')
+                return False
+            super().save_polling_state(target_property)
+        except KeyboardInterrupt:
+            raise
+        except:
+            log_exception()
 
 def looping():
     # print('loop entry')
