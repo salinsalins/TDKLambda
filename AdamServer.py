@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
 import sys
+
 if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
 if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 import json
@@ -196,13 +197,13 @@ class AdamServer(TangoServerPrototype):
             if result:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
             else:
-            #     if mask:
-            #         self.error_time = time.time()
-            #         self.error_count += 1
-            #         msg = "%s Error writing %s" % (self.get_name(), attr_name)
-            #         self.logger.error(msg)
-            #         # self.error_stream(msg)
-            #         self.set_error_attribute_value(attr)
+                #     if mask:
+                #         self.error_time = time.time()
+                #         self.error_count += 1
+                #         msg = "%s Error writing %s" % (self.get_name(), attr_name)
+                #         self.logger.error(msg)
+                #         # self.error_stream(msg)
+                #         self.set_error_attribute_value(attr)
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
 
     def _read_io(self, attr: tango.Attribute):
@@ -428,11 +429,12 @@ class AdamServer(TangoServerPrototype):
         except:
             log_exception()
 
-def looping():
-    # print('loop entry')
-    post_init_callback()
-    time.sleep(1.0)
-    # print('loop exit')
+
+# def looping():
+#     # print('loop entry')
+#     post_init_callback()
+#     time.sleep(1.0)
+#     # print('loop exit')
 
 
 def post_init_callback():
@@ -448,7 +450,7 @@ def post_init_callback():
 
 if __name__ == "__main__":
     db = tango.Database()
-    sn = os.path.basename(sys.argv[0]).replace('.py','')
+    sn = os.path.basename(sys.argv[0]).replace('.py', '')
     # os.path.basename(__file__)
     # sn = 'AdamServer'
     pn = 'polled_attr'
