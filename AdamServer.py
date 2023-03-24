@@ -275,7 +275,6 @@ class AdamServer(TangoServerPrototype):
                                 # add attr to device
                                 self.add_attribute(attr)
                                 self.created_attributes[attr_name] = attr
-                                # self.restore_polling(attr_name)
                                 nai += 1
                             else:
                                 self.logger.info('%s is disabled', attr_name)
@@ -336,6 +335,8 @@ class AdamServer(TangoServerPrototype):
                                              format='')
                             self.add_attribute(attr)
                             self.created_attributes[attr_name] = attr
+                            v = self.adam.read_ao(k)
+                            attr.get_attribute(self).set_write_value(v)
                             ndi += 1
                         except KeyboardInterrupt:
                             raise
