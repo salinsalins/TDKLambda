@@ -72,7 +72,6 @@ class AdamServer(TangoServerPrototype):
         self.lock = Lock()
         self.init_io = True
         self.init_po = False
-        self.ceated_attributes = {}
         #
         name = self.config.get('name', '')
         description = json.loads(self.config.get('description', '[]'))
@@ -274,7 +273,7 @@ class AdamServer(TangoServerPrototype):
                                                  max_value=self.adam.ai_max[k])
                                 # add attr to device
                                 self.add_attribute(attr)
-                                self.ceated_attributes[attr_name] = attr
+                                self.created_attributes[attr_name] = attr
                                 # self.restore_polling(attr_name)
                                 nai += 1
                             else:
@@ -306,7 +305,7 @@ class AdamServer(TangoServerPrototype):
                                                  min_value=self.adam.ao_min[k],
                                                  max_value=self.adam.ao_max[k])
                                 self.add_attribute(attr)
-                                self.ceated_attributes[attr_name] = attr
+                                self.created_attributes[attr_name] = attr
                                 v = self.adam.read_ao(k)
                                 attr.get_attribute(self).set_write_value(v)
                                 nao += 1
@@ -335,7 +334,7 @@ class AdamServer(TangoServerPrototype):
                                              display_unit=1.0,
                                              format='')
                             self.add_attribute(attr)
-                            self.ceated_attributes[attr_name] = attr
+                            self.created_attributes[attr_name] = attr
                             ndi += 1
                         except KeyboardInterrupt:
                             raise
@@ -361,7 +360,7 @@ class AdamServer(TangoServerPrototype):
                                              display_unit=1.0,
                                              format='')
                             self.add_attribute(attr)
-                            self.ceated_attributes[attr_name] = attr
+                            self.created_attributes[attr_name] = attr
                             v = self.adam.read_do(k)
                             attr.get_attribute(self).set_write_value(v)
                             ndo += 1
@@ -384,7 +383,7 @@ class AdamServer(TangoServerPrototype):
 
     # def restore_polling(self, attr_name=None):
     #     dp = tango.DeviceProxy(self.get_name())
-    #     for name in self.ceated_attributes:
+    #     for name in self.created_attributes:
     #         if attr_name is None or attr_name == name:
     #             pp = self.get_saved_polling_period(name)
     #             if pp > 0:
@@ -406,10 +405,10 @@ class AdamServer(TangoServerPrototype):
     def remove_io(self):
         with self.lock:
             try:
-                for attr_name in self.ceated_attributes:
+                for attr_name in self.created_attributes:
                     self.remove_attribute(attr_name)
                     self.logger.debug('%s attribute %s removed' % (self.get_name(), attr_name))
-                self.ceated_attributes = {}
+                self.created_attributes = {}
                 self.set_state(DevState.CLOSE, 'All IO channels removed')
                 self.init_io = True
             except KeyboardInterrupt:
