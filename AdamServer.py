@@ -88,10 +88,6 @@ class AdamServer(TangoServerPrototype):
                   'read_retries': self.config.get('read_retries', 2),
                   'suspend_time': self.config.get('suspend_time', 10.0)}
         self.adam = Adam(port, addr, **kwargs)
-        # add device to list
-        AdamServer.device_list[self.get_name()] = self
-        # else:
-        #     self.logger.info(f'Duplicated device declaration for {self}')
         # execute init sequence
         init_command = self.config.get('init_command', '')
         if init_command:
@@ -101,28 +97,33 @@ class AdamServer(TangoServerPrototype):
                 s = self.send_adam_command(c)
                 stat += f'{s}; '
             self.logger.debug(f'Initialization commands {init_command} executed with result {stat}')
-        #
-        # self.write_config_to_properties()
         # check if device OK
         if self.adam.ready:
             # change state to running
             msg = 'Adam %s created successfully at %s:%d' % (self.adam.id, self.adam.port, self.adam.addr)
             self.set_state(DevState.RUNNING, msg)
             self.logger.info(msg)
+            # if device was initiated before
+            if hasattr(self, 'deleted') and self.deleted:
+                self.add_io()
+                self.restore_polling()
+                self.init_io = False
+                self.init_po = False
+                self.deleted = False
         else:
             msg = 'Adam %s at %s:%d created with errors' % (self.adam.id, self.adam.port, self.adam.addr)
             self.set_state(DevState.FAULT, msg)
             self.logger.error(msg)
 
     def delete_device(self):
-        if self.get_name() in AdamServer.device_list:
-            self.save_polling_state()
-            self.stop_polling()
-            tango.Database().delete_device_property(self.get_name(), 'polled_attr')
-            AdamServer.device_list.pop(self.get_name(), None)
-            self.adam.__del__()
-            msg = ' %s:%d Adam device has been deleted' % (self.adam.port, self.adam.addr)
-            self.logger.info(msg)
+        self.save_polling_state()
+        self.stop_polling()
+        self.remove_io()
+        tango.Database().delete_device_property(self.get_name(), 'polled_attr')
+        self.adam.__del__()
+        msg = ' %s:%d Adam device has been deleted' % (self.adam.port, self.adam.addr)
+        self.logger.info(msg)
+        self.deleted = True
         super().delete_device()
 
 # ******** attribute r/w procedures ***********
@@ -421,12 +422,12 @@ class AdamServer(TangoServerPrototype):
 
 def post_init_callback():
     # called once at server initiation
-    for dev in AdamServer.device_list:
-        v = AdamServer.device_list[dev]
+    for dev in AdamServer.devices:
+        v = AdamServer.devices[dev]
         if v.init_io:
             v.add_io()
-    for dev in AdamServer.device_list:
-        v = AdamServer.device_list[dev]
+    for dev in AdamServer.devices:
+        v = AdamServer.devices[dev]
         if v.init_po:
             v.restore_polling()
             v.init_po = False
