@@ -89,8 +89,7 @@ class AdamServer(TangoServerPrototype):
                   'suspend_time': self.config.get('suspend_time', 10.0)}
         self.adam = Adam(port, addr, **kwargs)
         # add device to list
-        if self not in AdamServer.device_list:
-            AdamServer.device_list.append(self)
+        AdamServer.device_list[self.get_name()] = self
         # else:
         #     self.logger.info(f'Duplicated device declaration for {self}')
         # execute init sequence
@@ -116,11 +115,11 @@ class AdamServer(TangoServerPrototype):
             self.logger.error(msg)
 
     def delete_device(self):
-        if self in AdamServer.device_list:
+        if self.get_name() in AdamServer.device_list:
             self.save_polling_state()
             self.stop_polling()
             tango.Database().delete_device_property(self.get_name(), 'polled_attr')
-            AdamServer.device_list.remove(self)
+            AdamServer.device_list.pop(self.get_name(), None)
             self.adam.__del__()
             msg = ' %s:%d Adam device has been deleted' % (self.adam.port, self.adam.addr)
             self.logger.info(msg)
@@ -419,12 +418,14 @@ def post_init_callback():
     # called once at server initiation
     print('post_init_callback entry')
     for dev in AdamServer.device_list:
-        if dev.init_io:
-            dev.add_io()
+        v = AdamServer.device_list[dev]
+        if v.init_io:
+            v.add_io()
     for dev in AdamServer.device_list:
-        if dev.init_po:
-            dev.restore_polling()
-            dev.init_po = False
+        v = AdamServer.device_list[dev]
+        if v.init_po:
+            v.restore_polling()
+            v.init_po = False
 
 
 if __name__ == "__main__":

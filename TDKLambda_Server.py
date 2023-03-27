@@ -103,7 +103,7 @@ class TDKLambda_Server(TangoServerPrototype):
             self.tdk = TDKLambda_SCPI(port, addr, **kwargs)
         # add device to list
         if self not in TDKLambda_Server.device_list:
-            TDKLambda_Server.device_list.append(self)
+            TDKLambda_Server.device_list[self.get_name()] = self
         # self.write_config_to_properties()
         # check if device OK
         if self.tdk.initialized():
@@ -125,7 +125,7 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def delete_device(self):
         if self in TDKLambda_Server.device_list:
-            TDKLambda_Server.device_list.remove(self)
+            TDKLambda_Server.device_list.pop(self.get_name())
             self.tdk.__del__()
             msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
             self.logger.info(msg)
