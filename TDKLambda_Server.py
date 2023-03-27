@@ -84,11 +84,9 @@ class TDKLambda_Server(TangoServerPrototype):
         super().init_device()
         self.logger.info('TDKLambda Initialization')
         # self.configure_tango_logging()
-        self.error_count = 0
         self.values = [float('NaN')] * 6
         self.time = time.time() - 100.0
         self.set_state(DevState.INIT, 'TDKLambda Initialization')
-        self.last_level = logging.INFO
         self.READING_VALID_TIME = self.config.get('reading_valid_time', self.READING_VALID_TIME)
         # get port and address from property
         kwargs = {}
@@ -97,16 +95,15 @@ class TDKLambda_Server(TangoServerPrototype):
         baud = self.config.get('baudrate', 115200)
         kwargs['baudrate'] = baud
         kwargs['logger'] = self.logger
-        protocol = self.config.pop('protocol', 'GEN')
+        protocol = self.config.get('protocol', 'GEN')
         # create TDKLambda device
         if protocol == 'GEN':
             self.tdk = TDKLambda(port, addr, **kwargs)
         else:
             self.tdk = TDKLambda_SCPI(port, addr, **kwargs)
         # add device to list
-        if self not in TDKLambda_Server.device_list:
-            TDKLambda_Server.device_list[self.get_name()] = self
-        # self.write_config_to_properties()
+        # if self not in TDKLambda_Server.device_list:
+        #     TDKLambda_Server.device_list[self.get_name()] = self
         # check if device OK
         if self.tdk.initialized():
             if self.tdk.max_voltage < float('inf'):
@@ -126,11 +123,9 @@ class TDKLambda_Server(TangoServerPrototype):
             self.logger.error(msg)
 
     def delete_device(self):
-        if self in TDKLambda_Server.device_list:
-            TDKLambda_Server.device_list.pop(self.get_name())
-            self.tdk.__del__()
-            msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
-            self.logger.info(msg)
+        self.tdk.__del__()
+        msg = ' %s:%d TDKLambda device has been deleted' % (self.tdk.port, self.tdk.addr)
+        self.logger.info(msg)
         super().delete_device()
 
     def read_port(self):
@@ -170,23 +165,16 @@ class TDKLambda_Server(TangoServerPrototype):
         return value
 
     def write_output_state(self, value):
-        if self.tdk.com is None:
-            msg = '%s:%d Switch output for offline device' % (self.tdk.port, self.tdk.addr)
-            self.logger.info(msg)
-            self.output_state.set_quality(AttrQuality.ATTR_INVALID)
-            result = False
-            self.set_fault(msg)
+        if self.tdk.write_output(value):
+            self.output_state.set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
+            return True
         else:
-            if self.tdk.write_output(value):
-                self.output_state.set_quality(AttrQuality.ATTR_VALID)
-                result = True
-                self.set_running()
-            else:
-                msg = '%s:%d Error switch output' % (self.tdk.port, self.tdk.addr)
-                self.log_exception(self.logger, msg)
-                result = False
-                self.set_fault(msg)
-        return result
+            msg = '%s:%d Error switch output' % (self.tdk.port, self.tdk.addr)
+            self.log_exception(self.logger, msg)
+            self.output_state.set_quality(AttrQuality.ATTR_INVALID)
+            self.set_fault(msg)
+            return False
 
     def read_all(self):
         t0 = time.time()
@@ -302,10 +290,6 @@ class TDKLambda_Server(TangoServerPrototype):
             self.set_fault()
         return result
 
-    # def set_running(self, msg=None):
-    #     # self.error_count = 0
-    #     super().set_running(msg)
-    #
     def set_fault(self, msg=None):
         # self.error_count += 1
         # if self.error_count > 5:
