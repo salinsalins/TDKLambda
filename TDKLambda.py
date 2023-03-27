@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import logging
-import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
+import sys
+if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
+if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 
 import time
 from threading import Lock
@@ -19,7 +20,7 @@ LF = b'\n'
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'TDK Lambda Genesis series PS Python API'
 APPLICATION_NAME_SHORT = 'TDKLambda'
-APPLICATION_VERSION = '3.0'
+APPLICATION_VERSION = '4.0' # reconnect corrected
 
 
 class TDKLambdaException(Exception):
@@ -79,6 +80,11 @@ class TDKLambda:
         self.init()
 
     def init(self):
+        # msg = f'TDKLambda at {self.port}:{self.addr} initialization'
+        # self.logger.info(msg)
+        self.state = 0
+        self.suspend_to = 0.0
+        self.suspend_flag = False
         # check device address
         if self.addr <= 0:
             self.state = -1
@@ -93,8 +99,6 @@ class TDKLambda:
                     self.logger.error(self.STATES[self.state])
                     self.suspend()
                     return False
-        self.suspend_to = 0.0
-        self.suspend_flag = False
         if not self.com.ready:
             self.state = -5
             self.logger.error(self.STATES[self.state])
@@ -298,8 +302,8 @@ class TDKLambda:
     def _send_command(self, cmd, terminator=CR):
         self.command = cmd
         self.response = b''
-        if self.state < 0:
-            return False
+        # if self.state < 0:
+        #     return False
         t0 = time.perf_counter()
         with self.com.lock:
             # write command
@@ -324,7 +328,7 @@ class TDKLambda:
                 self.com.current_addr = self.addr
                 return True
             else:
-                self.logger.error('Error set address %s %d -> %d' % (self.com.port, self.com.current_addr, self.addr))
+                self.logger.error('Error set address %s %d -> %d %s' % (self.com.port, self.com.current_addr, self.addr, self.response))
                 self.com.current_addr = -1
                 return False
 
@@ -376,7 +380,7 @@ class TDKLambda:
         if not self.ready:
             self.command = cmd
             self.response = b''
-            self.logger.debug('Ignored command %s to suspended device', cmd)
+            # self.logger.debug('Command %s to suspended device ignored', cmd)
             return False
         try:
             # unify command

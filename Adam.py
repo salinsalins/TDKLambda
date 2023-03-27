@@ -1,11 +1,15 @@
-import sys;
-
-sys.path.append('../TangoUtils');
-sys.path.append('../IT6900')
+import sys
+if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
+if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 import time
 
 from log_exception import log_exception
 from TDKLambda import TDKLambda
+
+ORGANIZATION_NAME = 'BINP'
+APPLICATION_NAME = 'Adam I/O modules Python API'
+APPLICATION_NAME_SHORT = 'Adam'
+APPLICATION_VERSION = '2.0'
 
 ADAM_DEVICES = {
     '0000': {'di': 0, 'do': 0, 'ai': 0, 'ao': 0},
@@ -14,7 +18,6 @@ ADAM_DEVICES = {
     '4024': {'di': 0, 'do': 0, 'ai': 0, 'ao': 4},
     '4055': {'di': 8, 'do': 8, 'ai': 0, 'ao': 0}
 }
-
 ADAM_RANGES = {
     b'00': [-15, 15, 'mV'],
     b'01': [-50, 50, 'mV'],
@@ -69,7 +72,6 @@ ADAM_RANGES = {
     b'4D': [0, 20, 'mV'],
     b'55': [0, 15, 'V']
 }
-
 ADAM_BAUDS = {
     b'03': 1200,
     b'04': 2400,

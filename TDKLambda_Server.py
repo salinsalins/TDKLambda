@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
-import sys; sys.path.append('../TangoUtils'); sys.path.append('../IT6900')
+import sys
+if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
+if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 
 import logging
 import time
@@ -133,40 +135,44 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def read_port(self):
         if self.tdk.initialized():
-            return self.tdk.port
-        return "Unknown"
+            self.set_running()
+        else:
+            self.set_fault()
+        return self.tdk.port
 
     def read_address(self):
         if self.tdk.initialized():
-            return str(self.tdk.addr)
-        return "-1"
+            self.set_running()
+        else:
+            self.set_fault()
+        return str(self.tdk.addr)
 
     def read_device_type(self):
         if self.tdk.initialized():
+            self.set_running()
             return self.tdk.id
-        return "Uninitialized"
+        else:
+            self.set_fault()
+            return "Uninitialized"
 
     def read_output_state(self):
-        if self.tdk.initialized():
-            value = self.tdk.read_output()
-            if value is not None:
-                qual = AttrQuality.ATTR_VALID
-                self.set_running()
-            else:
-                qual = AttrQuality.ATTR_INVALID
-                value = False
-                self.set_fault('Output read error')
+        value = self.tdk.read_output()
+        if value is not None:
+            qual = AttrQuality.ATTR_VALID
+            self.set_running()
         else:
-            value = False
             qual = AttrQuality.ATTR_INVALID
-            self.set_fault()
+            value = False
+            msg = ' %s:%d Output voltage read error' % (self.tdk.port, self.tdk.addr)
+            self.logger.debug(msg)
+            self.set_fault(msg)
         self.output_state.set_quality(qual)
         return value
 
     def write_output_state(self, value):
         if self.tdk.com is None:
             msg = '%s:%d Switch output for offline device' % (self.tdk.port, self.tdk.addr)
-            self.logger.debug(msg)
+            self.logger.info(msg)
             self.output_state.set_quality(AttrQuality.ATTR_INVALID)
             result = False
             self.set_fault(msg)
@@ -188,13 +194,13 @@ class TDKLambda_Server(TangoServerPrototype):
             values = self.tdk.read_all()
             self.values = values
             self.time = time.time()
-            msg = '%s:%d read_all %s ms %s' % \
-                  (self.tdk.port, self.tdk.addr, int((self.time - t0) * 1000.0), values)
-            self.logger.debug(msg)
+            # msg = '%s:%d read_all %s ms %s' % \
+            #       (self.tdk.port, self.tdk.addr, int((self.time - t0) * 1000.0), values)
+            # self.logger.debug(msg)
         except:
-            self.set_fault()
             msg = '%s:%d read_all error' % (self.tdk.port, self.tdk.addr)
             self.log_exception(msg)
+            self.set_fault(msg)
 
     def read_voltage(self, attr):
         if time.time() - self.time > self.READING_VALID_TIME:
@@ -203,8 +209,9 @@ class TDKLambda_Server(TangoServerPrototype):
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
-            self.logger.warning("Output voltage read error")
-            self.set_fault()
+            msg = ' %s:%d Output voltage read error' % (self.tdk.port, self.tdk.addr)
+            self.logger.debug(msg)
+            self.set_fault(msg)
         else:
             attr.set_quality(AttrQuality.ATTR_VALID)
             self.set_running()
@@ -217,8 +224,9 @@ class TDKLambda_Server(TangoServerPrototype):
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
-            self.logger.warning("Output current read error")
-            self.set_fault()
+            msg = ' %s:%d Output current read error' % (self.tdk.port, self.tdk.addr)
+            self.logger.debug(msg)
+            self.set_fault(msg)
         else:
             attr.set_quality(AttrQuality.ATTR_VALID)
             self.set_running()
@@ -232,8 +240,9 @@ class TDKLambda_Server(TangoServerPrototype):
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
-            self.logger.warning("Programmed voltage read error")
-            self.set_fault()
+            msg = ' %s:%d Programmed voltage read error' % (self.tdk.port, self.tdk.addr)
+            self.logger.debug(msg)
+            self.set_fault(msg)
         else:
             attr.set_quality(AttrQuality.ATTR_VALID)
             self.set_running()
@@ -247,8 +256,9 @@ class TDKLambda_Server(TangoServerPrototype):
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
-            self.logger.warning("Programmed current  read error")
-            self.set_fault()
+            msg = ' %s:%d Programmed current read error' % (self.tdk.port, self.tdk.addr)
+            self.logger.debug(msg)
+            self.set_fault(msg)
         else:
             attr.set_quality(AttrQuality.ATTR_VALID)
             self.set_running()

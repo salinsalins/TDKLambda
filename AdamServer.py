@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """TDK Lambda Genesis series power supply tango device server"""
+import sys
+
+if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
+if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 import json
 import math
 import os
-import sys
+
 import time
 from threading import Lock
 
 import tango
 
 from log_exception import log_exception
-
-sys.path.append('../TangoUtils')
-sys.path.append('../IT6900')
 
 from tango import AttrQuality, AttrWriteType, DispLevel
 from tango import DevState, AttrDataFormat
@@ -25,7 +26,7 @@ from TangoServerPrototype import TangoServerPrototype
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Adam I/O modules Tango Server'
 APPLICATION_NAME_SHORT = 'AdamServer'
-APPLICATION_VERSION = '2.0'
+APPLICATION_VERSION = '2.1'
 
 
 # db = tango.Database('192.168.1.41', '10000')
@@ -45,7 +46,6 @@ APPLICATION_VERSION = '2.0'
 class AdamServer(TangoServerPrototype):
     server_version_value = APPLICATION_VERSION
     server_name_value = APPLICATION_NAME_SHORT
-    POLLING_ENABLE_DELAY = 0.2
 
     port = attribute(label="Port", dtype=str,
                      display_level=DispLevel.OPERATOR,
@@ -65,6 +65,7 @@ class AdamServer(TangoServerPrototype):
                             unit="", format="%s",
                             doc="Adam device type")
 
+# ******** init_device ***********
     def init_device(self):
         super().init_device()
         self.set_state(DevState.INIT, 'Adam Initialization')
@@ -72,7 +73,6 @@ class AdamServer(TangoServerPrototype):
         self.lock = Lock()
         self.init_io = True
         self.init_po = False
-        self.ceated_attributes = {}
         #
         name = self.config.get('name', '')
         description = json.loads(self.config.get('description', '[]'))
@@ -125,38 +125,28 @@ class AdamServer(TangoServerPrototype):
             self.logger.info(msg)
         super().delete_device()
 
+# ******** attribute r/w procedures ***********
     def read_port(self):
+        if self.adam.ready:
+            self.set_running()
+        else:
+            self.set_fault()
         return self.adam.port
 
     def read_address(self):
+        if self.adam.ready:
+            self.set_running()
+        else:
+            self.set_fault()
         return str(self.adam.addr)
 
     def read_device_type(self):
         if self.adam.ready:
-            return self.adam.id
-        return "Uninitialized"
-
-    def set_error_attribute_value(self, attr: tango.Attribute):
-        v = None
-        if attr.get_data_format() == tango.DevBoolean:
-            v = False
-        elif attr.get_data_format() == tango.DevDouble:
-            v = float('nan')
-        if attr.get_data_type() == tango.SPECTRUM:
-            v = [v]
-        attr.set_value(v)
-        attr.set_quality(tango.AttrQuality.ATTR_INVALID)
-        return v
-
-    def set_attribute_value(self, attr: tango.Attribute, value=None):
-        if value is not None and not math.isnan(value):
-            attr.set_value(value)
-            attr.set_quality(tango.AttrQuality.ATTR_VALID)
             self.set_running()
-            return value
+            return self.adam.id
         else:
             self.set_fault()
-            return self.set_error_attribute_value(attr)
+            return "Uninitialized"
 
     def read_general(self, attr: tango.Attribute):
         with self.lock:
@@ -185,13 +175,13 @@ class AdamServer(TangoServerPrototype):
             if result:
                 attr.set_quality(tango.AttrQuality.ATTR_VALID)
             else:
-            #     if mask:
-            #         self.error_time = time.time()
-            #         self.error_count += 1
-            #         msg = "%s Error writing %s" % (self.get_name(), attr_name)
-            #         self.logger.error(msg)
-            #         # self.error_stream(msg)
-            #         self.set_error_attribute_value(attr)
+                #     if mask:
+                #         self.error_time = time.time()
+                #         self.error_count += 1
+                #         msg = "%s Error writing %s" % (self.get_name(), attr_name)
+                #         self.logger.error(msg)
+                #         # self.error_stream(msg)
+                #         self.set_error_attribute_value(attr)
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
 
     def _read_io(self, attr: tango.Attribute):
@@ -216,6 +206,7 @@ class AdamServer(TangoServerPrototype):
         self.logger.error(msg)
         return None
 
+# ******** commands ***********
     @command(dtype_in=str, doc_in='Directly send command to the Adam',
              dtype_out=str, doc_out='Response from Adam without final <CR>')
     def send_adam_command(self, cmd):
@@ -224,6 +215,29 @@ class AdamServer(TangoServerPrototype):
         msg = '%s:%d %s -> %s' % (self.adam.port, self.adam.addr, cmd, rsp)
         self.logger.debug(msg)
         return rsp
+
+# ******** additional helper functions ***********
+    def set_error_attribute_value(self, attr: tango.Attribute):
+        v = None
+        if attr.get_data_format() == tango.DevBoolean:
+            v = False
+        elif attr.get_data_format() == tango.DevDouble:
+            v = float('nan')
+        if attr.get_data_type() == tango.SPECTRUM:
+            v = [v]
+        attr.set_value(v)
+        attr.set_quality(tango.AttrQuality.ATTR_INVALID)
+        return v
+
+    def set_attribute_value(self, attr: tango.Attribute, value=None):
+        if value is not None and not math.isnan(value):
+            attr.set_value(value)
+            attr.set_quality(tango.AttrQuality.ATTR_VALID)
+            self.set_running()
+            return value
+        else:
+            self.set_fault()
+            return self.set_error_attribute_value(attr)
 
     def add_io(self):
         with self.lock:
@@ -262,8 +276,7 @@ class AdamServer(TangoServerPrototype):
                                                  max_value=self.adam.ai_max[k])
                                 # add attr to device
                                 self.add_attribute(attr)
-                                self.ceated_attributes[attr_name] = attr
-                                # self.restore_polling(attr_name)
+                                self.created_attributes[attr_name] = attr
                                 nai += 1
                             else:
                                 self.logger.info('%s is disabled', attr_name)
@@ -294,7 +307,7 @@ class AdamServer(TangoServerPrototype):
                                                  min_value=self.adam.ao_min[k],
                                                  max_value=self.adam.ao_max[k])
                                 self.add_attribute(attr)
-                                self.ceated_attributes[attr_name] = attr
+                                self.created_attributes[attr_name] = attr
                                 v = self.adam.read_ao(k)
                                 attr.get_attribute(self).set_write_value(v)
                                 nao += 1
@@ -323,7 +336,9 @@ class AdamServer(TangoServerPrototype):
                                              display_unit=1.0,
                                              format='')
                             self.add_attribute(attr)
-                            self.ceated_attributes[attr_name] = attr
+                            self.created_attributes[attr_name] = attr
+                            v = self.adam.read_ao(k)
+                            attr.get_attribute(self).set_write_value(v)
                             ndi += 1
                         except KeyboardInterrupt:
                             raise
@@ -349,7 +364,7 @@ class AdamServer(TangoServerPrototype):
                                              display_unit=1.0,
                                              format='')
                             self.add_attribute(attr)
-                            self.ceated_attributes[attr_name] = attr
+                            self.created_attributes[attr_name] = attr
                             v = self.adam.read_do(k)
                             attr.get_attribute(self).set_write_value(v)
                             ndo += 1
@@ -370,34 +385,13 @@ class AdamServer(TangoServerPrototype):
             # self.restore_polling()
             return nai + nao + ndi + ndo
 
-    # def restore_polling(self, attr_name=None):
-    #     dp = tango.DeviceProxy(self.get_name())
-    #     for name in self.ceated_attributes:
-    #         if attr_name is None or attr_name == name:
-    #             pp = self.get_saved_polling_period(name)
-    #             if pp > 0:
-    #                 dp.poll_attribute(name, pp)
-    #                 # workaround to prevent tango feature
-    #                 time.sleep(self.POLLING_ENABLE_DELAY)
-    #                 self.logger.info(f'Polling for {self.get_name()} {name} of {pp} restored')
-
-    # def get_saved_polling_period(self, attr_name, prop_name='_polled_attr'):
-    #     try:
-    #         pa = self.properties.get(prop_name)
-    #         i = pa.index(attr_name)
-    #         if i < 0:
-    #             return -1
-    #         return int(pa[i + 1])
-    #     except:
-    #         return -1
-
     def remove_io(self):
         with self.lock:
             try:
-                for attr_name in self.ceated_attributes:
+                for attr_name in self.created_attributes:
                     self.remove_attribute(attr_name)
                     self.logger.debug('%s attribute %s removed' % (self.get_name(), attr_name))
-                self.ceated_attributes = {}
+                self.created_attributes = {}
                 self.set_state(DevState.CLOSE, 'All IO channels removed')
                 self.init_io = True
             except KeyboardInterrupt:
@@ -406,17 +400,27 @@ class AdamServer(TangoServerPrototype):
                 log_exception(self.logger, '%s Error deleting IO channels' % self.get_name())
                 # self.set_state(DevState.FAULT)
 
+    def save_polling_state(self, target_property='_polled_attr'):
+        try:
+            if self.adam.name == '0000':
+                self.logger.info(f'Polling not saved for unknown device {self.get_name()}')
+                return False
+            super().save_polling_state(target_property)
+        except KeyboardInterrupt:
+            raise
+        except:
+            log_exception()
 
-def looping():
-    # print('loop entry')
-    post_init_callback()
-    time.sleep(1.0)
-    # print('loop exit')
+
+# def looping():
+#     # print('loop entry')
+#     post_init_callback()
+#     time.sleep(1.0)
+#     # print('loop exit')
 
 
 def post_init_callback():
     # called once at server initiation
-    print('post_init_callback entry')
     for dev in AdamServer.device_list:
         v = AdamServer.device_list[dev]
         if v.init_io:
@@ -430,7 +434,7 @@ def post_init_callback():
 
 if __name__ == "__main__":
     db = tango.Database()
-    sn = os.path.basename(sys.argv[0]).replace('.py','')
+    sn = os.path.basename(sys.argv[0]).replace('.py', '')
     # os.path.basename(__file__)
     # sn = 'AdamServer'
     pn = 'polled_attr'
@@ -441,10 +445,10 @@ if __name__ == "__main__":
         if s == sn:
             dn = st[i - 1]
             db.delete_device_property(dn, pn)
-            pr = db.get_device_property(dn, pn)[pn]
-            if (len(pr) % 2) != 0:
-                # db.delete_device_property(dn, pn)
-                print('Cleaning', pn, 'for', dn, pr)
+            # pr = db.get_device_property(dn, pn)[pn]
+            # if (len(pr) % 2) != 0:
+            #     # db.delete_device_property(dn, pn)
+            #     print('Cleaning', pn, 'for', dn, pr)
         i += 1
     #
     AdamServer.run_server(post_init_callback=post_init_callback)
