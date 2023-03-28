@@ -80,13 +80,11 @@ class TDKLambda_Server(TangoServerPrototype):
                                    doc="Programmed current")
 
     def init_device(self):
-        # self.logger.info('TDKLambda Initialization start')
         super().init_device()
         self.logger.info('TDKLambda Initialization')
-        # self.configure_tango_logging()
+        self.set_state(DevState.INIT, 'TDKLambda Initialization')
         self.values = [float('NaN')] * 6
         self.time = time.time() - 100.0
-        self.set_state(DevState.INIT, 'TDKLambda Initialization')
         self.READING_VALID_TIME = self.config.get('reading_valid_time', self.READING_VALID_TIME)
         # get port and address from property
         kwargs = {}
