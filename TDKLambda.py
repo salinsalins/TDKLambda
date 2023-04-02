@@ -206,6 +206,7 @@ class TDKLambda:
         return result
 
     def read(self, size=1):
+        result = b''
         try:
             result = self._read(size, self.read_timeout)
             return result
@@ -213,7 +214,7 @@ class TDKLambda:
             raise
         except SerialTimeoutException:
             self.logger.debug(f'{self.pre} Reading timeout')
-            return b''
+            return result
         except:
             log_exception(self.logger)
             return b''
