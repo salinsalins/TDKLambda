@@ -241,13 +241,12 @@ class TDKLambda:
         if terminator not in result:
             self.logger.debug(f'{self.pre} Response %s without %s', result, terminator)
             return False
-        # if checksum used
-        if not self.check:
-            return True
         # checksum calculation
         return self.verify_checksum(result)
 
     def verify_checksum(self, result):
+        if not self.check:
+            return True
         m = result.find(b'$')
         if m < 0:
             self.logger.debug(f'{self.pre} No expected checksum in response')
