@@ -123,7 +123,7 @@ class TDKLambda:
                 self.max_current = float(ids[-1])
                 self.max_voltage = float(mv[-1][2:])
             except:
-                msg = 'Can not set max values for LAMBDA PS'
+                msg = f'{self.pre} Can not set max values'
                 self.logger.warning(msg)
         else:
             self.state = -4
@@ -132,7 +132,7 @@ class TDKLambda:
             return False
         self.pre = f'{self.id} {self.port}: {self.addr} '
         msg = f'{self.pre} has been initialized'
-        self.logger.debug(msg)
+        self.logger.info(msg)
         return True
 
     def __del__(self):
@@ -211,8 +211,11 @@ class TDKLambda:
             return result
         except KeyboardInterrupt:
             raise
+        except SerialTimeoutException:
+            self.logger.debug(f'{self.pre} Reading timeout')
+            return b''
         except:
-            log_exception(self)
+            log_exception(self.logger)
             return b''
 
     def read_until(self, terminator=CR, size=None):
