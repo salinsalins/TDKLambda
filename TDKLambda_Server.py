@@ -81,7 +81,7 @@ class TDKLambda_Server(TangoServerPrototype):
 
     def init_device(self):
         super().init_device()
-        self.logger.info('TDKLambda Initialization')
+        self.logger.debug('TDKLambda Initialization')
         self.set_state(DevState.INIT, 'TDKLambda Initialization')
         self.values = [float('NaN')] * 6
         self.time = time.time() - 100.0
