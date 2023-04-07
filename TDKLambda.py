@@ -519,11 +519,7 @@ class TDKLambda_SCPI(IT6900):
         self.auto_addr = kwargs.pop('auto_addr', True)
         self.protocol = kwargs.pop('protocol', 'SCPI')  # 'GEN' or 'SCPI'
         # timeouts
-        self.read_timeout = kwargs.pop('read_timeout', 0.5)
         self.min_read_time = self.read_timeout
-        self.time = time.time()
-        self.suspend_to = time.time()
-        self.suspend_flag = False
 
     def read_all(self):
         v1 = self.read_voltage()
