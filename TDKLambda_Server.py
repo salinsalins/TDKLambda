@@ -103,7 +103,7 @@ class TDKLambda_Server(TangoServerPrototype):
         # if self not in TDKLambda_Server.device_list:
         #     TDKLambda_Server.device_list[self.get_name()] = self
         # check if device OK
-        if self.tdk.initialized():
+        if self.tdk.ready:
             if self.tdk.max_voltage < float('inf'):
                 self.programmed_voltage.set_max_value(self.tdk.max_voltage)
             if self.tdk.max_current < float('inf'):
@@ -134,14 +134,14 @@ class TDKLambda_Server(TangoServerPrototype):
         return self.tdk.port
 
     def read_address(self):
-        if self.tdk.initialized():
+        if self.tdk.ready:
             self.set_running()
         else:
             self.set_fault()
         return str(self.tdk.addr)
 
     def read_device_type(self):
-        if self.tdk.initialized():
+        if self.tdk.ready:
             self.set_running()
             return self.tdk.id
         else:

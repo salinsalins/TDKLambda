@@ -386,7 +386,7 @@ if __name__ == "__main__":
     v1 = pd1.read_device_id()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
     a = '%s %s %s %s %s %s' % (
-        pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+        pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1)
     # pd1.logger.debug(a)
     print(a)
 
@@ -396,7 +396,7 @@ if __name__ == "__main__":
     # pd2.logger.debug('%s %s %s %s %s %s', pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2,
     #                  '%5.3f' % pd2.min_read_time)
     a = '%s %s %s %s %s %s' % (
-        pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2, '%5.3f' % pd2.min_read_time)
+        pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2)
     print(a)
     d = pd1
     v = d.read_di(3)

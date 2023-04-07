@@ -30,7 +30,7 @@ class TDKLambdaException(Exception):
 class TDKLambda:
     _devices = []
     _lock = Lock()
-    SUSPEND_TIME = 5.0
+    SUSPEND_DELAY = 5.0
     STATES = {
         1: 'Initialized',
         0: 'Pre init state',
@@ -49,17 +49,14 @@ class TDKLambda:
         self.protocol = kwargs.pop('protocol', 'GEN')  # 'GEN' or 'SCPI'
         self.read_timeout = kwargs.pop('read_timeout', 1.0)
         self.read_retries = kwargs.pop('read_retries', 1)
-        self.suspend_time = kwargs.pop('suspend_time', TDKLambda.SUSPEND_TIME)
+        self.suspend_delay = kwargs.pop('suspend_delay', TDKLambda.SUSPEND_DELAY)
         # configure logger
         self.logger = kwargs.get('logger', config_logger())
-        # timeouts
-        self.min_read_time = self.read_timeout
-        #arguments for COM port creation
+        # arguments for COM port creation
         self.kwargs = kwargs
         # create variables
         self.command = b''
         self.response = b''
-        self.time = time.time()
         self.suspend_to = 0.0
         self.suspend_flag = False
         self.state = 0
@@ -83,11 +80,10 @@ class TDKLambda:
     def init(self):
         self.state = 0
         self.suspend_to = 0.0
-        self.suspend_flag = False
         # check device address
         if self.addr <= 0:
             self.state = -1
-            self.logger.error(self.STATES[self.state])
+            self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
             self.suspend()
             return False
         # check if port:address is in use
@@ -95,25 +91,27 @@ class TDKLambda:
             for d in TDKLambda._devices:
                 if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
                     self.state = -2
-                    self.logger.error(self.STATES[self.state])
+                    self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
                     self.suspend()
                     return False
         if not self.com.ready:
             self.state = -5
-            self.logger.error(self.STATES[self.state])
+            self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
             self.suspend()
             return False
         # set device address
-        response = self._set_addr()
+        with self.com.lock:
+            response = self._set_addr()
         if not response:
             self.state = -3
-            self.logger.error(self.STATES[self.state])
+            self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
             self.suspend()
             return False
         # read device serial number
         self.sn = self.read_serial_number()
         # read device type
         self.id = self.read_device_id()
+        self.pre = f'{self.id} {self.port}: {self.addr} '
         if 'LAMBDA' in self.id:
             self.state = 1
             # determine max current and voltage from model name
@@ -124,13 +122,12 @@ class TDKLambda:
                 self.max_voltage = float(mv[-1][2:])
             except:
                 msg = f'{self.pre} Can not set max values'
-                self.logger.warning(msg)
+                self.logger.debug(msg)
         else:
             self.state = -4
-            self.logger.error(self.STATES[self.state])
+            self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
             self.suspend()
             return False
-        self.pre = f'{self.id} {self.port}: {self.addr} '
         msg = f'{self.pre} has been initialized'
         self.logger.info(msg)
         return True
@@ -163,35 +160,24 @@ class TDKLambda:
         return result
 
     def suspend(self, duration=None):
+        if time.time() < self.suspend_to:
+            return
         if duration is None:
-            duration=self.suspend_time
+            duration = self.suspend_delay
         self.suspend_to = time.time() + duration
-        self.suspend_flag = True
-        self.logger.debug(f'{self.pre} suspended for %5.2f sec', self.port, self.addr, duration)
-
-    def unsuspend(self):
-        self.suspend_to = 0.0
-        self.suspend_flag = False
-        # self.logger.debug(f'{self.pre} Unsuspended')
-
-    # check if suspended and try to reset
-    def is_suspended(self):
-        if time.time() < self.suspend_to:  # if suspension does not expire
-            return True
-        # suspension expires
-        if self.suspend_flag:  # if it was suspended and expires
-            self.suspend_flag = False
-            self.init()
-            if self.suspend_flag:  # was suspended during init()
-                return True
-            else:
-                return False
-        else:  # it was not suspended
-            return False
+        self.logger.debug(f'{self.pre} suspended for %5.2f sec', duration)
 
     @property
     def ready(self):
-        return not self.is_suspended()
+        if time.time() < self.suspend_to:
+            # self.logger.debug(f'{self.pre} Suspended')
+            return False
+        if self.suspend_to <= 0.0:
+            return True
+        # was suspended and expires
+        self.close_com_port()
+        val = self.init()
+        return val
 
     def _read(self, size=1, timeout=1.0):
         result = b''
@@ -216,7 +202,7 @@ class TDKLambda:
             self.logger.debug(f'{self.pre} Reading timeout')
             return result
         except:
-            log_exception(self.logger)
+            log_exception(self.logger, f'{self.pre} Reading exception')
             return b''
 
     def read_until(self, terminator=CR, size=None):
@@ -263,11 +249,11 @@ class TDKLambda:
     def check_response(self, expected=b'OK', response=None):
         if response is None:
             response = self.response
-        if not response.startswith(expected):
-            msg = f'{self.pre} Unexpected response %s (not %s)' % (response, expected)
-            self.logger.debug(msg)
-            return False
-        return True
+        if response.startswith(expected):
+            return True
+        msg = f'{self.pre} Unexpected response %s (not %s)' % (response, expected)
+        self.logger.debug(msg)
+        return False
 
     def write(self, cmd):
         # t0 = time.perf_counter()
@@ -276,50 +262,45 @@ class TDKLambda:
             if not self.com.reset_input_buffer():
                 return False
             # write command
-            result = False
             length = self.com.write(cmd)
             if len(cmd) == length:
-                result = True
-            # dt = (time.perf_counter() - t0) * 1000.0
-            # self.logger.debug('%s %s bytes in %4.0f ms %s', cmd, length, dt, result)
-            return result
+                return True
+            return False
         except KeyboardInterrupt:
             raise
         except SerialTimeoutException:
             self.logger.debug(f'{self.pre} Writing timeout')
             return False
         except:
-            log_exception(self.logger)
+            log_exception(self.logger, f'{self.pre} Writing exception')
             return False
 
     def _send_command(self, cmd, terminator=CR):
         self.command = cmd
         self.response = b''
         t0 = time.perf_counter()
-        with self.com.lock:
-            # write command
-            if not self.write(cmd):
-                self.logger.debug(f'{self.pre} Error during write to %s', self.com.port)
-                return False
-            # read response (to CR by default)
-            result = self.read_response(terminator)
+        # write command
+        if not self.write(cmd):
+            self.logger.debug(f'{self.pre} Error during write')
+            return False
+        # read response (to CR by default)
+        result = self.read_response(terminator)
         dt = time.perf_counter() - t0
         self.logger.debug(f'{self.pre} %s -> %s %s %4.0f ms', cmd, self.response, result, dt * 1000.)
         return result
 
     def _set_addr(self):
-        with self.com.lock:
-            if not hasattr(self.com, 'current_addr'):
-                self.com.current_addr = -1
-            result = self._send_command(b'ADR %d\r' % self.addr)
-            if result and self.check_response(b'OK'):
-                # self.logger.debug(f'{self.pre} Address %d -> %d' % (self.com.current_addr, self.addr))
-                self.com.current_addr = self.addr
-                return True
-            else:
-                self.logger.debug(f'{self.pre} Error set address {self.com.current_addr} -> {self.addr} {self.response}')
-                self.com.current_addr = -1
-                return False
+        if not hasattr(self.com, 'current_addr'):
+            self.com.current_addr = -1
+        result = self._send_command(b'ADR %d\r' % self.addr)
+        if result and self.check_response(b'OK'):
+            self.logger.debug(f'{self.pre} Address %d -> %d' % (self.com.current_addr, self.addr))
+            self.com.current_addr = self.addr
+            return True
+        else:
+            self.logger.debug(f'{self.pre} Error address {self.com.current_addr} -> {self.addr} {self.response}')
+            self.com.current_addr = -1
+            return False
 
     def read_float(self, cmd):
         try:
@@ -540,20 +521,20 @@ if __name__ == "__main__":
 
     v1 = pd1.read_current()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    print(pd1.port, pd1.addr, 'read_current ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+    print(pd1.port, pd1.addr, 'read_current ->', v1, '%4d ms ' % dt1)
     t_0 = time.time()
     v1 = pd1.read_voltage()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    print(pd1.port, pd1.addr, 'read_voltage ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+    print(pd1.port, pd1.addr, 'read_voltage ->', v1, '%4d ms ' % dt1)
     t_0 = time.time()
     v1 = pd1.read_all()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    print(pd1.port, pd1.addr, 'DVC? ->', v1, '%4d ms ' % dt1, '%5.3f' % pd1.min_read_time)
+    print(pd1.port, pd1.addr, 'DVC? ->', v1, '%4d ms ' % dt1)
 
     t_0 = time.time()
     v1 = pd2.read_programmed_voltage()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    print(pd2.port, pd2.addr, '2 read_programmed_voltage ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
+    print(pd2.port, pd2.addr, '2 read_programmed_voltage ->', v1, '%4d ms ' % dt1)
     t_0 = time.time()
     # v1 = pd2.send_command("PV 1.0")
     # dt1 = int((time.time() - t_0) * 1000.0)  # ms
