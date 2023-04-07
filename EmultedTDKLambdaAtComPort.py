@@ -3,7 +3,7 @@
 import time
 from threading import Lock
 
-COMMANDS = (b'DVC?', b'PV?', b'MV?', b'PC?', b'MC?', b'IDN?', b'SN?', b'OUT?')
+COMMANDS = (b'DVC?', b'PV?', b'MV?', b'PC?', b'MC?', b'IDN?', b'SN?', b'OUT?', b'RST')
 
 class EmultedTDKLambdaAtComPort:
     SN = 123456
