@@ -7,9 +7,9 @@ from log_exception import log_exception
 from TDKLambda import TDKLambda
 
 ORGANIZATION_NAME = 'BINP'
-APPLICATION_NAME = 'Adam I/O modules Python API'
-APPLICATION_NAME_SHORT = 'Adam'
-APPLICATION_VERSION = '2.0'
+APPLICATION_NAME = 'Lauda Python API'
+APPLICATION_NAME_SHORT = 'Lauda'
+APPLICATION_VERSION = '1.0'
 
 ADAM_DEVICES = {
     '0000': {'di': 0, 'do': 0, 'ai': 0, 'ao': 0},
@@ -88,7 +88,7 @@ ADAM_BAUDS = {
 # os.environ["TANGO_HOST"] = '192.168.1.41:10000'
 # db = tango.Database('192.168.1.41', '10000')
 
-class Adam(TDKLambda):
+class Lauda(TDKLambda):
 
     def init(self):
         self.addr_hex = (b'%02X' % self.addr)[:2]
@@ -380,8 +380,8 @@ class Adam(TDKLambda):
 
 
 if __name__ == "__main__":
-    pd1 = Adam("COM12", 11, baudrate=38400)
-    pd2 = Adam("COM12", 14, baudrate=38400)
+    pd1 = Lauda("COM12", 11, baudrate=38400)
+    pd2 = Lauda("COM12", 14, baudrate=38400)
     t_0 = time.time()
     v1 = pd1.read_device_id()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
