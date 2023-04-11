@@ -381,21 +381,19 @@ class Adam(TDKLambda):
 
 if __name__ == "__main__":
     pd1 = Adam("COM12", 11, baudrate=38400)
-    pd2 = Adam("COM12", 14, baudrate=38400)
+    pd2 = Adam("COM12", 16, baudrate=38400)
     t_0 = time.time()
     v1 = pd1.read_device_id()
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
     a = '%s %s %s %s %s' % (pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1)
-    # pd1.logger.debug(a)
     print(a)
 
     t_0 = time.time()
     v2 = pd2.read_device_id()
     dt2 = int((time.time() - t_0) * 1000.0)  # ms
-    # pd2.logger.debug('%s %s %s %s %s %s', pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2,
-    #                  '%5.3f' % pd2.min_read_time)
     a = '%s %s %s %s %s' % (pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2)
     print(a)
+
     d = pd1
     v = d.read_di(3)
     print(d.name, 'r di[3]=', v, d.response)

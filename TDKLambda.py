@@ -391,7 +391,7 @@ class TDKLambda:
         except KeyboardInterrupt:
             raise
         except:
-            log_exception(self.logger)
+            log_exception(self.logger, f'{self.pre} Can not send command {cmd}')
             self.suspend()
             self.response = b''
             return False

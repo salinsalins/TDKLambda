@@ -1,4 +1,5 @@
 import sys
+
 if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
 if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 import time
@@ -10,79 +11,6 @@ ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Lauda Python API'
 APPLICATION_NAME_SHORT = 'Lauda'
 APPLICATION_VERSION = '1.0'
-
-ADAM_DEVICES = {
-    '0000': {'di': 0, 'do': 0, 'ai': 0, 'ao': 0},
-    '4117': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
-    '4118': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
-    '4024': {'di': 0, 'do': 0, 'ai': 0, 'ao': 4},
-    '4055': {'di': 8, 'do': 8, 'ai': 0, 'ao': 0}
-}
-ADAM_RANGES = {
-    b'00': [-15, 15, 'mV'],
-    b'01': [-50, 50, 'mV'],
-    b'02': [-100, 100, 'mV'],
-    b'03': [-500, 500, 'mV'],
-    b'04': [-1, 1, 'V'],
-    b'05': [-2.5, 2.5, 'V'],
-    b'06': [-20, 20, 'mA'],
-    b'07': [4, 20, 'mA'],
-    b'08': [-10, 10, 'V'],
-    b'09': [-5, 5, 'V'],
-    b'0A': [-1, 1, 'V'],
-    b'0B': [-500, 500, 'mV'],
-    b'0C': [-150, 150, 'mV'],
-    b'0D': [-20, 20, 'mA'],
-    b'0E': [0, 760, 'C'],
-    b'0F': [0, 1370, 'C'],
-    b'10': [-100, 400, 'C'],
-    b'11': [0, 1000, 'C'],
-    b'12': [500, 1750, 'C'],
-    b'13': [500, 1750, 'C'],
-    b'14': [500, 1800, 'C'],
-    b'15': [-15, 15, 'V'],
-    b'18': [-200, 1300, 'C'],
-    b'20': [-50, 150, 'C'],
-    b'21': [0, 100, 'C'],
-    b'22': [0, 200, 'C'],
-    b'23': [0, 400, 'C'],
-    b'24': [-200, 200, 'C'],
-    b'25': [-50, 150, 'C'],
-    b'26': [0, 100, 'C'],
-    b'27': [0, 200, 'C'],
-    b'28': [0, 400, 'C'],
-    b'29': [-200, 200, 'C'],
-    b'2A': [-40, 160, 'C'],
-    b'2B': [-30, 120, 'C'],
-    b'40': [0, 15, 'mV'],
-    b'30': [0, 20, 'mA'],
-    b'31': [4, 20, 'mA'],
-    b'32': [-10, 10, 'V'],
-    b'41': [0, 50, 'mV'],
-    b'42': [0, 100, 'mV'],
-    b'43': [0, 500, 'mV'],
-    b'44': [0, 1, 'V'],
-    b'45': [0, 2.5, 'V'],
-    b'46': [0, 20, 'mV'],
-    b'48': [0, 10, 'V'],
-    b'49': [0, 5, 'V'],
-    b'4A': [0, 1, 'V'],
-    b'4B': [0, 500, 'mV'],
-    b'4C': [0, 150, 'mV'],
-    b'4D': [0, 20, 'mV'],
-    b'55': [0, 15, 'V']
-}
-ADAM_BAUDS = {
-    b'03': 1200,
-    b'04': 2400,
-    b'05': 4800,
-    b'06': 9600,
-    b'07': 19200,
-    b'08': 38400,
-    b'09': 57600,
-    b'0A': 115200,
-    b'0B': 230400
-}
 
 
 # os.environ["TANGO_HOST"] = '192.168.1.41:10000'
@@ -131,29 +59,24 @@ class Lauda(TDKLambda):
         # read device type
         self.id = self.read_device_id()
         if self.id != 'Unknown Device':
-            self.name = self.id
-            if self.id not in ADAM_DEVICES:
-                self.name = '0000'
-                for key in ADAM_DEVICES:
-                    if self.id[-2:] == key[-2:]:
-                        self.logger.info(f'Using {key} instead of {self.id} for devise type')
-                        self.name = key
-                        break
+            pass
+
+
         if self.name == '0000':
             self.logger.error(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
             self.suspend()
             return False
-        self.ai_n = ADAM_DEVICES[self.name]['ai']
-        self.ai_masks = [True] * self.ai_n
-        if self.ai_n > 0:
-            self.ai_masks = self.read_masks()
-        self.ao_n = ADAM_DEVICES[self.name]['ao']
-        self.ao_masks = [True] * self.ao_n
-        # if self.ao_n > 0:
-        #     self.ao_masks = self.read_masks()
-        self.di_n = ADAM_DEVICES[self.name]['di']
-        self.do_n = ADAM_DEVICES[self.name]['do']
+        # self.ai_n = ADAM_DEVICES[self.name]['ai']
+        # self.ai_masks = [True] * self.ai_n
+        # if self.ai_n > 0:
+        #     self.ai_masks = self.read_masks()
+        # self.ao_n = ADAM_DEVICES[self.name]['ao']
+        # self.ao_masks = [True] * self.ao_n
+        # # if self.ao_n > 0:
+        # #     self.ao_masks = self.read_masks()
+        # self.di_n = ADAM_DEVICES[self.name]['di']
+        # self.do_n = ADAM_DEVICES[self.name]['do']
         self.ai_ranges = [self.read_range(c) for c in range(self.ai_n)]
         self.ai_min = [i[0] for i in self.ai_ranges]
         self.ai_max = [i[1] for i in self.ai_ranges]
