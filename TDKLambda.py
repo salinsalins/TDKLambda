@@ -48,7 +48,7 @@ class TDKLambda:
         self.auto_addr = auto_addr
         self.protocol = kwargs.pop('protocol', 'GEN')  # 'GEN' or 'SCPI'
         self.read_timeout = kwargs.pop('read_timeout', 1.0)
-        self.read_retries = kwargs.pop('read_retries', 1)
+        self.read_retries = kwargs.pop('read_retries', 2)
         self.suspend_delay = kwargs.pop('suspend_delay', TDKLambda.SUSPEND_DELAY)
         # configure logger
         self.logger = kwargs.get('logger', config_logger())
@@ -67,7 +67,7 @@ class TDKLambda:
         self.sn = ''
         self.max_voltage = float('inf')
         self.max_current = float('inf')
-        self.pre = f'{self.id} {self.port}: {self.addr} '
+        self.pre = f'{self.id} at {self.port}: {self.addr} '
         # create COM port
         self.create_com_port()
         # add device to list
@@ -175,8 +175,8 @@ class TDKLambda:
         if self.suspend_to <= 0.0:
             return True
         # was suspended and expires
-        # self.close_com_port()
-        # self.create_com_port()
+        self.close_com_port()
+        self.create_com_port()
         val = self.init()
         return val
 
