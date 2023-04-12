@@ -90,7 +90,12 @@ ADAM_BAUDS = {
 
 class Adam(TDKLambda):
 
+    # def __init__(self, port, addr, **kwargs):
+    #     super().__init__(port, addr, **kwargs)
+    #
     def init(self):
+        self.suspend_to = 0.0
+        self.pre = f'ADAMxxxx at {self.port}:{self.addr}'
         self.addr_hex = (b'%02X' % self.addr)[:2]
         self.head_ok = b'!' + self.addr_hex
         self.head_err = b'?' + self.addr_hex
@@ -112,7 +117,7 @@ class Adam(TDKLambda):
         # check device address
         if self.addr <= 0:
             self.state = -1
-            self.logger.error(self.STATES[self.state])
+            self.logger.info(f'{self.pre} ' + self.STATES[self.state])
             self.suspend()
             return False
         # check if port:address is in use
@@ -120,27 +125,37 @@ class Adam(TDKLambda):
             for d in TDKLambda._devices:
                 if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
                     self.state = -2
-                    self.logger.error(self.STATES[self.state])
+                    self.logger.info(f'{self.pre} ' + self.STATES[self.state])
                     self.suspend()
                     return False
         if not self.com.ready:
             self.state = -5
-            self.logger.error(self.STATES[self.state])
+            self.logger.info(f'{self.pre} ' + self.STATES[self.state])
             self.suspend()
             return False
         # read device type
-        self.id = self.read_device_id()
-        if self.id != 'Unknown Device':
+        # self.id = self.read_device_id()
+        n = 0
+        self.id = 'Unknown Device'
+        while n < self.read_retries:
+            n += 1
+            result = self._send_command(b'$'+self.addr_hex + b'M\r')
+            if result and self.check_response():
+                self.id = self.response[3:-1].decode()
+                break
+        #
+        if self.id in ADAM_DEVICES:
             self.name = self.id
-            if self.id not in ADAM_DEVICES:
-                self.name = '0000'
-                for key in ADAM_DEVICES:
-                    if self.id[-2:] == key[-2:]:
-                        self.logger.info(f'Using {key} instead of {self.id} for devise type')
-                        self.name = key
-                        break
+        else:
+            self.name = '0000'
+            for key in ADAM_DEVICES:
+                if self.id[-2:] == key[-2:]:
+                    self.logger.info(f'{self.pre} Using {key} instead of {self.id} for devise type')
+                    self.name = key
+                    break
+        self.pre = f'ADAM{self.name} at {self.port}:{self.addr}'
         if self.name == '0000':
-            self.logger.error(f'ADAM at {self.port}:{self.addr} is not recognized')
+            self.logger.info(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
             self.suspend()
             return False
@@ -163,7 +178,8 @@ class Adam(TDKLambda):
         self.ao_max = [i[1] for i in self.ao_ranges]
         self.ao_units = [i[2] for i in self.ao_ranges]
         self.state = 1
-        self.logger.debug(f'ADAM-{self.name} at {self.port}:{self.addr} has been initialized')
+        self.suspend_to = 0.0
+        self.logger.debug(f'{self.pre} has been initialized')
         return True
 
     def _set_addr(self):
@@ -382,17 +398,18 @@ class Adam(TDKLambda):
 if __name__ == "__main__":
     pd1 = Adam("COM12", 11, baudrate=38400)
     pd2 = Adam("COM12", 16, baudrate=38400)
-    t_0 = time.time()
-    v1 = pd1.read_device_id()
-    dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    a = '%s %s %s %s %s' % (pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1)
-    print(a)
+    while True:
+        t_0 = time.time()
+        v1 = pd1.read_device_id()
+        dt1 = int((time.time() - t_0) * 1000.0)  # ms
+        a = '%s %s %s %s %s' % (pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1)
+        # print(a)
 
-    t_0 = time.time()
-    v2 = pd2.read_device_id()
-    dt2 = int((time.time() - t_0) * 1000.0)  # ms
-    a = '%s %s %s %s %s' % (pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2)
-    print(a)
+        t_0 = time.time()
+        v2 = pd2.read_device_id()
+        dt2 = int((time.time() - t_0) * 1000.0)  # ms
+        a = '%s %s %s %s %s' % (pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2)
+        # print(a)
 
     d = pd1
     v = d.read_di(3)
