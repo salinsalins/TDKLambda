@@ -175,8 +175,8 @@ class TDKLambda:
         if self.suspend_to <= 0.0:
             return True
         # was suspended and expires
-        self.close_com_port()
-        self.create_com_port()
+        # self.close_com_port()
+        # self.create_com_port()
         val = self.init()
         return val
 
