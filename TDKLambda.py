@@ -531,12 +531,12 @@ if __name__ == "__main__":
     # v1 = pd1.read_all()
     # dt1 = int((time.time() - t_0) * 1000.0)  # ms
     # print(pd1.port, pd1.addr, 'DVC? ->', v1, '%4d ms ' % dt1)
-
-    t_0 = time.time()
-    v1 = pd2.read_programmed_voltage()
-    dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    print(pd2.port, pd2.addr, '2 read_programmed_voltage ->', v1, '%4d ms ' % dt1)
-    t_0 = time.time()
+    while True:
+        t_0 = time.time()
+        v1 = pd2.read_programmed_voltage()
+        dt1 = int((time.time() - t_0) * 1000.0)  # ms
+        print(pd2.port, pd2.addr, '2 read_programmed_voltage ->', v1, '%4d ms ' % dt1)
+    # t_0 = time.time()
     # v1 = pd2.send_command("PV 1.0")
     # dt1 = int((time.time() - t_0) * 1000.0)  # ms
     # print(pd2.port, pd2.addr, '2 PV 1.0 ->', v1, '%4d ms ' % dt1, '%5.3f' % pd2.min_read_time)
