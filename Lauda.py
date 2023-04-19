@@ -73,7 +73,7 @@ class Lauda(TDKLambda):
             self.logger.debug(f'{self.pre} No expected checksum in response')
             return False
         else:
-            cs = self.checksum(result[1:])
+            cs = self.checksum(result[1:-1])
             if csr != cs:
                 self.logger.debug(f'{self.pre} Incorrect checksum in response')
                 return False
@@ -82,6 +82,14 @@ class Lauda(TDKLambda):
 
     # def _send_command(self, cmd, terminator=b'\x03'):
     #     result = super()._send_command(cmd, terminator)
+
+    @staticmethod
+    def checksum(cmd):
+        s = 0
+        for b in cmd:
+            s = s ^ int(b)
+        s = s ^ 3
+        return s.to_bytes(1, 'little')
 
     def send_command(self, cmd) -> bool:
         if not self.ready:
@@ -93,17 +101,19 @@ class Lauda(TDKLambda):
             if isinstance(cmd, str):
                 cmd = str.encode(cmd)
             #
-            cmd_out = b'\x04' + self.addr_hex + cmd
+            cmd_out = b'\x04' + self.addr_hex
             if b'=' in cmd:
-                # cmd_out += '%f5.2' % value
-                cmd = self.add_checksum(cmd)
+                cmd_out += b'\x02' + cmd
+                cmd_out += b'\x03' + self.checksum(cmd)
+                t = b'\x06'
             else:
-                cmd_out += b'\x05'
+                cmd_out += cmd + b'\x05'
+                t = b'\x03'
             #
             n = self.read_retries
             while n > 1:
                 n -= 1
-                result = self._send_command(cmd_out, terminator=b'\x03')
+                result = self._send_command(cmd_out, terminator=t)
                 if result:
                     return True
             self.suspend()
@@ -158,6 +168,13 @@ if __name__ == "__main__":
     pd1 = Lauda("COM4")
     t_0 = time.time()
     cmd = '6230'
+    v1 = pd1.send_command(cmd)
+    dt1 = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s %s %s %s %s %s' % (pd1.port, pd1.addr, cmd, '->', v1, '%4d ms ' % dt1)
+    # pd1.logger.debug(a)
+    print(a)
+
+    cmd = '1100=20,0'
     v1 = pd1.send_command(cmd)
     dt1 = int((time.time() - t_0) * 1000.0)  # ms
     a = '%s %s %s %s %s %s' % (pd1.port, pd1.addr, cmd, '->', v1, '%4d ms ' % dt1)
