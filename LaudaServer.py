@@ -1,22 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""TDK Lambda Genesis series power supply tango device server"""
+"""
+LAUDA tango device server
+"""
 import sys
 
-from Lauda import Lauda
+import tango
 
 if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
-if '../IT6900' not in sys.path: sys.path.append('../IT6900')
-
-import logging
-import time
-from math import isnan
 
 from tango import AttrQuality, AttrWriteType, DispLevel
 from tango import DevState
 from tango.server import attribute, command
 
 from TangoServerPrototype import TangoServerPrototype
+from Lauda import Lauda
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'LUDA Python Tango Server'
@@ -46,19 +44,31 @@ class LaudaServer(TangoServerPrototype):
                             unit="", format="%s",
                             doc="LAUDA device type")
 
-    p6230 = attribute(label="Parameter 6230", dtype=float,
-                      display_level=DispLevel.OPERATOR,
-                      access=AttrWriteType.READ,
-                      unit="", format="%6.2f",
-                      min_value=0.0,
-                      doc="Parameter 6230")
+    setpoint = attribute(label="Local Set Point", dtype=float,
+                         display_level=DispLevel.OPERATOR,
+                         access=AttrWriteType.READ_WRITE,
+                         unit="", format="%6.2f",
+                         min_value=0.0,
+                         doc="Local Main SetPoint")
 
-    p1100 = attribute(label="Parameter 1100", dtype=float,
-                      display_level=DispLevel.OPERATOR,
-                      access=AttrWriteType.READ_WRITED,
-                      unit="", format="%6.2f",
-                      min_value=0.0,
-                      doc="Main SetPoint")
+    setpoint2 = attribute(label="Remote Set Point", dtype=float,
+                          display_level=DispLevel.OPERATOR,
+                          access=AttrWriteType.READ_WRITE,
+                          unit="", format="%6.2f",
+                          min_value=0.0,
+                          doc="Remote SetPoint")
+
+    run = attribute(label="Run", dtype=bool,
+                    display_level=DispLevel.OPERATOR,
+                    access=AttrWriteType.READ_WRITE,
+                    unit="",
+                    doc="Run/Stop button")
+
+    reset = attribute(label="Reset", dtype=bool,
+                    display_level=DispLevel.OPERATOR,
+                    access=AttrWriteType.READ_WRITE,
+                    unit="",
+                    doc="Reset button")
 
     def init_device(self):
         super().init_device()
@@ -124,43 +134,19 @@ class LaudaServer(TangoServerPrototype):
             self.set_fault()
             return "Uninitialized"
 
-    def read_p1100(self):
-        resp = self.lda.send_command('1100')
-        if resp:
-            try:
-                v = self.lda.get_response()
-                v1 = v.split('=')
-                value = float(v1[-1])
-                self.set_running()
-                self.p1100.set_quality(AttrQuality.ATTR_VALID)
-                return value
-            except:
-                pass
-        msg = f'{self.pre} p1100 read error'
-        self.logger.debug(msg)
-        self.p1100.set_quality(AttrQuality.ATTR_INVALID)
-        self.set_fault(msg)
-        return float('Nan')
+    #   ---------------- custom attributes read --------------
+    def read_general(self, attr: tango.Attribute):
+        attr_name = attr.get_name()
+        # self.LOGGER.debug('entry %s %s', self.get_name(), attr_name)
+        if self.is_connected():
+            val = self._read_io(attr)
+        else:
+            val = None
+            msg = '%s %s Waiting for reconnect' % (self.get_name(), attr.get_name())
+            self.logger.debug(msg)
+        return self.set_attribute_value(attr, val)
 
-    def read_p6230(self):
-        resp = self.lda.send_command('6230')
-        if resp:
-            try:
-                v = self.lda.get_response()
-                v1 = v.split('=')
-                value = float(v1[-1])
-                self.set_running()
-                self.p1100.set_quality(AttrQuality.ATTR_VALID)
-                return value
-            except:
-                pass
-        msg = f'{self.pre} p6230 read error'
-        self.logger.debug(msg)
-        self.p1100.set_quality(AttrQuality.ATTR_INVALID)
-        self.set_fault(msg)
-        return float('Nan')
-
-    def read_param(self, param: str, type=float):
+    def read_value(self, param: str, type=float):
         resp = self.lda.send_command(param)
         if resp:
             try:
@@ -168,34 +154,140 @@ class LaudaServer(TangoServerPrototype):
                 v1 = v.split('=')
                 value = type(v1[-1])
                 return value
+            except KeyboardInterrupt:
+                raise
+            except:
+                pass
+        msg = f'{self.pre} {param} read error'
+        self.logger.debug(msg)
+        return None
+
+    def read_bit(self, param: str, n):
+        resp = self.lda.send_command(param)
+        if resp:
+            try:
+                v = self.lda.get_response()
+                v1 = v.split('=')
+                value = bool(int(v1[-1]) & 2 ** n)
+                return value
+            except KeyboardInterrupt:
+                raise
             except:
                 pass
         msg = f'{self.pre} p{param} read error'
         self.logger.debug(msg)
         return None
 
-    def write_param(self, param: str, value):
+    def read_setpoint(self):
+        value = self.read_value('1100')
+        if value is not None:
+            self.setpoint.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.setpoint.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} setpoint read error'
+        self.set_fault(msg)
+        return float('Nan')
+
+    def read_setpoint2(self):
+        value = self.read_value('6320')
+        if value is not None:
+            self.setpoint2.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.setpoint2.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} setpoint2 read error'
+        self.set_fault(msg)
+        return float('Nan')
+
+    def read_run(self):
+        value = self.read_bit('6320', 0)
+        if value is not None:
+            self.run.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.run.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} run state read error'
+        self.set_fault(msg)
+        return False
+
+    def read_reset(self):
+        value = self.read_bit('6320', 1)
+        if value is not None:
+            self.reset.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.reset.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} reset state read error'
+        self.set_fault(msg)
+        return False
+
+    #   ---------------- custom attributes write --------------
+    def write_value(self, param: str, value):
         resp = self.lda.send_command(f'{param}={value}')
         if resp:
             return True
-        msg = f'{self.pre} p{param} write error'
+        msg = f'{self.pre} {param} write error'
         self.logger.debug(msg)
         return False
 
-    def write_p1100(self, value):
-        if self.write_param('1100', value):
-            self.p1100.set_quality(AttrQuality.ATTR_VALID)
-            self.p1100.set_value(value)
-            self.p1100.set_write_value(value)
-            self.set_running()
-            return True
-        else:
-            msg = f'{self.pre} Error write p1100'
-            self.logger.warning(msg)
-            self.p1100.set_quality(AttrQuality.ATTR_INVALID)
-            self.set_fault(msg)
+    def write_bit(self, param: str, bit, value):
+        v0 = self.read_value(param, int)
+        if v0 is None:
+            msg = f'{self.pre} {param}_{bit} write error'
+            self.logger.debug(msg)
             return False
+        if value:
+            v1 = v0 & 2**bit
+        else:
+            v1 = v0 | 2**bit
+        return self.write_value(param, v1)
 
+    def write_setpoint(self, value):
+        result = self.write_value('1100', f'{value:.2f}')
+        if result:
+            self.setpoint.set_quality(AttrQuality.ATTR_VALID)
+            self.setpoint.set_write_value(value)
+            return value
+        self.setpoint.set_quality(AttrQuality.ATTR_INVALID)
+        self.setpoint.set_write_value(float('Nan'))
+        msg = f'{self.pre} setpoint write error'
+        self.set_fault(msg)
+        return float('Nan')
+
+    def write_setpoint2(self, value):
+        result = self.write_value('1100', f'{value:.2f}')
+        if result:
+            self.setpoint2.set_quality(AttrQuality.ATTR_VALID)
+            self.setpoint2.set_write_value(value)
+            return value
+        self.setpoint2.set_quality(AttrQuality.ATTR_INVALID)
+        self.setpoint2.set_write_value(float('Nan'))
+        msg = f'{self.pre} setpoint2 write error'
+        self.set_fault(msg)
+        return float('Nan')
+
+    def write_run(self, value):
+        result = self.write_bit('1100', 1, value)
+        if result:
+            self.run.set_quality(AttrQuality.ATTR_VALID)
+            self.run.set_write_value(value)
+            return value
+        self.run.set_quality(AttrQuality.ATTR_INVALID)
+        self.run.set_write_value(float('Nan'))
+        msg = f'{self.pre} run switch write error'
+        self.set_fault(msg)
+        return False
+
+    def write_reset(self, value):
+        result = self.write_bit('1100', 1, value)
+        if result:
+            self.reset.set_quality(AttrQuality.ATTR_VALID)
+            self.reset.set_write_value(value)
+            return value
+        self.reset.set_quality(AttrQuality.ATTR_INVALID)
+        self.reset.set_write_value(float('Nan'))
+        msg = f'{self.pre} reset switch write error'
+        self.set_fault(msg)
+        return False
+
+    #   ---------------- end custom attributes --------------
     def set_fault(self, msg=None):
         if msg is None:
             if self.lda.initialized():
@@ -204,7 +296,7 @@ class LaudaServer(TangoServerPrototype):
                 msg = f'{self.pre} was not initialized'
         super().set_fault(msg)
 
-    @command(dtype_in=str, doc_in='Directly send command to the LAUDA PS',
+    @command(dtype_in=str, doc_in='Directly send command to the LAUDA',
              dtype_out=str, doc_out='Response from LAUDA PS without final <CR>')
     def send_command(self, cmd):
         result = self.lda.send_command(cmd)
