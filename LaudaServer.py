@@ -65,10 +65,40 @@ class LaudaServer(TangoServerPrototype):
                     doc="Run/Stop button")
 
     reset = attribute(label="Reset", dtype=bool,
-                    display_level=DispLevel.OPERATOR,
-                    access=AttrWriteType.READ_WRITE,
-                    unit="",
-                    doc="Reset button")
+                      display_level=DispLevel.OPERATOR,
+                      access=AttrWriteType.READ_WRITE,
+                      unit="",
+                      doc="Reset button")
+
+    valve = attribute(label="Valve", dtype=bool,
+                      display_level=DispLevel.OPERATOR,
+                      access=AttrWriteType.READ_WRITE,
+                      unit="",
+                      doc="Valve ON/OFF button")
+
+    enable = attribute(label="Enable", dtype=bool,
+                       display_level=DispLevel.OPERATOR,
+                       access=AttrWriteType.READ_WRITE,
+                       unit="",
+                       doc="Enable ON/OFF button")
+
+    pump = attribute(label="Pump State", dtype=bool,
+                     display_level=DispLevel.OPERATOR,
+                     access=AttrWriteType.READ,
+                     unit="",
+                     doc="Pump State")
+
+    valve_state = attribute(label="Valve State", dtype=bool,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ,
+                            unit="",
+                            doc="Valve State")
+
+    return_temp = attribute(label="Return Temperature", dtype=float,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ,
+                            unit="", format="%6.2f",
+                            doc="Return Fluid Temperature")
 
     def init_device(self):
         super().init_device()
@@ -92,11 +122,8 @@ class LaudaServer(TangoServerPrototype):
         if self.lda.ready:
             # if self.lda.max_voltage < float('inf'):
             #     self.programmed_voltage.set_max_value(self.lda.max_voltage)
-            # if self.lda.max_current < float('inf'):
-            #     self.programmed_current.set_max_value(self.lda.max_current)
-            # self.programmed_voltage.set_write_value(self.read_programmed_voltage())
-            # self.programmed_current.set_write_value(self.read_programmed_current())
-            # self.output_state.set_write_value(self.read_output_state())
+            self.setpoint.set_write_value(self.read_setpoint())
+            self.setpoint2.set_write_value(self.read_setpoint2())
             # set state to running
             msg = f'{self.pre} created successfully'
             self.set_state(DevState.RUNNING, msg)
@@ -189,7 +216,7 @@ class LaudaServer(TangoServerPrototype):
         return float('Nan')
 
     def read_setpoint2(self):
-        value = self.read_value('6320')
+        value = self.read_value('6200')
         if value is not None:
             self.setpoint2.set_quality(AttrQuality.ATTR_VALID)
             return value
@@ -199,7 +226,7 @@ class LaudaServer(TangoServerPrototype):
         return float('Nan')
 
     def read_run(self):
-        value = self.read_bit('6320', 0)
+        value = self.read_bit('6210', 1)
         if value is not None:
             self.run.set_quality(AttrQuality.ATTR_VALID)
             return value
@@ -209,7 +236,8 @@ class LaudaServer(TangoServerPrototype):
         return False
 
     def read_reset(self):
-        value = self.read_bit('6320', 1)
+        value = self.read_bit('6210', 2)
+        # self.logger.error(f'{value}')
         if value is not None:
             self.reset.set_quality(AttrQuality.ATTR_VALID)
             return value
@@ -217,6 +245,56 @@ class LaudaServer(TangoServerPrototype):
         msg = f'{self.pre} reset state read error'
         self.set_fault(msg)
         return False
+
+    def read_enable(self):
+        value = self.read_bit('6210', 0)
+        if value is not None:
+            self.reset.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.reset.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} enable state read error'
+        self.set_fault(msg)
+        return False
+
+    def read_valve(self):
+        value = self.read_bit('6210', 3)
+        if value is not None:
+            self.reset.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.reset.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} enable state read error'
+        self.set_fault(msg)
+        return False
+
+    def read_pump(self):
+        value = self.read_bit('6230', 0)
+        if value is not None:
+            self.reset.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.reset.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} enable state read error'
+        self.set_fault(msg)
+        return False
+
+    def read_valve_state(self):
+        value = self.read_bit('6230', 7)
+        if value is not None:
+            self.reset.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.reset.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} Valve state read error'
+        self.set_fault(msg)
+        return False
+
+    def read_return_temp(self):
+        value = self.read_value('1012')
+        if value is not None:
+            self.return_temp.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.return_temp.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} return_temp read error'
+        self.set_fault(msg)
+        return float('Nan')
 
     #   ---------------- custom attributes write --------------
     def write_value(self, param: str, value):
@@ -234,9 +312,9 @@ class LaudaServer(TangoServerPrototype):
             self.logger.debug(msg)
             return False
         if value:
-            v1 = v0 & 2**bit
+            v1 = v0 | 2 ** bit
         else:
-            v1 = v0 | 2**bit
+            v1 = v0 & ~(2 ** bit)
         return self.write_value(param, v1)
 
     def write_setpoint(self, value):
@@ -252,7 +330,7 @@ class LaudaServer(TangoServerPrototype):
         return float('Nan')
 
     def write_setpoint2(self, value):
-        result = self.write_value('1100', f'{value:.2f}')
+        result = self.write_value('6200', f'{value:.2f}')
         if result:
             self.setpoint2.set_quality(AttrQuality.ATTR_VALID)
             self.setpoint2.set_write_value(value)
@@ -264,7 +342,7 @@ class LaudaServer(TangoServerPrototype):
         return float('Nan')
 
     def write_run(self, value):
-        result = self.write_bit('1100', 1, value)
+        result = self.write_bit('6210', 1, value)
         if result:
             self.run.set_quality(AttrQuality.ATTR_VALID)
             self.run.set_write_value(value)
@@ -276,7 +354,7 @@ class LaudaServer(TangoServerPrototype):
         return False
 
     def write_reset(self, value):
-        result = self.write_bit('1100', 1, value)
+        result = self.write_bit('6210', 2, value)
         if result:
             self.reset.set_quality(AttrQuality.ATTR_VALID)
             self.reset.set_write_value(value)
@@ -284,6 +362,30 @@ class LaudaServer(TangoServerPrototype):
         self.reset.set_quality(AttrQuality.ATTR_INVALID)
         self.reset.set_write_value(float('Nan'))
         msg = f'{self.pre} reset switch write error'
+        self.set_fault(msg)
+        return False
+
+    def write_valve(self, value):
+        result = self.write_bit('6210', 3, value)
+        if result:
+            self.valve.set_quality(AttrQuality.ATTR_VALID)
+            self.valve.set_write_value(value)
+            return value
+        self.valve.set_quality(AttrQuality.ATTR_INVALID)
+        self.valve.set_write_value(float('Nan'))
+        msg = f'{self.pre} valve switch write error'
+        self.set_fault(msg)
+        return False
+
+    def write_enable(self, value):
+        result = self.write_bit('6210', 0, value)
+        if result:
+            self.enable.set_quality(AttrQuality.ATTR_VALID)
+            self.enable.set_write_value(value)
+            return value
+        self.enable.set_quality(AttrQuality.ATTR_INVALID)
+        self.enable.set_write_value(float('Nan'))
+        msg = f'{self.pre} valve switch write error'
         self.set_fault(msg)
         return False
 
