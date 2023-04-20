@@ -100,6 +100,12 @@ class LaudaServer(TangoServerPrototype):
                             unit="", format="%6.2f",
                             doc="Return Fluid Temperature")
 
+    out_temp = attribute(label="Output Temperature", dtype=float,
+                         display_level=DispLevel.OPERATOR,
+                         access=AttrWriteType.READ,
+                         unit="", format="%6.2f",
+                         doc="Output Fluid Temperature")
+
     def init_device(self):
         super().init_device()
         self.pre = self.get_name()
@@ -292,6 +298,16 @@ class LaudaServer(TangoServerPrototype):
             self.return_temp.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.return_temp.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} return_temp read error'
+        self.set_fault(msg)
+        return float('Nan')
+
+    def read_out_temp(self):
+        value = self.read_value('1011')
+        if value is not None:
+            self.out_temp.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.out_temp.set_quality(AttrQuality.ATTR_INVALID)
         msg = f'{self.pre} return_temp read error'
         self.set_fault(msg)
         return float('Nan')
