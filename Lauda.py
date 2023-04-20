@@ -1,4 +1,7 @@
+import logging
 import sys
+
+from config_logger import config_logger
 
 if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
 if '../IT6900' not in sys.path: sys.path.append('../IT6900')
@@ -81,12 +84,14 @@ class Lauda(TDKLambda):
         if csr == b'':
             self.logger.debug(f'{self.pre} No expected checksum in response')
             return False
-        else:
-            cs = self.checksum(value[1:-1])
-            if csr != cs:
-                self.logger.debug(f'{self.pre} Incorrect checksum in response')
-                return False
-            return True
+        cs = self.checksum(value[1:-1])
+        if csr != cs:
+            self.logger.debug(f'{self.pre} Incorrect checksum in response')
+            return False
+        if self.response[:1] != b'\x02':
+            self.logger.debug(f'{self.pre} Wrong response')
+            return False
+        return True
 
     def send_command(self, cmd) -> bool:
         self.response = b''
@@ -128,19 +133,14 @@ class Lauda(TDKLambda):
             log_exception(self.logger, f'{self.pre} Exception sending {cmd}')
             return False
 
-    def check_response(self, expected=b'', response=None):
-        if response is None:
-            response = self.response
-        if not expected:
-            expected = self.head_ok
-        if not response.startswith(expected):
-            if response.startswith(self.head_err):
-                msg = 'Error response %s' % response
-            else:
-                msg = 'Unexpected response %s (not %s)' % (response, expected)
-            self.logger.info(msg)
-            return False
-        return True
+    def get_response(self):
+        if b'=' in self.command:
+            if self.response == b'\x15':
+                return f'Unrecognized command'
+            if self.response == b'\x06':
+                return f'Command sent OK'
+            return f'I/O Error'
+        return str(self.response[1:-1].decode())
 
     def read_device_id(self):
         return 'LAUDA'
@@ -155,31 +155,26 @@ class Lauda(TDKLambda):
         #     log_exception(self.logger)
         #     return 'Unknown Device'
 
-    def read_config(self):
-        try:
-            pass
-        except KeyboardInterrupt:
-            raise
-        except:
-            log_exception(self)
-
 
 if __name__ == "__main__":
-    pd1 = Lauda("COM4")
-    t_0 = time.time()
-    cmd = '6230'
-    v1 = pd1.send_command(cmd)
-    dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    a = '%s %s %s %s %s %s' % (pd1.port, pd1.addr, cmd, '->', v1, '%4d ms ' % dt1)
-    # pd1.logger.debug(a)
-    print(a)
-
-    cmd = '1100=20,0'
-    v1 = pd1.send_command(cmd)
-    dt1 = int((time.time() - t_0) * 1000.0)  # ms
-    a = '%s %s %s %s %s %s' % (pd1.port, pd1.addr, cmd, '->', v1, '%4d ms ' % dt1)
-    # pd1.logger.debug(a)
-    print(a)
-
-    del pd1
+    print(f'Simple LAUDA control utility ver.{APPLICATION_VERSION}')
+    port = input('LAUDA Port <COM4>:')
+    if not port:
+        port = 'COM4'
+    addr = input('LAUDA Address <5>:')
+    if not addr:
+        addr = 5
+    logger = config_logger()
+    logger.setLevel(logging.ERROR)
+    lda = Lauda(port, int(addr))
+    while True:
+        command = input('Send command:')
+        if not command:
+            break
+        t_0 = time.time()
+        v1 = lda.send_command(command)
+        dt1 = int((time.time() - t_0) * 1000.0)  # ms
+        a = f'{lda.pre} {command} -> {lda.get_response()} in {dt1} ms'
+        print(a)
+    del lda
     print('Finished')
