@@ -226,7 +226,7 @@ class TDKLambda:
     def read_response(self, terminator=CR):
         result = self.read_until(terminator)
         self.response = result
-        if terminator not in result:
+        if not any([i in result for i in terminator]):
             self.logger.debug(f'{self.pre} Response %s without %s', result, terminator)
             return False
         # checksum calculation
