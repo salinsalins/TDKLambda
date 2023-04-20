@@ -209,7 +209,7 @@ class TDKLambda:
     def read_until(self, terminator=CR, size=None):
         result = b''
         # t0 = time.perf_counter()
-        while terminator not in result:
+        while not any([i in result for i in terminator]):
             r = self.read(1)
             if not r:
                 break

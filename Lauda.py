@@ -32,7 +32,7 @@ class Lauda(TDKLambda):
         # check device address
         if self.addr <= 0:
             self.state = -1
-            self.logger.error(self.STATES[self.state])
+            self.logger.info(f'{self.pre} ' + self.STATES[self.state])
             self.suspend()
             return False
         # check if port:address is in use
@@ -40,12 +40,12 @@ class Lauda(TDKLambda):
             for d in TDKLambda._devices:
                 if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
                     self.state = -2
-                    self.logger.error(self.STATES[self.state])
+                    self.logger.info(f'{self.pre} ' + self.STATES[self.state])
                     self.suspend()
                     return False
         if not self.com.ready:
             self.state = -5
-            self.logger.error(self.STATES[self.state])
+            self.logger.info(f'{self.pre} ' + self.STATES[self.state])
             self.suspend()
             return False
         # read device type
@@ -56,7 +56,7 @@ class Lauda(TDKLambda):
         #     self.suspend()
         #     return False
         self.state = 1
-        self.logger.debug(f'{self.pre} has been initialized')
+        self.logger.info(f'{self.pre} has been initialized')
         return True
 
     def _set_addr(self):
@@ -64,24 +64,6 @@ class Lauda(TDKLambda):
 
     def add_checksum(self, cmd):
         return cmd
-
-    def verify_checksum(self, result):
-        if not b'=' in self.command:
-            return True
-        csr = self.read(1)
-        if csr == b'':
-            self.logger.debug(f'{self.pre} No expected checksum in response')
-            return False
-        else:
-            cs = self.checksum(result[1:-1])
-            if csr != cs:
-                self.logger.debug(f'{self.pre} Incorrect checksum in response')
-                return False
-            self.response = result[1:-1]
-            return True
-
-    # def _send_command(self, cmd, terminator=b'\x03'):
-    #     result = super()._send_command(cmd, terminator)
 
     @staticmethod
     def checksum(cmd):
@@ -91,21 +73,36 @@ class Lauda(TDKLambda):
         s = s ^ 3
         return s.to_bytes(1, 'little')
 
-    def send_command(self, cmd) -> bool:
-        if not self.ready:
-            self.command = cmd
-            self.response = b''
+    def verify_checksum(self, value):
+        if b'=' in self.command:
+            return value == b'\x06'
+        #
+        csr = self.read(1)
+        if csr == b'':
+            self.logger.debug(f'{self.pre} No expected checksum in response')
             return False
+        else:
+            cs = self.checksum(value[1:-1])
+            if csr != cs:
+                self.logger.debug(f'{self.pre} Incorrect checksum in response')
+                return False
+            return True
+
+    def send_command(self, cmd) -> bool:
+        self.response = b''
+        # unify command
+        if isinstance(cmd, str):
+            cmd = str.encode(cmd)
+        self.command = cmd
         try:
-            # unify command
-            if isinstance(cmd, str):
-                cmd = str.encode(cmd)
+            if not self.ready:
+                return False
             #
             cmd_out = b'\x04' + self.addr_hex
             if b'=' in cmd:
                 cmd_out += b'\x02' + cmd
                 cmd_out += b'\x03' + self.checksum(cmd)
-                t = b'\x06'
+                t = (b'\x06', b'\x15')
             else:
                 cmd_out += cmd + b'\x05'
                 t = b'\x03'
@@ -116,16 +113,19 @@ class Lauda(TDKLambda):
                 result = self._send_command(cmd_out, terminator=t)
                 if result:
                     return True
-            self.suspend()
+            if b'=' in self.command and self.response == b'\x15':
+                self.logger.debug(f'{self.pre} Unrecognized command {cmd}')
+                return False
             self.response = b''
-            self.logger.info(f'{self.pre} Can not send command %s' % cmd)
+            self.suspend()
+            self.logger.info(f'{self.pre} Can not send command {cmd}')
             return False
         except KeyboardInterrupt:
             raise
         except:
-            log_exception(self.logger, f'{self.pre} Can not send command {cmd}')
-            self.suspend()
             self.response = b''
+            self.suspend()
+            log_exception(self.logger, f'{self.pre} Exception sending {cmd}')
             return False
 
     def check_response(self, expected=b'', response=None):
