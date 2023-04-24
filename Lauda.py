@@ -118,7 +118,7 @@ class Lauda(TDKLambda):
                 result = self._send_command(cmd_out, terminator=t)
                 if result:
                     return True
-                self.logger.info(f'{self.pre} Command {cmd} retry')
+                self.logger.info(f'{self.pre} Command {cmd} retry {n} {self.read_retries}')
             if b'=' in self.command and self.response == b'\x15':
                 self.logger.debug(f'{self.pre} Unrecognized command {cmd}')
                 return False
