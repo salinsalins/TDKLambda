@@ -113,7 +113,7 @@ class Lauda(TDKLambda):
                 t = b'\x03'
             #
             n = self.read_retries
-            while n > 1:
+            while n >= 1:
                 n -= 1
                 result = self._send_command(cmd_out, terminator=t)
                 if result:
