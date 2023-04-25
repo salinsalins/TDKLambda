@@ -94,6 +94,8 @@ class TDKLambda_Server(TangoServerPrototype):
         baud = self.config.get('baudrate', 115200)
         kwargs['baudrate'] = baud
         kwargs['logger'] = self.logger
+        kwargs['read_timeout'] = self.config.get('read_timeout', 1.0)
+        kwargs['read_retries'] = self.config.get('read_retries', 2)
         protocol = self.config.get('protocol', 'GEN')
         # create TDKLambda device
         if protocol == 'GEN':
