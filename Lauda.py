@@ -59,7 +59,7 @@ class Lauda(TDKLambda):
         #     self.suspend()
         #     return False
         self.state = 1
-        self.logger.info(f'{self.pre} has been initialized')
+        self.logger.info(f'{self.pre} has been initialized {self.read_retries} {self.read_timeout}')
         return True
 
     def _set_addr(self):
@@ -112,13 +112,13 @@ class Lauda(TDKLambda):
                 cmd_out += cmd + b'\x05'
                 t = b'\x03'
             #
-            n = self.read_retries
-            while n >= 1:
-                n -= 1
+            n = 0
+            while n < self.read_retries:
+                n += 1
                 result = self._send_command(cmd_out, terminator=t)
                 if result:
                     return True
-                self.logger.info(f'{self.pre} Command {cmd} retry {n} {self.read_retries}')
+                self.logger.info(f'{self.pre} Command {cmd} retry {n} of {self.read_retries}')
             if b'=' in self.command and self.response == b'\x15':
                 self.logger.debug(f'{self.pre} Unrecognized command {cmd}')
                 return False
