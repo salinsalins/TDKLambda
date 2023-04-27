@@ -118,6 +118,8 @@ class LaudaServer(TangoServerPrototype):
         baud = self.config.get('baudrate', 38400)
         kwargs['baudrate'] = baud
         kwargs['logger'] = self.logger
+        kwargs['read_timeout'] = self.config.get('read_timeout', 1.0)
+        kwargs['read_retries'] = self.config.get('read_retries', 2)
         # create LAUDA device
         self.lda = Lauda(port, addr, **kwargs)
         self.pre = f'{self.pre} {self.lda.pre}'

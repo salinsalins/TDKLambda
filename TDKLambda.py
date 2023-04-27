@@ -200,7 +200,7 @@ class TDKLambda:
         except KeyboardInterrupt:
             raise
         except SerialTimeoutException:
-            self.logger.debug(f'{self.pre} Reading timeout')
+            self.logger.info(f'{self.pre} Reading timeout')
             return result
         except:
             log_exception(self.logger, f'{self.pre} Reading exception')
