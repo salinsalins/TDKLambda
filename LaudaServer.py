@@ -108,9 +108,10 @@ class LaudaServer(TangoServerPrototype):
 
     def init_device(self):
         super().init_device()
-        self.pre = self.get_name()
-        self.logger.debug(f'{self.pre}LAUDA Initialization')
-        self.set_state(DevState.INIT, f'{self.pre} LAUDA Initialization')
+        self.pre = f'{self.get_name()} LAUDA'
+        msg = f'{self.pre} Initialization'
+        self.logger.debug(msg)
+        self.set_state(DevState.INIT, msg)
         # get port and address from property
         kwargs = {}
         port = self.config.get('port', 'COM4')
@@ -122,16 +123,18 @@ class LaudaServer(TangoServerPrototype):
         kwargs['read_retries'] = self.config.get('read_retries', 2)
         # create LAUDA device
         self.lda = Lauda(port, addr, **kwargs)
-        self.pre = f'{self.pre} {self.lda.pre}'
+        self.pre = f'{self.get_name()} {self.lda.pre}'
         # add device to list
         # if self not in Lauda_Server.device_list:
         #     Lauda_Server.device_list[self.get_name()] = self
         # check if device OK
         if self.lda.ready:
-            # if self.lda.max_voltage < float('inf'):
-            #     self.programmed_voltage.set_max_value(self.lda.max_voltage)
             self.setpoint.set_write_value(self.read_setpoint())
             self.setpoint2.set_write_value(self.read_setpoint2())
+            self.run.set_write_value(self.read_run())
+            self.reset.set_write_value(self.read_reset())
+            self.valve.set_write_value(self.read_valve())
+            self.enable.set_write_value(self.read_enable())
             # set state to running
             msg = f'{self.pre} created successfully'
             self.set_state(DevState.RUNNING, msg)
