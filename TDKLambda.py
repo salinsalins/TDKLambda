@@ -537,6 +537,14 @@ class TDKLambda_SCPI(IT6900):
         self.suspend_to = time.time()
         self.suspend_flag = False
 
+    def __del__(self):
+        self.close_com_port()
+        # with TDKLambda._lock:
+        #     if self in TDKLambda._devices:
+        #         self.close_com_port()
+        #         TDKLambda_SCPI._devices.remove(self)
+        self.logger.debug(f'Device at {self.port}:{self.addr} has been deleted')
+
     def read_all(self):
         v1 = self.read_voltage()
         v2 = self.read_programmed_voltage()
