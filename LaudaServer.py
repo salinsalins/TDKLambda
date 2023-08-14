@@ -3,13 +3,12 @@
 """
 LAUDA tango device server
 """
+import os
 import sys
-
-import tango
 
 if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
 
-from tango import AttrQuality, AttrWriteType, DispLevel
+from tango import Attribute, AttrQuality, AttrWriteType, DispLevel
 from tango import DevState
 from tango.server import attribute, command
 
@@ -18,13 +17,13 @@ from Lauda import Lauda
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'LUDA Python Tango Server'
-APPLICATION_NAME_SHORT = 'LaudaServer'
-APPLICATION_VERSION = '1.0'
+APPLICATION_NAME_SHORT = os.path.basename(__file__).replace('.py', '')
+APPLICATION_VERSION = '2.0'
 
 
 class LaudaServer(TangoServerPrototype):
     server_version_value = APPLICATION_VERSION
-    server_name_value = APPLICATION_NAME_SHORT
+    server_name_value = APPLICATION_NAME
 
     port = attribute(label="Port", dtype=str,
                      display_level=DispLevel.OPERATOR,
@@ -44,19 +43,19 @@ class LaudaServer(TangoServerPrototype):
                             unit="", format="%s",
                             doc="LAUDA device type")
 
-    setpoint = attribute(label="Local Set Point", dtype=float,
-                         display_level=DispLevel.OPERATOR,
-                         access=AttrWriteType.READ_WRITE,
-                         unit="", format="%6.2f",
-                         min_value=0.0,
-                         doc="Local Main SetPoint")
-
-    setpoint2 = attribute(label="Remote Set Point", dtype=float,
+    set_point = attribute(label="Local Set Point", dtype=float,
                           display_level=DispLevel.OPERATOR,
                           access=AttrWriteType.READ_WRITE,
                           unit="", format="%6.2f",
                           min_value=0.0,
-                          doc="Remote SetPoint")
+                          doc="Local Main SetPoint")
+
+    set_point_remote = attribute(label="Remote Set Point", dtype=float,
+                                 display_level=DispLevel.OPERATOR,
+                                 access=AttrWriteType.READ_WRITE,
+                                 unit="", format="%6.2f",
+                                 min_value=0.0,
+                                 doc="Remote SetPoint")
 
     run = attribute(label="Run", dtype=bool,
                     display_level=DispLevel.OPERATOR,
@@ -70,7 +69,7 @@ class LaudaServer(TangoServerPrototype):
                       unit="",
                       doc="Reset button")
 
-    valve = attribute(label="Valve", dtype=bool,
+    valve = attribute(label="Valve write", dtype=bool,
                       display_level=DispLevel.OPERATOR,
                       access=AttrWriteType.READ_WRITE,
                       unit="",
@@ -100,11 +99,11 @@ class LaudaServer(TangoServerPrototype):
                             unit="", format="%6.2f",
                             doc="Return Fluid Temperature")
 
-    out_temp = attribute(label="Output Temperature", dtype=float,
-                         display_level=DispLevel.OPERATOR,
-                         access=AttrWriteType.READ,
-                         unit="", format="%6.2f",
-                         doc="Output Fluid Temperature")
+    output_temp = attribute(label="Output Temperature", dtype=float,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ,
+                            unit="", format="%6.2f",
+                            doc="Output Fluid Temperature")
 
     def init_device(self):
         super().init_device()
@@ -151,7 +150,7 @@ class LaudaServer(TangoServerPrototype):
         super().delete_device()
 
     def read_port(self):
-        if self.lda.initialized():
+        if self.lda.ready:
             self.set_running()
         else:
             self.set_fault()
@@ -173,7 +172,7 @@ class LaudaServer(TangoServerPrototype):
             return "Uninitialized"
 
     #   ---------------- custom attributes read --------------
-    def read_general(self, attr: tango.Attribute):
+    def read_general(self, attr: Attribute):
         attr_name = attr.get_name()
         # self.LOGGER.debug('entry %s %s', self.get_name(), attr_name)
         if self.is_connected():
@@ -216,23 +215,23 @@ class LaudaServer(TangoServerPrototype):
         self.logger.debug(msg)
         return None
 
-    def read_setpoint(self):
+    def read_set_point(self):
         value = self.read_value('1100')
         if value is not None:
-            self.setpoint.set_quality(AttrQuality.ATTR_VALID)
+            self.set_point.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.setpoint.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} setpoint read error'
+        self.set_point.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} set point read error'
         self.set_fault(msg)
         return float('Nan')
 
-    def read_setpoint2(self):
+    def read_set_point_remote(self):
         value = self.read_value('6200')
         if value is not None:
-            self.setpoint2.set_quality(AttrQuality.ATTR_VALID)
+            self.set_point_remote.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.setpoint2.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} setpoint2 read error'
+        self.set_point_remote.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} remote set point read error'
         self.set_fault(msg)
         return float('Nan')
 
@@ -260,9 +259,9 @@ class LaudaServer(TangoServerPrototype):
     def read_enable(self):
         value = self.read_bit('6210', 0)
         if value is not None:
-            self.reset.set_quality(AttrQuality.ATTR_VALID)
+            self.enable.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.reset.set_quality(AttrQuality.ATTR_INVALID)
+        self.enable.set_quality(AttrQuality.ATTR_INVALID)
         msg = f'{self.pre} enable state read error'
         self.set_fault(msg)
         return False
@@ -270,19 +269,19 @@ class LaudaServer(TangoServerPrototype):
     def read_valve(self):
         value = self.read_bit('6210', 3)
         if value is not None:
-            self.reset.set_quality(AttrQuality.ATTR_VALID)
+            self.valve.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.reset.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} enable state read error'
+        self.valve.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} valve write state read error'
         self.set_fault(msg)
         return False
 
     def read_pump(self):
         value = self.read_bit('6230', 0)
         if value is not None:
-            self.reset.set_quality(AttrQuality.ATTR_VALID)
+            self.pump.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.reset.set_quality(AttrQuality.ATTR_INVALID)
+        self.pump.set_quality(AttrQuality.ATTR_INVALID)
         msg = f'{self.pre} enable state read error'
         self.set_fault(msg)
         return False
@@ -290,10 +289,10 @@ class LaudaServer(TangoServerPrototype):
     def read_valve_state(self):
         value = self.read_bit('6230', 7)
         if value is not None:
-            self.reset.set_quality(AttrQuality.ATTR_VALID)
+            self.valve_state.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.reset.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} Valve state read error'
+        self.valve_state.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} valve state read error'
         self.set_fault(msg)
         return False
 
@@ -303,17 +302,17 @@ class LaudaServer(TangoServerPrototype):
             self.return_temp.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.return_temp.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} return_temp read error'
+        msg = f'{self.pre} return temperature read error'
         self.set_fault(msg)
         return float('Nan')
 
-    def read_out_temp(self):
+    def read_output_temp(self):
         value = self.read_value('1011')
         if value is not None:
-            self.out_temp.set_quality(AttrQuality.ATTR_VALID)
+            self.output_temp.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.out_temp.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} return_temp read error'
+        self.output_temp.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'{self.pre} output temperature read error'
         self.set_fault(msg)
         return float('Nan')
 
@@ -338,27 +337,27 @@ class LaudaServer(TangoServerPrototype):
             v1 = v0 & ~(2 ** bit)
         return self.write_value(param, v1)
 
-    def write_setpoint(self, value):
+    def write_set_point(self, value):
         result = self.write_value('1100', f'{value:.2f}')
         if result:
-            self.setpoint.set_quality(AttrQuality.ATTR_VALID)
-            self.setpoint.set_write_value(value)
+            self.set_point.set_quality(AttrQuality.ATTR_VALID)
+            self.set_point.set_write_value(value)
             return value
-        self.setpoint.set_quality(AttrQuality.ATTR_INVALID)
-        self.setpoint.set_write_value(float('Nan'))
-        msg = f'{self.pre} setpoint write error'
+        self.set_point.set_quality(AttrQuality.ATTR_INVALID)
+        self.set_point.set_write_value(float('Nan'))
+        msg = f'{self.pre} set point write error'
         self.set_fault(msg)
         return float('Nan')
 
-    def write_setpoint2(self, value):
+    def write_set_point_remote(self, value):
         result = self.write_value('6200', f'{value:.2f}')
         if result:
-            self.setpoint2.set_quality(AttrQuality.ATTR_VALID)
-            self.setpoint2.set_write_value(value)
+            self.set_point_remote.set_quality(AttrQuality.ATTR_VALID)
+            self.set_point_remote.set_write_value(value)
             return value
-        self.setpoint2.set_quality(AttrQuality.ATTR_INVALID)
-        self.setpoint2.set_write_value(float('Nan'))
-        msg = f'{self.pre} setpoint2 write error'
+        self.set_point_remote.set_quality(AttrQuality.ATTR_INVALID)
+        self.set_point_remote.set_write_value(float('Nan'))
+        msg = f'{self.pre} remote set point write error'
         self.set_fault(msg)
         return float('Nan')
 
@@ -406,7 +405,7 @@ class LaudaServer(TangoServerPrototype):
             return value
         self.enable.set_quality(AttrQuality.ATTR_INVALID)
         self.enable.set_write_value(float('Nan'))
-        msg = f'{self.pre} valve switch write error'
+        msg = f'{self.pre} enable switch write error'
         self.set_fault(msg)
         return False
 
