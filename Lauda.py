@@ -225,9 +225,9 @@ if __name__ == "__main__":
         if not command:
             break
         if command.startswith('read'):
-            pass
+            command = command.replace('read ', '')
         elif command.startswith('write'):
-            pass
+            command = command.replace('write ', '')
         t_0 = time.time()
         v1 = lda.send_command(command)
         r1 = lda.get_response()
