@@ -156,6 +156,58 @@ class Lauda(TDKLambda):
         #     log_exception(self.logger)
         #     return 'Unknown Device'
 
+    def read_value(self, param: str, result_type=float):
+        resp = self.send_command(param)
+        if resp:
+            try:
+                v = self.get_response()
+                v1 = v.split('=')
+                value = result_type(v1[-1])
+                return value
+            except KeyboardInterrupt:
+                raise
+            except:
+                pass
+        msg = f'{self.pre} {param} read error'
+        self.logger.debug(msg)
+        return None
+
+    def read_bit(self, param: str, n):
+        resp = self.send_command(param)
+        if resp:
+            try:
+                v = self.get_response()
+                v1 = v.split('=')
+                value = bool(int(v1[-1]) & 2 ** n)
+                return value
+            except KeyboardInterrupt:
+                raise
+            except:
+                pass
+        msg = f'{self.pre} p{param} read error'
+        self.logger.debug(msg)
+        return None
+
+    def write_value(self, param: str, value, *args):
+        resp = self.send_command(f'{param}={value}')
+        if resp:
+            return True
+        msg = f'{self.pre} {param} write error'
+        self.logger.debug(msg)
+        return False
+
+    def write_bit(self, param: str, bit, value):
+        v0 = self.read_value(param, int)
+        if v0 is None:
+            msg = f'{self.pre} {param}_{bit} write error'
+            self.logger.debug(msg)
+            return False
+        if value:
+            v1 = int(v0) | 2 ** bit
+        else:
+            v1 = int(v0) & ~(2 ** bit)
+        return self.write_value(param, v1)
+
 
 if __name__ == "__main__":
     print(f'Simple LAUDA control utility ver.{APPLICATION_VERSION}')
@@ -172,10 +224,15 @@ if __name__ == "__main__":
         command = input('Send command:')
         if not command:
             break
+        if command.startswith('read'):
+            pass
+        elif command.startswith('write'):
+            pass
         t_0 = time.time()
         v1 = lda.send_command(command)
+        r1 = lda.get_response()
         dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        a = f'{lda.pre} {command} -> {lda.get_response()} in {dt1} ms'
+        a = f'{lda.pre} {command} -> {r1} in {dt1} ms'
         print(a)
     del lda
     print('Finished')
