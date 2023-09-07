@@ -128,8 +128,8 @@ class LaudaServer(TangoServerPrototype):
         #     Lauda_Server.device_list[self.get_name()] = self
         # check if device OK
         if self.lda.ready:
-            self.setpoint.set_write_value(self.read_setpoint())
-            self.setpoint2.set_write_value(self.read_setpoint2())
+            self.set_point.set_write_value(self.read_set_point())
+            self.set_point_remote.set_write_value(self.read_set_point_remote())
             self.run.set_write_value(self.read_run())
             self.reset.set_write_value(self.read_reset())
             self.valve.set_write_value(self.read_valve())
