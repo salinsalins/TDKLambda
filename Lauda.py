@@ -1,12 +1,11 @@
 import logging
+import time
 import sys
-
-from config_logger import config_logger
 
 if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
 if '../IT6900' not in sys.path: sys.path.append('../IT6900')
-import time
 
+from config_logger import config_logger
 from log_exception import log_exception
 from TDKLambda import TDKLambda
 
@@ -32,6 +31,7 @@ class Lauda(TDKLambda):
         self.pre = f'LAUDA at {self.port}:{self.addr}'
         self.addr_hex = (b'%02X' % self.addr)[:2]
         self.name = 'LAUDA'
+        self.id = 'LAUDA'
         # check device address
         if self.addr <= 0:
             self.state = -1
@@ -222,12 +222,15 @@ if __name__ == "__main__":
     lda = Lauda(port, int(addr))
     while True:
         command = input('Send command:')
+        command = command.strip()
         if not command:
             break
         if command.startswith('read'):
-            command = command.replace('read ', '')
+            command1 = command.replace('read ', '').strip()
+            if command1.startswith('setpoint'):
+                command = '1100'
         elif command.startswith('write'):
-            command = command.replace('write ', '')
+            command1 = command.replace('write ', '').strip()
         t_0 = time.time()
         v1 = lda.send_command(command)
         r1 = lda.get_response()
