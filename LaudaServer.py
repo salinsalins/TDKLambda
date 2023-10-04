@@ -109,7 +109,7 @@ class LaudaServer(TangoServerPrototype):
         super().init_device()
         self.pre = f'{self.get_name()} LAUDA'
         msg = f'{self.pre} Initialization'
-        self.logger.debug(msg)
+        self.log_debug(msg)
         self.set_state(DevState.INIT, msg)
         # get port and address from property
         kwargs = {}
@@ -135,18 +135,18 @@ class LaudaServer(TangoServerPrototype):
             self.valve.set_write_value(self.read_valve())
             self.enable.set_write_value(self.read_enable())
             # set state to running
-            msg = f'{self.pre} created successfully'
+            msg = 'Created successfully'
             self.set_state(DevState.RUNNING, msg)
-            self.logger.info(msg)
+            self.log_info(msg)
         else:
-            msg = f'{self.pre} created with errors'
+            msg = 'Created with errors'
             self.set_state(DevState.FAULT, msg)
-            self.logger.error(msg)
+            self.log_error(msg)
 
     def delete_device(self):
         self.lda.__del__()
         msg = f'{self.pre} device has been deleted'
-        self.logger.info(msg)
+        self.log_info(msg)
         super().delete_device()
 
     def read_port(self):
@@ -174,13 +174,13 @@ class LaudaServer(TangoServerPrototype):
     #   ---------------- custom attributes read --------------
     def read_general(self, attr: Attribute):
         attr_name = attr.get_name()
-        # self.LOGGER.debug('entry %s %s', self.get_name(), attr_name)
+        # self.log_debug('entry %s %s', self.get_name(), attr_name)
         if self.is_connected():
             val = self._read_io(attr)
         else:
             val = None
             msg = '%s %s Waiting for reconnect' % (self.get_name(), attr.get_name())
-            self.logger.debug(msg)
+            self.log_debug(msg)
         return self.set_attribute_value(attr, val)
 
     def read_value(self, param: str, type=float):
@@ -196,7 +196,7 @@ class LaudaServer(TangoServerPrototype):
             except:
                 pass
         msg = f'{self.pre} {param} read error'
-        self.logger.debug(msg)
+        self.log_debug(msg)
         return None
 
     def read_bit(self, param: str, n):
@@ -212,7 +212,7 @@ class LaudaServer(TangoServerPrototype):
             except:
                 pass
         msg = f'{self.pre} p{param} read error'
-        self.logger.debug(msg)
+        self.log_debug(msg)
         return None
 
     def read_set_point(self):
@@ -247,7 +247,7 @@ class LaudaServer(TangoServerPrototype):
 
     def read_reset(self):
         value = self.read_bit('6210', 2)
-        # self.logger.error(f'{value}')
+        # self.log_error(f'{value}')
         if value is not None:
             self.reset.set_quality(AttrQuality.ATTR_VALID)
             return value
@@ -322,14 +322,14 @@ class LaudaServer(TangoServerPrototype):
         if resp:
             return True
         msg = f'{self.pre} {param} write error'
-        self.logger.debug(msg)
+        self.log_debug(msg)
         return False
 
     def write_bit(self, param: str, bit, value):
         v0 = self.read_value(param, int)
         if v0 is None:
             msg = f'{self.pre} {param}_{bit} write error'
-            self.logger.debug(msg)
+            self.log_debug(msg)
             return False
         if value:
             v1 = v0 | 2 ** bit
@@ -425,11 +425,11 @@ class LaudaServer(TangoServerPrototype):
         rsp = self.lda.get_response()
         if result:
             msg = f'{self.pre} Command {cmd} executed, result {rsp}'
-            self.logger.debug(msg)
+            self.log_debug(msg)
             self.set_state(DevState.RUNNING, msg)
         else:
             msg = f'{self.pre} Command {cmd} ERROR, result {rsp}'
-            self.logger.warning(msg)
+            self.log_warning(msg)
             self.set_state(DevState.FAULT, msg)
         return msg
 
