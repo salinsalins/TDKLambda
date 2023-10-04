@@ -392,7 +392,7 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
-            log_exception(self)
+            log_exception(self.logger, 'Error respotce %s', self.response)
 
 
 if __name__ == "__main__":
