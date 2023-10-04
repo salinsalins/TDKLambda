@@ -86,7 +86,7 @@ class AdamServer(TangoServerPrototype):
         kwargs = {'baudrate': self.config.get('baudrate', 38400),
                   'logger': self.logger,
                   'read_retries': self.config.get('read_retries', 2),
-                  'suspend_time': self.config.get('suspend_time', 10.0)}
+                  'suspend_delay': self.config.get('suspend_delay', 10.0)}
         self.adam = Adam(port, addr, **kwargs)
         # execute init sequence
         init_command = self.config.get('init_command', '')
