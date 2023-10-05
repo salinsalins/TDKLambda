@@ -76,6 +76,7 @@ class AdamServer(TangoServerPrototype):
         self.lock = Lock()
         self.init_io = True
         self.init_po = False
+        self.created_attributes = {}
         #
         name = self.config.get('name', '')
         description = json.loads(self.config.get('description', '[]'))
@@ -313,8 +314,8 @@ class AdamServer(TangoServerPrototype):
                                                  max_value=self.adam.ao_max[k])
                                 self.add_attribute(attr)
                                 self.created_attributes[attr_name] = attr
-                                v = self.adam.read_ao(k)
-                                attr.get_attribute(self).set_write_value(v)
+                                # v = self.adam.read_ao(k)
+                                # attr.get_attribute(self).set_write_value(v)
                                 nao += 1
                             # else:
                             #     self.log_info('%s is disabled', attr_name)
@@ -342,8 +343,8 @@ class AdamServer(TangoServerPrototype):
                                              format='')
                             self.add_attribute(attr)
                             self.created_attributes[attr_name] = attr
-                            v = self.adam.read_ao(k)
-                            attr.get_attribute(self).set_write_value(v)
+                            # v = self.adam.read_ao(k)
+                            # attr.get_attribute(self).set_write_value(v)
                             ndi += 1
                         except KeyboardInterrupt:
                             raise
@@ -370,8 +371,8 @@ class AdamServer(TangoServerPrototype):
                                              format='')
                             self.add_attribute(attr)
                             self.created_attributes[attr_name] = attr
-                            v = self.adam.read_do(k)
-                            attr.get_attribute(self).set_write_value(v)
+                            # v = self.adam.read_do(k)
+                            # attr.get_attribute(self).set_write_value(v)
                             ndo += 1
                         except KeyboardInterrupt:
                             raise
