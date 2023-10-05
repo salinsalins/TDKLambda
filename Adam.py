@@ -263,6 +263,8 @@ class Adam(TDKLambda):
         return result
 
     def read_di(self, chan=None):
+        if self.di_n <= 0:
+            return None
         try:
             do, di = self.read_di_do()
             if chan is None:
@@ -398,8 +400,8 @@ class Adam(TDKLambda):
 
 
 if __name__ == "__main__":
-    pd1 = Adam("COM16", 11, baudrate=38400)
-    pd2 = Adam("COM16", 16, baudrate=38400)
+    pd1 = Adam("COM3", 11, baudrate=38400)
+    pd2 = Adam("COM3", 7, baudrate=38400)
     pd = [pd1, pd2]
     while True:
         for p in pd:
@@ -408,37 +410,40 @@ if __name__ == "__main__":
             dt = int((time.time() - t_0) * 1000.0)  # ms
             a = '%s %s %s %s %s' % (p.port, p.addr, 'read_device_id ->', v, '%4d ms ' % dt)
             d = p
-            v = d.read_di(3)
-            print(d.name, 'r di[3]=', v, d.response)
-            v = d.read_di()
-            print(d.name, 'r di[*]=', v, d.response)
-            v = d.read_do()
-            print(d.name, 'r do=[*]', v, d.response)
-            v = d.write_do(3, False)
-            print(d.name, 'w do[3]=', v, d.response)
-            v = d.read_di()
-            print(d.name, 'r di=[*]', v, d.response)
-            v = d.read_do()
-            print(d.name, 'r do=[*]', v, d.response)
-            v = d.read_di(3)
-            print(d.name, 'r di[3]=', v, d.response)
-            v = d.read_do(3)
-            print(d.name, 'r do[3]=', v, d.response)
-            v = d.read_do()
-            print(d.name, 'r do=[*]', v, d.response)
+            if d.di_n > 0:
+                v = d.read_di(3)
+                print(d.name, 'r di[3]=', v, d.response)
+                v = d.read_di()
+                print(d.name, 'r di[*]=', v, d.response)
+                v = d.read_do()
+                print(d.name, 'r do=[*]', v, d.response)
+                v = d.write_do(3, False)
+                print(d.name, 'w do[3]=', v, d.response)
+                v = d.read_di()
+                print(d.name, 'r di=[*]', v, d.response)
+                v = d.read_do()
+                print(d.name, 'r do=[*]', v, d.response)
+                v = d.read_di(3)
+                print(d.name, 'r di[3]=', v, d.response)
+                v = d.read_do(3)
+                print(d.name, 'r do[3]=', v, d.response)
+                v = d.read_do()
+                print(d.name, 'r do=[*]', v, d.response)
             #
-            v2 = p.read_ai(3)
-            print(p.name, 'r ai[3]=', v2, p.response)
-            v2 = p.read_ai()
-            print(p.name, 'r ai[*]=', v2, p.response)
-            v2 = p.read_di()
-            print(p.name, 'r di[*]=', v2, p.response)
+            if d.ai_n > 0:
+                v2 = p.read_ai(3)
+                print(p.name, 'r ai[3]=', v2, p.response)
+                v2 = p.read_ai()
+                print(p.name, 'r ai[*]=', v2, p.response)
+                v2 = p.read_di()
+                print(p.name, 'r di[*]=', v2, p.response)
             #
-            ao = -1.5
-            v2 = p.write_ao(1, ao)
-            print(p.name, 'w ao[1]=', v2, ao, p.response)
-            v2 = p.read_ao(1)
-            print(p.name, 'r ao[1]=', v2, p.response)
+            if d.ao_n > 0:
+                ao = -1.5
+                v2 = p.write_ao(1, ao)
+                print(p.name, 'w ao[1]=', v2, ao, p.response)
+                v2 = p.read_ao(1)
+                print(p.name, 'r ao[1]=', v2, p.response)
 
             del p
     print('Finished')
