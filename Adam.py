@@ -13,6 +13,7 @@ APPLICATION_VERSION = '2.0'
 
 ADAM_DEVICES = {
     '0000': {'di': 0, 'do': 0, 'ai': 0, 'ao': 0},
+    '4017': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
     '4117': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
     '4118': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
     '4024': {'di': 0, 'do': 0, 'ai': 0, 'ao': 4},
@@ -382,6 +383,21 @@ class Adam(TDKLambda):
             log_exception(self)
 
     def read_range(self, chan):
+        no_8c_modules = ['4017']
+        if self.name in no_8c_modules:
+            cmd = b'$%s2' % self.addr_hex
+            rsp = b'!%s' % self.addr_hex
+            try:
+                if self.send_command(cmd, prefix=b'', addr=False):
+                    if not self.response.startswith(rsp):
+                        return None
+                r = ADAM_RANGES[self.response[3:5]]
+                return r
+            except KeyboardInterrupt:
+                raise
+            except:
+                log_exception(self.logger, 'Error respotce %s', self.response)
+                return None
         cmd = b'$%s8C%X' % (self.addr_hex, chan)
         rsp = b'!%sC%X' % (self.addr_hex, chan)
         try:
@@ -396,14 +412,16 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
-            log_exception(self.logger, 'Error respotce %s', self.response)
+            log_exception(self.logger, 'Error: Response = %s', self.response)
 
 
 if __name__ == "__main__":
-    pd1 = Adam("COM3", 11, baudrate=38400)
-    pd2 = Adam("COM3", 7, baudrate=38400)
+    pd1 = Adam("192.168.1.203", 15, baudrate=38400)
+    pd2 = Adam("192.168.1.203", 7, baudrate=38400)
     pd = [pd1, pd2]
-    while True:
+    n = 1
+    while n:
+        n -= 1
         for p in pd:
             t_0 = time.time()
             v = p.read_device_id()
@@ -417,7 +435,7 @@ if __name__ == "__main__":
                 print(d.name, 'r di[*]=', v, d.response)
                 v = d.read_do()
                 print(d.name, 'r do=[*]', v, d.response)
-                v = d.write_do(3, False)
+                v = d.write_do(3, True)
                 print(d.name, 'w do[3]=', v, d.response)
                 v = d.read_di()
                 print(d.name, 'r di=[*]', v, d.response)
