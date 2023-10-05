@@ -356,7 +356,9 @@ class Adam(TDKLambda):
                 if not self.response.startswith(rsp):
                     self.logger.debug('Wrong response %s', self.response)
                     return None
-            return float(self.response[3:])
+                f = float(self.response[3:])
+                return f
+            return None
         except KeyboardInterrupt:
             raise
         except:
@@ -396,54 +398,47 @@ class Adam(TDKLambda):
 
 
 if __name__ == "__main__":
-    pd1 = Adam("COM12", 11, baudrate=38400)
-    pd2 = Adam("COM12", 16, baudrate=38400)
+    pd1 = Adam("COM16", 11, baudrate=38400)
+    pd2 = Adam("COM16", 16, baudrate=38400)
+    pd = [pd1, pd2]
     while True:
-        t_0 = time.time()
-        v1 = pd1.read_device_id()
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        a = '%s %s %s %s %s' % (pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1)
-        # print(a)
+        for p in pd:
+            t_0 = time.time()
+            v = p.read_device_id()
+            dt = int((time.time() - t_0) * 1000.0)  # ms
+            a = '%s %s %s %s %s' % (p.port, p.addr, 'read_device_id ->', v, '%4d ms ' % dt)
+            d = p
+            v = d.read_di(3)
+            print(d.name, 'r di[3]=', v, d.response)
+            v = d.read_di()
+            print(d.name, 'r di[*]=', v, d.response)
+            v = d.read_do()
+            print(d.name, 'r do=[*]', v, d.response)
+            v = d.write_do(3, False)
+            print(d.name, 'w do[3]=', v, d.response)
+            v = d.read_di()
+            print(d.name, 'r di=[*]', v, d.response)
+            v = d.read_do()
+            print(d.name, 'r do=[*]', v, d.response)
+            v = d.read_di(3)
+            print(d.name, 'r di[3]=', v, d.response)
+            v = d.read_do(3)
+            print(d.name, 'r do[3]=', v, d.response)
+            v = d.read_do()
+            print(d.name, 'r do=[*]', v, d.response)
+            #
+            v2 = p.read_ai(3)
+            print(p.name, 'r ai[3]=', v2, p.response)
+            v2 = p.read_ai()
+            print(p.name, 'r ai[*]=', v2, p.response)
+            v2 = p.read_di()
+            print(p.name, 'r di[*]=', v2, p.response)
+            #
+            ao = -1.5
+            v2 = p.write_ao(1, ao)
+            print(p.name, 'w ao[1]=', v2, ao, p.response)
+            v2 = p.read_ao(1)
+            print(p.name, 'r ao[1]=', v2, p.response)
 
-        t_0 = time.time()
-        v2 = pd2.read_device_id()
-        dt2 = int((time.time() - t_0) * 1000.0)  # ms
-        a = '%s %s %s %s %s' % (pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2)
-        # print(a)
-
-    d = pd1
-    v = d.read_di(3)
-    print(d.name, 'r di[3]=', v, d.response)
-    v = d.read_di()
-    print(d.name, 'r di[*]=', v, d.response)
-    v = d.read_do()
-    print(d.name, 'r do=[*]', v, d.response)
-    v = d.write_do(3, False)
-    print(d.name, 'w do[3]=', v, d.response)
-    v = d.read_di()
-    print(d.name, 'r di=[*]', v, d.response)
-    v = d.read_do()
-    print(d.name, 'r do=[*]', v, d.response)
-    v = d.read_di(3)
-    print(d.name, 'r di[3]=', v, d.response)
-    v = d.read_do(3)
-    print(d.name, 'r do[3]=', v, d.response)
-    v = d.read_do()
-    print(d.name, 'r do=[*]', v, d.response)
-    #
-    v2 = pd1.read_ai(3)
-    print(pd1.name, 'r ai[3]=', v2, pd1.response)
-    v2 = pd1.read_ai()
-    print(pd1.name, 'r ai[*]=', v2, pd1.response)
-    v2 = pd1.read_di()
-    print(pd1.name, 'r di[*]=', v2, pd1.response)
-    #
-    ao = -1.5
-    v2 = pd2.write_ao(1, ao)
-    print(pd2.name, 'w ao[1]=', v2, ao, pd2.response)
-    v2 = pd2.read_ao(1)
-    print(pd2.name, 'r ao[1]=', v2, pd2.response)
-
-    del pd1
-    del pd2
+            del p
     print('Finished')
