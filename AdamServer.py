@@ -69,7 +69,7 @@ class AdamServer(TangoServerPrototype):
     def init_device(self):
         super().init_device()
         self.pre = f'{self.get_name()} Adam'
-        msg = f'{self.pre} Initialization'
+        msg = 'Initialization start'
         self.log_debug(msg)
         self.set_state(DevState.INIT, msg)
         # self.configure_tango_logging()
@@ -104,10 +104,6 @@ class AdamServer(TangoServerPrototype):
             self.log_debug(f'Initialization commands {init_command} executed with result {stat}')
         # check if device OK
         if self.adam.ready:
-            # change state to running
-            msg = 'Adam %s created successfully at %s:%d' % (self.adam.id, self.adam.port, self.adam.addr)
-            self.set_state(DevState.RUNNING, msg)
-            self.log_info(msg)
             # if device was initiated before
             if hasattr(self, 'deleted') and self.deleted:
                 self.add_io()
@@ -115,8 +111,12 @@ class AdamServer(TangoServerPrototype):
                 self.init_io = False
                 self.init_po = False
                 self.deleted = False
+            # change state to running
+            msg = 'Created successfully'
+            self.set_state(DevState.RUNNING, msg)
+            self.log_info(msg)
         else:
-            msg = 'Adam %s at %s:%d created with errors' % (self.adam.id, self.adam.port, self.adam.addr)
+            msg = 'Created with errors'
             self.set_state(DevState.FAULT, msg)
             self.log_error(msg)
 
@@ -126,7 +126,7 @@ class AdamServer(TangoServerPrototype):
         self.remove_io()
         tango.Database().delete_device_property(self.get_name(), 'polled_attr')
         self.adam.__del__()
-        msg = '%s Adam device has been deleted' % self.get_name()
+        msg = 'Device has been deleted'
         self.log_info(msg)
         self.deleted = True
         super().delete_device()
@@ -174,7 +174,7 @@ class AdamServer(TangoServerPrototype):
             elif ad == 'do':
                 result = self.adam.write_do(chan, value)
             else:
-                msg = "%s Write to unknown attribute %s" % (self.get_name(), attr_name)
+                msg = "Write to unknown attribute %s" % attr_name
                 self.log_error(msg)
                 attr.set_quality(tango.AttrQuality.ATTR_INVALID)
                 return
@@ -184,7 +184,7 @@ class AdamServer(TangoServerPrototype):
                 #     if mask:
                 #         self.error_time = time.time()
                 #         self.error_count += 1
-                #         msg = "%s Error writing %s" % (self.get_name(), attr_name)
+                #         msg = "Error writing %s" % attr_name
                 #         self.log_error(msg)
                 #         # self.error_stream(msg)
                 #         self.set_error_attribute_value(attr)
@@ -203,12 +203,12 @@ class AdamServer(TangoServerPrototype):
         elif ad == 'ao':
             val = self.adam.read_ao(chan)
         else:
-            msg = "%s Unknown attribute %s" % (self.get_name(), attr_name)
+            msg = "Read unknown attribute %s" % attr_name
             self.log_error(msg)
             return None
         if val is not None and not math.isnan(val):
             return val
-        msg = "%s Error reading %s %s" % (self.get_name(), attr_name, val)
+        msg = "Error reading %s = %s" % (attr_name, val)
         self.log_error(msg)
         return None
 
@@ -218,7 +218,7 @@ class AdamServer(TangoServerPrototype):
     def send_adam_command(self, cmd):
         self.adam.send_command(cmd)
         rsp = self.adam.response[:-1].decode()
-        msg = '%s:%d %s -> %s' % (self.adam.port, self.adam.addr, cmd, rsp)
+        msg = 'Command %s -> %s' % (cmd, rsp)
         self.log_debug(msg)
         return rsp
 
@@ -253,7 +253,7 @@ class AdamServer(TangoServerPrototype):
             ndo = 0
             try:
                 if self.adam.name == '0000':
-                    msg = '%s No IO attributes added for unknown device' % self.get_name()
+                    msg = 'No IO attributes added for unknown device'
                     self.log_warning(msg)
                     self.set_state(DevState.FAULT, msg)
                     self.init_io = False
@@ -289,8 +289,8 @@ class AdamServer(TangoServerPrototype):
                         except KeyboardInterrupt:
                             raise
                         except:
-                            log_exception('%s Exception adding AI %s' % (self.get_name(), attr_name))
-                    msg = '%s %d of %d analog inputs initialized' % (self.get_name(), nai, self.adam.ai_n)
+                            self.log_exception('Exception adding AI %s' % attr_name)
+                    msg = '%d of %d analog inputs initialized' % (nai, self.adam.ai_n)
                     self.log_info(msg)
                 # ao
                 nao = 0
@@ -322,8 +322,8 @@ class AdamServer(TangoServerPrototype):
                         except KeyboardInterrupt:
                             raise
                         except:
-                            log_exception('%s Exception adding IO channel %s' % (self.get_name(), attr_name))
-                    msg = '%s %d of %d analog outputs initialized' % (self.get_name(), nao, self.adam.ao_n)
+                            self.log_exception('Exception adding IO channel %s' % attr_name)
+                    msg = '%s of %d of %d analog outputs initialized' % (self.get_name(), nao, self.adam.ao_n)
                     self.log_info(msg)
                 # di
                 ndi = 0
@@ -349,8 +349,8 @@ class AdamServer(TangoServerPrototype):
                         except KeyboardInterrupt:
                             raise
                         except:
-                            log_exception('%s Exception adding IO channel %s' % (self.get_name(), attr_name))
-                    msg = '%s %d digital inputs initialized' % (self.get_name(), ndi)
+                            self.log_exception('Exception adding IO channel %s' % attr_name)
+                    msg = '%s of %d digital inputs initialized' % (self.get_name(), ndi)
                     self.log_info(msg)
                 # do
                 ndo = 0
@@ -377,14 +377,14 @@ class AdamServer(TangoServerPrototype):
                         except KeyboardInterrupt:
                             raise
                         except:
-                            log_exception('%s Exception adding IO channel %s' % (self.get_name(), attr_name))
-                    msg = '%s %d digital outputs initialized' % (self.get_name(), ndo)
+                            self.log_exception('Exception adding IO channel %s' % attr_name)
+                    msg = '%s of %d digital outputs initialized' % (self.get_name(), ndo)
                     self.log_info(msg)
                 self.set_state(DevState.RUNNING, 'IO addition completed')
             except KeyboardInterrupt:
                 raise
             except:
-                log_exception('%s Error adding IO channels' % self.get_name())
+                self.log_exception('Error adding IO channels')
                 self.set_state(DevState.FAULT, msg)
             self.init_io = False
             self.init_po = True
@@ -396,14 +396,14 @@ class AdamServer(TangoServerPrototype):
             try:
                 for attr_name in self.created_attributes:
                     self.remove_attribute(attr_name)
-                    self.log_debug('%s attribute %s removed' % (self.get_name(), attr_name))
+                    self.log_debug(' Attribute %s removed' % attr_name)
                 self.created_attributes = {}
                 self.set_state(DevState.CLOSE, 'All IO channels removed')
                 self.init_io = True
             except KeyboardInterrupt:
                 raise
             except:
-                log_exception(self.logger, '%s Error deleting IO channels' % self.get_name())
+                self.log_exception(self.logger, 'Error deleting IO channels')
                 # self.set_state(DevState.FAULT)
 
     # def save_polling_state(self, target_property='_polled_attr'):
