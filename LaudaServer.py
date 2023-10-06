@@ -114,7 +114,7 @@ class LaudaServer(TangoServerPrototype):
     def init_device(self):
         super().init_device()
         self.pre = f'{self.get_name()} LAUDA'
-        msg = f'{self.pre} Initialization'
+        msg = f'Initialization'
         self.log_debug(msg)
         self.set_state(DevState.INIT, msg)
         # get port and address from property
@@ -243,7 +243,7 @@ class LaudaServer(TangoServerPrototype):
             self.run.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.run.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} run state read error'
+        msg = f'run state read error'
         self.set_fault(msg)
         return False
 
@@ -254,7 +254,7 @@ class LaudaServer(TangoServerPrototype):
             self.reset.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.reset.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} reset state read error'
+        msg = f'reset state read error'
         self.set_fault(msg)
         return False
 
@@ -264,7 +264,7 @@ class LaudaServer(TangoServerPrototype):
             self.enable.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.enable.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} enable state read error'
+        msg = f'enable state read error'
         self.set_fault(msg)
         return False
 
@@ -274,7 +274,7 @@ class LaudaServer(TangoServerPrototype):
             self.valve.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.valve.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} valve write state read error'
+        msg = f'valve write state read error'
         self.set_fault(msg)
         return False
 
@@ -284,7 +284,7 @@ class LaudaServer(TangoServerPrototype):
             self.pump.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.pump.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} enable state read error'
+        msg = f'enable state read error'
         self.set_fault(msg)
         return False
 
@@ -294,7 +294,7 @@ class LaudaServer(TangoServerPrototype):
             self.valve_state.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.valve_state.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} valve state read error'
+        msg = f'valve state read error'
         self.set_fault(msg)
         return False
 
@@ -304,7 +304,7 @@ class LaudaServer(TangoServerPrototype):
             self.return_temp.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.return_temp.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} return temperature read error'
+        msg = f'return temperature read error'
         self.set_fault(msg)
         return float('Nan')
 
@@ -314,7 +314,7 @@ class LaudaServer(TangoServerPrototype):
             self.output_temp.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.output_temp.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} output temperature read error'
+        msg = f'output temperature read error'
         self.set_fault(msg)
         return float('Nan')
 
@@ -323,14 +323,14 @@ class LaudaServer(TangoServerPrototype):
         resp = self.lda.send_command(f'{param}={value}')
         if resp:
             return True
-        msg = f'{self.pre} {param} write error'
+        msg = f'{param} write error'
         self.log_debug(msg)
         return False
 
     def write_bit(self, param: str, bit, value):
         v0 = self.read_value(param, int)
         if v0 is None:
-            msg = f'{self.pre} {param}_{bit} write error'
+            msg = f'{param}_{bit} write error'
             self.log_debug(msg)
             return False
         if value:
@@ -347,7 +347,7 @@ class LaudaServer(TangoServerPrototype):
             return value
         self.set_point.set_quality(AttrQuality.ATTR_INVALID)
         self.set_point.set_write_value(float('Nan'))
-        msg = f'{self.pre} set point write error'
+        msg = 'Set point write error'
         self.set_fault(msg)
         return float('Nan')
 
@@ -359,7 +359,7 @@ class LaudaServer(TangoServerPrototype):
             return value
         self.set_point_remote.set_quality(AttrQuality.ATTR_INVALID)
         self.set_point_remote.set_write_value(float('Nan'))
-        msg = f'{self.pre} remote set point write error'
+        msg = 'Remote set point write error'
         self.set_fault(msg)
         return float('Nan')
 
@@ -371,7 +371,7 @@ class LaudaServer(TangoServerPrototype):
             return value
         self.run.set_quality(AttrQuality.ATTR_INVALID)
         self.run.set_write_value(float('Nan'))
-        msg = f'{self.pre} run switch write error'
+        msg = 'Run switch write error'
         self.set_fault(msg)
         return False
 
@@ -383,7 +383,7 @@ class LaudaServer(TangoServerPrototype):
             return value
         self.reset.set_quality(AttrQuality.ATTR_INVALID)
         self.reset.set_write_value(float('Nan'))
-        msg = f'{self.pre} reset switch write error'
+        msg = 'Reset switch write error'
         self.set_fault(msg)
         return False
 
@@ -395,7 +395,7 @@ class LaudaServer(TangoServerPrototype):
             return value
         self.valve.set_quality(AttrQuality.ATTR_INVALID)
         self.valve.set_write_value(float('Nan'))
-        msg = f'{self.pre} valve switch write error'
+        msg = 'Valve switch write error'
         self.set_fault(msg)
         return False
 
@@ -407,7 +407,7 @@ class LaudaServer(TangoServerPrototype):
             return value
         self.enable.set_quality(AttrQuality.ATTR_INVALID)
         self.enable.set_write_value(float('Nan'))
-        msg = f'{self.pre} enable switch write error'
+        msg = f'enable switch write error'
         self.set_fault(msg)
         return False
 
@@ -415,9 +415,9 @@ class LaudaServer(TangoServerPrototype):
     def set_fault(self, msg=None):
         if msg is None:
             if self.lda.initialized():
-                msg = f'{self.pre} R/W error!'
+                msg = f'R/W error!'
             else:
-                msg = f'{self.pre} was not initialized'
+                msg = f'was not initialized'
         super().set_fault(msg)
 
     @command(dtype_in=str, doc_in='Directly send command to the LAUDA',
