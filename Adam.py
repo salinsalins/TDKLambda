@@ -1,6 +1,6 @@
 import sys
 if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
-if '../IT6900' not in sys.path: sys.path.append('../IT6900')
+# if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 import time
 
 from log_exception import log_exception
@@ -417,8 +417,8 @@ class Adam(TDKLambda):
 
 
 if __name__ == "__main__":
-    pd1 = Adam("192.168.1.203", 15, baudrate=38400)
-    pd2 = Adam("192.168.1.203", 7, baudrate=38400)
+    pd1 = Adam("COM16", 11, baudrate=38400)
+    pd2 = Adam("COM16", 16, baudrate=38400)
     pd = [pd1, pd2]
     n = 1
     while n:
@@ -431,38 +431,38 @@ if __name__ == "__main__":
             d = p
             if d.di_n > 0:
                 v = d.read_di(3)
-                print(d.name, 'r di[3]=', v, d.response)
+                print(d.name, 'r di[3] =', v, d.response)
                 v = d.read_di()
-                print(d.name, 'r di[*]=', v, d.response)
+                print(d.name, 'r di[*] =', v, d.response)
                 v = d.read_do()
                 print(d.name, 'r do=[*]', v, d.response)
                 v = d.write_do(3, True)
-                print(d.name, 'w do[3]=', v, d.response)
+                print(d.name, 'w do[3] =', v, d.response)
                 v = d.read_di()
                 print(d.name, 'r di=[*]', v, d.response)
                 v = d.read_do()
                 print(d.name, 'r do=[*]', v, d.response)
                 v = d.read_di(3)
-                print(d.name, 'r di[3]=', v, d.response)
+                print(d.name, 'r di[3] =', v, d.response)
                 v = d.read_do(3)
-                print(d.name, 'r do[3]=', v, d.response)
+                print(d.name, 'r do[3] =', v, d.response)
                 v = d.read_do()
                 print(d.name, 'r do=[*]', v, d.response)
             #
             if d.ai_n > 0:
                 v2 = p.read_ai(3)
-                print(p.name, 'r ai[3]=', v2, p.response)
+                print(p.name, 'r ai[3] =', v2, p.response)
                 v2 = p.read_ai()
-                print(p.name, 'r ai[*]=', v2, p.response)
+                print(p.name, 'r ai[*] =', v2, p.response)
                 v2 = p.read_di()
-                print(p.name, 'r di[*]=', v2, p.response)
+                print(p.name, 'r di[*] =', v2, p.response)
             #
             if d.ao_n > 0:
                 ao = -1.5
                 v2 = p.write_ao(1, ao)
-                print(p.name, 'w ao[1]=', v2, ao, p.response)
+                print(p.name, 'w ao[1] =', v2, ao, p.response)
                 v2 = p.read_ao(1)
-                print(p.name, 'r ao[1]=', v2, p.response)
+                print(p.name, 'r ao[1] =', v2, p.response)
 
             del p
     print('Finished')
