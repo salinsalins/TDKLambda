@@ -20,6 +20,12 @@ APPLICATION_NAME = 'LUDA Python Tango Server'
 APPLICATION_NAME_SHORT = os.path.basename(__file__).replace('.py', '')
 APPLICATION_VERSION = '2.0'
 
+LAUDA_DEFAULT_PORT = 'COM4'
+LAUDA_DEFAULT_ADDRESS =  5
+LAUDA_DEFAULT_BAUD =  38400
+LAUDA_DEFAULT_READ_TIMEOUT = 1.0
+LAUDA_DEFAULT_READ_RETRIES =  2
+
 
 class LaudaServer(TangoServerPrototype):
     server_version_value = APPLICATION_VERSION
@@ -113,19 +119,16 @@ class LaudaServer(TangoServerPrototype):
         self.set_state(DevState.INIT, msg)
         # get port and address from property
         kwargs = {}
-        port = self.config.get('port', 'COM4')
-        addr = self.config.get('addr', 5)
-        baud = self.config.get('baudrate', 38400)
+        port = self.config.get('port', LAUDA_DEFAULT_PORT)
+        addr = self.config.get('addr', LAUDA_DEFAULT_ADDRESS)
+        baud = self.config.get('baudrate', LAUDA_DEFAULT_BAUD)
         kwargs['baudrate'] = baud
         kwargs['logger'] = self.logger
-        kwargs['read_timeout'] = self.config.get('read_timeout', 1.0)
-        kwargs['read_retries'] = self.config.get('read_retries', 2)
+        kwargs['read_timeout'] = self.config.get('read_timeout', LAUDA_DEFAULT_READ_TIMEOUT)
+        kwargs['read_retries'] = self.config.get('read_retries', LAUDA_DEFAULT_READ_RETRIES)
         # create LAUDA device
         self.lda = Lauda(port, addr, **kwargs)
         self.pre = f'{self.get_name()} {self.lda.pre}'
-        # add device to list
-        # if self not in Lauda_Server.device_list:
-        #     Lauda_Server.device_list[self.get_name()] = self
         # check if device OK
         if self.lda.ready:
             self.set_point.set_write_value(self.read_set_point())
@@ -145,9 +148,9 @@ class LaudaServer(TangoServerPrototype):
 
     def delete_device(self):
         self.lda.__del__()
-        msg = f'{self.pre} device has been deleted'
-        self.log_info(msg)
         super().delete_device()
+        msg = 'Device has been deleted'
+        self.log_info(msg)
 
     def read_port(self):
         if self.lda.ready:
@@ -174,12 +177,11 @@ class LaudaServer(TangoServerPrototype):
     #   ---------------- custom attributes read --------------
     def read_general(self, attr: Attribute):
         attr_name = attr.get_name()
-        # self.log_debug('entry %s %s', self.get_name(), attr_name)
         if self.is_connected():
             val = self._read_io(attr)
         else:
             val = None
-            msg = '%s %s Waiting for reconnect' % (self.get_name(), attr.get_name())
+            msg = 'Waiting for reconnect'
             self.log_debug(msg)
         return self.set_attribute_value(attr, val)
 
@@ -195,7 +197,7 @@ class LaudaServer(TangoServerPrototype):
                 raise
             except:
                 pass
-        msg = f'{self.pre} {param} read error'
+        msg = f'{param} read error'
         self.log_debug(msg)
         return None
 
@@ -211,7 +213,7 @@ class LaudaServer(TangoServerPrototype):
                 raise
             except:
                 pass
-        msg = f'{self.pre} p{param} read error'
+        msg = f'{param} read error'
         self.log_debug(msg)
         return None
 
@@ -221,7 +223,7 @@ class LaudaServer(TangoServerPrototype):
             self.set_point.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.set_point.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} set point read error'
+        msg = 'Set point read error'
         self.set_fault(msg)
         return float('Nan')
 
@@ -231,7 +233,7 @@ class LaudaServer(TangoServerPrototype):
             self.set_point_remote.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.set_point_remote.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'{self.pre} remote set point read error'
+        msg = 'Remote set point read error'
         self.set_fault(msg)
         return float('Nan')
 
@@ -424,11 +426,11 @@ class LaudaServer(TangoServerPrototype):
         result = self.lda.send_command(cmd)
         rsp = self.lda.get_response()
         if result:
-            msg = f'{self.pre} Command {cmd} executed, result {rsp}'
+            msg = f'Command {cmd} executed, result {rsp}'
             self.log_debug(msg)
             self.set_state(DevState.RUNNING, msg)
         else:
-            msg = f'{self.pre} Command {cmd} ERROR, result {rsp}'
+            msg = f'Command {cmd} ERROR, result {rsp}'
             self.log_warning(msg)
             self.set_state(DevState.FAULT, msg)
         return msg
