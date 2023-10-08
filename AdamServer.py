@@ -223,7 +223,8 @@ class AdamServer(TangoServerPrototype):
         return rsp
 
 # ******** additional helper functions ***********
-    def set_error_attribute_value(self, attr: tango.Attribute):
+    @staticmethod
+    def set_error_attribute_value(attr: tango.Attribute):
         v = None
         if attr.get_data_format() == tango.DevBoolean:
             v = False

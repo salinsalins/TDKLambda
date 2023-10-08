@@ -416,6 +416,128 @@ class Adam(TDKLambda):
             log_exception(self.logger, 'Error: Response = %s', self.response)
 
 
+class FakeAdam(Adam):
+    commands = {b'$01M': 'OK',
+                }
+
+    def _send_command(self, cmd, terminator=None):
+        self.command = cmd
+        self.response = b''
+        if cmd not in self.commands:
+            return b''
+        return True
+    def init(self):
+        self.suspend_to = 0.0
+        self.pre = f'ADAMxxxx at {self.port}:{self.addr}'
+        self.addr_hex = (b'%02X' % self.addr)[:2]
+        self.head_ok = b'!' + self.addr_hex
+        self.head_err = b'?' + self.addr_hex
+        self.name = '0000'
+        self.ai_n = 0
+        self.ao_n = 0
+        self.di_n = 0
+        self.do_n = 0
+        self.ao_masks = []
+        self.ai_masks = []
+        self.ai_ranges = []
+        self.ai_min = []
+        self.ai_max = []
+        self.ai_units = []
+        self.ao_ranges = []
+        self.ao_min = []
+        self.ao_max = []
+        self.ao_units = []
+        # check device address
+        if self.addr <= 0:
+            self.state = -1
+            self.logger.info(f'{self.pre} ' + self.STATES[self.state])
+            self.suspend()
+            return False
+        # check if port:address is in use
+        with TDKLambda._lock:
+            for d in TDKLambda._devices:
+                if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
+                    self.state = -2
+                    self.logger.info(f'{self.pre} ' + self.STATES[self.state])
+                    self.suspend()
+                    return False
+        if not self.com.ready:
+            self.state = -5
+            self.logger.info(f'{self.pre} ' + self.STATES[self.state])
+            self.suspend()
+            return False
+        # read device type
+        # self.id = self.read_device_id()
+        n = 0
+        self.id = 'Unknown Device'
+        while n < self.read_retries:
+            n += 1
+            result = self._send_command(b'$'+self.addr_hex + b'M\r')
+            if result and self.check_response():
+                self.id = self.response[3:-1].decode()
+                break
+        #
+        if self.id in ADAM_DEVICES:
+            self.name = self.id
+        else:
+            self.name = '0000'
+            for key in ADAM_DEVICES:
+                if self.id[-2:] == key[-2:]:
+                    self.logger.info(f'{self.pre} Using {key} instead of {self.id} for devise type')
+                    self.name = key
+                    break
+        self.pre = f'ADAM{self.name} at {self.port}:{self.addr}'
+        if self.name == '0000':
+            self.logger.info(f'ADAM at {self.port}:{self.addr} is not recognized')
+            self.state = -4
+            self.suspend()
+            return False
+        self.ai_n = ADAM_DEVICES[self.name]['ai']
+        self.ai_masks = [True] * self.ai_n
+        if self.ai_n > 0:
+            self.ai_masks = self.read_masks()
+        self.ao_n = ADAM_DEVICES[self.name]['ao']
+        self.ao_masks = [True] * self.ao_n
+        # if self.ao_n > 0:
+        #     self.ao_masks = self.read_masks()
+        self.di_n = ADAM_DEVICES[self.name]['di']
+        self.do_n = ADAM_DEVICES[self.name]['do']
+        self.ai_ranges = [self.read_range(c) for c in range(self.ai_n)]
+        self.ai_min = [i[0] for i in self.ai_ranges]
+        self.ai_max = [i[1] for i in self.ai_ranges]
+        self.ai_units = [i[2] for i in self.ai_ranges]
+        self.ao_ranges = [self.read_range(c) for c in range(self.ao_n)]
+        self.ao_min = [i[0] for i in self.ao_ranges]
+        self.ao_max = [i[1] for i in self.ao_ranges]
+        self.ao_units = [i[2] for i in self.ao_ranges]
+        self.state = 1
+        self.suspend_to = 0.0
+        self.logger.debug(f'{self.pre} has been initialized')
+        return True
+
+    def send_command(self, cmd, prefix=b'$', addr=True, value=b'') -> bool:
+        if isinstance(cmd, str):
+            cmd = cmd.encode()
+        cmd_out = prefix
+        if addr:
+            cmd_out += self.addr_hex
+        return super().send_command(cmd_out + cmd + value)
+
+    def check_response(self, expected=b'', response=None):
+        if response is None:
+            response = self.response
+        if not expected:
+            expected = self.head_ok
+        if not response.startswith(expected):
+            if response.startswith(self.head_err):
+                msg = 'Error response %s' % response
+            else:
+                msg = 'Unexpected response %s (not %s)' % (response, expected)
+            self.logger.info(msg)
+            return False
+        return True
+
+
 if __name__ == "__main__":
     pd1 = Adam("COM16", 11, baudrate=38400)
     pd2 = Adam("COM16", 16, baudrate=38400)
