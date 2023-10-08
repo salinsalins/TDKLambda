@@ -423,6 +423,7 @@ class FakeAdam(Adam):
     def _send_command(self, cmd, terminator=None):
         self.command = cmd
         self.response = b''
+        cmd = '$01' + cmd[3:]
         if cmd not in self.commands:
             return b''
         return True
