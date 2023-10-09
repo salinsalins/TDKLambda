@@ -1,6 +1,5 @@
 import sys
 
-
 if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
 # if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 import time
@@ -144,7 +143,7 @@ class Adam(TDKLambda):
         self.id = 'Unknown Device'
         while n < self.read_retries:
             n += 1
-            result = self._send_command(b'$'+self.addr_hex + b'M\r')
+            result = self._send_command(b'$' + self.addr_hex + b'M\r')
             if result and self.check_response():
                 self.id = self.response[3:-1].decode()
                 break
@@ -431,10 +430,12 @@ class FakeAdam(Adam):
                 b'$012': b'!AA',
                 b'%01': b'!AA',
                 }
+
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, auto_addr=False, **kwargs)
-        self.TTCCFF = b''
+        self.TTCCFF = b'000000'
         self.VV = b'FF'
+        kwargs['auto_addr'] = False
+        super().__init__(*args, **kwargs)
 
     def create_com_port(self):
         self.com = EmptyComPort(True)
@@ -510,7 +511,7 @@ class FakeAdam(Adam):
         self.id = 'Unknown Device'
         while n < self.read_retries:
             n += 1
-            result = self._send_command(b'$'+self.addr_hex + b'M\r')
+            result = self._send_command(b'$' + self.addr_hex + b'M\r')
             if result and self.check_response():
                 self.id = self.response[3:-1].decode()
                 break
@@ -553,28 +554,6 @@ class FakeAdam(Adam):
         self.logger.debug(f'{self.pre} has been initialized')
         return True
 
-    def send_command(self, cmd, prefix=b'$', addr=True, value=b'') -> bool:
-        if isinstance(cmd, str):
-            cmd = cmd.encode()
-        cmd_out = prefix
-        if addr:
-            cmd_out += self.addr_hex
-        return super().send_command(cmd_out + cmd + value)
-
-    def check_response(self, expected=b'', response=None):
-        if response is None:
-            response = self.response
-        if not expected:
-            expected = self.head_ok
-        if not response.startswith(expected):
-            if response.startswith(self.head_err):
-                msg = 'Error response %s' % response
-            else:
-                msg = 'Unexpected response %s (not %s)' % (response, expected)
-            self.logger.info(msg)
-            return False
-        return True
-
 
 if __name__ == "__main__":
     pd1 = FakeAdam("COM16", 11, baudrate=38400)
@@ -614,8 +593,6 @@ if __name__ == "__main__":
                 print(p.name, 'r ai[3] =', v2, p.response)
                 v2 = p.read_ai()
                 print(p.name, 'r ai[*] =', v2, p.response)
-                v2 = p.read_di()
-                print(p.name, 'r di[*] =', v2, p.response)
             #
             if d.ao_n > 0:
                 ao = -1.5
