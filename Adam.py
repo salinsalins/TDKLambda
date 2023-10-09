@@ -437,7 +437,7 @@ class FakeAdam(Adam):
         self.VV = b'FF'
 
     def create_com_port(self):
-        self.com = EmptyComPort()
+        self.com = EmptyComPort(ready=True)
         return self.com
 
     def _send_command(self, cmd, terminator=None):
