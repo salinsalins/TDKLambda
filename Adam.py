@@ -1,4 +1,7 @@
 import sys
+
+from ComPort import ComPort, EmptyComPort
+
 if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
 # if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 import time
@@ -433,11 +436,15 @@ class FakeAdam(Adam):
         self.TTCCFF = b''
         self.VV = b'FF'
 
+    def create_com_port(self):
+        self.com = EmptyComPort()
+        return self.com
+
     def _send_command(self, cmd, terminator=None):
         self.command = cmd
         self.response = b''
         AA = cmd[1:3]
-        cmd = cmd[0] + '01' + cmd[3:]
+        cmd = cmd[:1] + b'01' + cmd[3:]
         if cmd.startswith(b'$015'):
             self.VV = cmd[4:]
             cmd = b'$015'
@@ -454,6 +461,7 @@ class FakeAdam(Adam):
             v += self.TTCCFF
         if cmd.startswith(b'$016'):
             v += self.VV
+        self.response = v
         return v
 
     def init(self):
@@ -569,8 +577,8 @@ class FakeAdam(Adam):
 
 
 if __name__ == "__main__":
-    pd1 = Adam("COM16", 11, baudrate=38400)
-    pd2 = Adam("COM16", 16, baudrate=38400)
+    pd1 = FakeAdam("COM16", 11, baudrate=38400)
+    pd2 = FakeAdam("COM16", 16, baudrate=38400)
     pd = [pd1, pd2]
     n = 1
     while n:
