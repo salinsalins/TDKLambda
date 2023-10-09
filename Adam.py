@@ -1,11 +1,11 @@
 import sys
 
-from ComPort import ComPort, EmptyComPort
 
 if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
 # if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 import time
 
+from ComPort import EmptyComPort
 from log_exception import log_exception
 from TDKLambda import TDKLambda
 
@@ -437,7 +437,7 @@ class FakeAdam(Adam):
         self.VV = b'FF'
 
     def create_com_port(self):
-        self.com = EmptyComPort(ready=True)
+        self.com = EmptyComPort(rdy=True)
         return self.com
 
     def _send_command(self, cmd, terminator=None):
