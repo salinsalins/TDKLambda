@@ -417,16 +417,45 @@ class Adam(TDKLambda):
 
 
 class FakeAdam(Adam):
-    commands = {b'$01M': 'OK',
+    commands = {b'$010': b'!AA',
+                b'$011': b'!AA',
+                b'$016': b'!AA',
+                b'$015': b'!AA',
+                b'#01N': b'>+2.2',
+                b'#01': b'>+1.0+2.0+3.0+4.0+5.0+6.0+7.0+8.0',
+                b'$01M': b'!AA4017',
+                b'$01F': b'!AA10',
+                b'$012': b'!AA',
+                b'%01': b'!AA',
                 }
+    def __int__(self, *args, **kwargs):
+        super().__int__(*args, **kwargs)
+        self.TTCCFF = b''
+        self.VV = b'FF'
 
     def _send_command(self, cmd, terminator=None):
         self.command = cmd
         self.response = b''
-        cmd = '$01' + cmd[3:]
+        AA = cmd[1:3]
+        cmd = cmd[0] + '01' + cmd[3:]
+        if cmd.startswith(b'$015'):
+            self.VV = cmd[4:]
+            cmd = b'$015'
+        if cmd.startswith(b'%01'):
+            self.TTCCFF = cmd[5:]
+            cmd = b'%01'
+        if cmd.startswith(b'#01') and len(cmd) > 3:
+            cmd = b'#01N'
         if cmd not in self.commands:
             return b''
-        return True
+        v = self.commands[cmd]
+        v = v.replace(b'AA', AA)
+        if cmd.startswith(b'$012'):
+            v += self.TTCCFF
+        if cmd.startswith(b'$016'):
+            v += self.VV
+        return v
+
     def init(self):
         self.suspend_to = 0.0
         self.pre = f'ADAMxxxx at {self.port}:{self.addr}'
