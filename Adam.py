@@ -431,20 +431,20 @@ class FakeAdam(Adam):
                 b'$012': b'!AA',
                 b'%01': b'!AA',
                 }
-    def __int__(self, *args, **kwargs):
-        super().__int__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, auto_addr=False, **kwargs)
         self.TTCCFF = b''
         self.VV = b'FF'
 
     def create_com_port(self):
-        self.com = EmptyComPort(rdy=True)
+        self.com = EmptyComPort(True)
         return self.com
 
     def _send_command(self, cmd, terminator=None):
         self.command = cmd
         self.response = b''
         AA = cmd[1:3]
-        cmd = cmd[:1] + b'01' + cmd[3:]
+        cmd = cmd[:1] + b'01' + cmd[3:-1]
         if cmd.startswith(b'$015'):
             self.VV = cmd[4:]
             cmd = b'$015'
@@ -461,7 +461,7 @@ class FakeAdam(Adam):
             v += self.TTCCFF
         if cmd.startswith(b'$016'):
             v += self.VV
-        self.response = v
+        self.response = v + b'\r'
         return v
 
     def init(self):
