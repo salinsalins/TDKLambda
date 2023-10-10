@@ -20,13 +20,13 @@ from tango import AttrQuality, AttrWriteType, DispLevel
 from tango import DevState, AttrDataFormat
 from tango.server import attribute, command
 
-from Adam import Adam, ADAM_DEVICES
+from Adam import Adam, ADAM_DEVICES, FakeAdam
 from TangoServerPrototype import TangoServerPrototype
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Adam I/O modules Tango Server'
 APPLICATION_NAME_SHORT = 'AdamServer'
-APPLICATION_VERSION = '2.1'
+APPLICATION_VERSION = '2.2'
 
 
 # db = tango.Database('192.168.1.41', '10000')
@@ -75,8 +75,8 @@ class AdamServer(TangoServerPrototype):
         # self.configure_tango_logging()
         self.lock = Lock()
         self.init_io = True
-        self.init_po = False
-        self.created_attributes = {}
+        self.init_po = True
+        self.dynamic_attributes = {}
         #
         name = self.config.get('name', '')
         description = json.loads(self.config.get('description', '[]'))
@@ -91,7 +91,11 @@ class AdamServer(TangoServerPrototype):
                   'logger': self.logger,
                   'read_retries': self.config.get('read_retries', 2),
                   'suspend_delay': self.config.get('suspend_delay', 10.0)}
-        self.adam = Adam(port, addr, **kwargs)
+        emulate = self.config.get('emulate', 0)
+        if emulate:
+            self.adam = FakeAdam(port, addr, **kwargs)
+        else:
+            self.adam = Adam(port, addr, **kwargs)
         self.pre = f'{self.get_name()} {self.adam.pre}'
         # execute init sequence
         init_command = self.config.get('init_command', '')
@@ -122,9 +126,9 @@ class AdamServer(TangoServerPrototype):
 
     def delete_device(self):
         self.save_polling_state()
-        self.stop_polling()
+        # self.stop_polling()
         self.remove_io()
-        tango.Database().delete_device_property(self.get_name(), 'polled_attr')
+        # tango.Database().delete_device_property(self.get_name(), 'polled_attr')
         self.adam.__del__()
         msg = 'Device has been deleted'
         self.log_info(msg)
@@ -283,7 +287,7 @@ class AdamServer(TangoServerPrototype):
                                                  max_value=self.adam.ai_max[k])
                                 # add attr to device
                                 self.add_attribute(attr)
-                                self.created_attributes[attr_name] = attr
+                                self.dynamic_attributes[attr_name] = attr
                                 nai += 1
                             else:
                                 self.log_info('%s is disabled', attr_name)
@@ -314,7 +318,7 @@ class AdamServer(TangoServerPrototype):
                                                  min_value=self.adam.ao_min[k],
                                                  max_value=self.adam.ao_max[k])
                                 self.add_attribute(attr)
-                                self.created_attributes[attr_name] = attr
+                                self.dynamic_attributes[attr_name] = attr
                                 v = self.adam.read_ao(k)
                                 attr.get_attribute(self).set_write_value(v)
                                 nao += 1
@@ -343,7 +347,7 @@ class AdamServer(TangoServerPrototype):
                                              display_unit=1.0,
                                              format='')
                             self.add_attribute(attr)
-                            self.created_attributes[attr_name] = attr
+                            self.dynamic_attributes[attr_name] = attr
                             ndi += 1
                         except KeyboardInterrupt:
                             raise
@@ -369,7 +373,7 @@ class AdamServer(TangoServerPrototype):
                                              display_unit=1.0,
                                              format='')
                             self.add_attribute(attr)
-                            self.created_attributes[attr_name] = attr
+                            self.dynamic_attributes[attr_name] = attr
                             v = self.adam.read_do(k)
                             attr.get_attribute(self).set_write_value(v)
                             ndo += 1
@@ -393,10 +397,10 @@ class AdamServer(TangoServerPrototype):
     def remove_io(self):
         with self.lock:
             try:
-                for attr_name in self.created_attributes:
+                for attr_name in self.dynamic_attributes:
                     self.remove_attribute(attr_name)
                     self.log_debug(' Attribute %s removed' % attr_name)
-                self.created_attributes = {}
+                self.dynamic_attributes = {}
                 self.set_state(DevState.CLOSE, 'All IO channels removed')
                 self.init_io = True
             except KeyboardInterrupt:
