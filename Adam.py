@@ -164,7 +164,7 @@ class Adam(TDKLambda):
                     self.name = key
                     break
         self.pre = f'ADAM{self.name} at {self.port}:{self.addr}'
-        if self.name == '0000':
+        if self.name == '0000' or (self.name not in ADAM_DEVICES):
             self.logger.info(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
             self.suspend()
@@ -532,7 +532,7 @@ class FakeAdam(Adam):
                     self.name = key
                     break
         self.pre = f'FakeADAM{self.name} at {self.port}:{self.addr}'
-        if self.name == '0000':
+        if self.name == '0000' or (self.name not in ADAM_DEVICES):
             self.logger.info(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
             self.suspend()
