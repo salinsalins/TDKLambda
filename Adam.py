@@ -531,7 +531,7 @@ class FakeAdam(Adam):
                     self.logger.info(f'{self.pre} Using {key} instead of {self.id} for devise type')
                     self.name = key
                     break
-        self.pre = f'ADAM{self.name} at {self.port}:{self.addr}'
+        self.pre = f'FakeADAM{self.name} at {self.port}:{self.addr}'
         if self.name == '0000':
             self.logger.info(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
