@@ -97,10 +97,10 @@ class Otimer:
         # check if it is otimer
         #
         # if self.id not in OTIMER_DEVICES:
-            # self.state = -4
-            # self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
-            # self.suspend()
-            # return
+        # self.state = -4
+        # self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
+        # self.suspend()
+        # return
 
         self.logger.debug(f'{self.pre} has been initialized')
         return
@@ -124,7 +124,6 @@ class Otimer:
         except:
             log_exception(self, f'{self.pre} COM port close exception')
 
-
     @staticmethod
     def checksum(cmd: bytes) -> bytes:
         return modbus_crc(cmd).to_bytes(2, 'little')
@@ -141,7 +140,6 @@ class Otimer:
             cmd = cmd.encode()
         if not isinstance(cmd, bytes):
             return False
-
 
     def check_response(self, expected=b'', response=None):
         if response is None:
