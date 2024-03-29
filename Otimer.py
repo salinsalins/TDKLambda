@@ -48,16 +48,18 @@ class Otimer:
 
     def __init__(self, port: str, addr: int, **kwargs):
         # default com port, id, serial number, and ...
-        self.com = None
+        self.com = EmptyComPort()
         self.id = 'Unknown Device'
         self.sn = ''
         self.suspend_to = 0.0
         self.suspend_flag = False
         self.state = 0
         self.status = ''
-        # parameters
-        self.port = port.strip()
-        self.addr = addr
+        self.port = str(port).strip()
+        self.addr = int(addr)
+        self.command = 0
+        self.request = b''
+        self.response = b''
         self.read_timeout = kwargs.pop('read_timeout', Otimer.READ_TIMEOUT)
         self.read_retries = kwargs.pop('read_retries', Otimer.READ_RETRIES)
         self.suspend_delay = kwargs.pop('suspend_delay', Otimer.SUSPEND_DELAY)
@@ -92,15 +94,6 @@ class Otimer:
             self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
             self.suspend()
             return
-        # read device type
-        #
-        # check if it is otimer
-        #
-        # if self.id not in OTIMER_DEVICES:
-        # self.state = -4
-        # self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
-        # self.suspend()
-        # return
 
         self.logger.debug(f'{self.pre} has been initialized')
         return
@@ -113,7 +106,8 @@ class Otimer:
                 self.logger.debug(f'{self.pre} has been deleted')
 
     def create_com_port(self):
-        self.com = ComPort(self.port, emulated=EmultedTDKLambdaAtComPort, **self.kwargs)
+        self.kwargs['baudrate'] = 115200
+        self.com = ComPort(self.port, emulated=EmptyComPort, **self.kwargs)
         return self.com
 
     def close_com_port(self):
@@ -123,6 +117,14 @@ class Otimer:
             raise
         except:
             log_exception(self, f'{self.pre} COM port close exception')
+
+    def suspend(self, duration=None):
+        if time.time() < self.suspend_to:
+            return
+        if duration is None:
+            duration = self.suspend_delay
+        self.suspend_to = time.time() + duration
+        self.logger.debug(f'{self.pre} suspended for %5.2f sec', duration)
 
     @staticmethod
     def checksum(cmd: bytes) -> bytes:
@@ -135,40 +137,109 @@ class Otimer:
         cs = self.checksum(cmd[:-2])
         return cmd[-2:] == cs
 
-    def send_command(self, cmd) -> bool:
+    def write(self, cmd) -> bool:
         if isinstance(cmd, str):
             cmd = cmd.encode()
         if not isinstance(cmd, bytes):
             return False
+        return self.com.write(cmd)
 
-    def check_response(self, expected=b'', response=None):
-        if response is None:
-            response = self.response
-        if not expected:
-            expected = self.head_ok
-        if not response.startswith(expected):
-            if response.startswith(self.head_err):
-                msg = 'Error response %s' % response
-            else:
-                msg = 'Unexpected response %s (not %s)' % (response, expected)
-            self.logger.info(msg)
+    def read(self) -> bool:
+        self.response = b''
+        while time.time() < self.read_timeout and len(self.response) < 3:
+            self.response += self.com.read(1000)
+        if time.time() >= self.read_timeout:
+            return False
+        # addr check
+        if int(self.response[0]) != self.addr:
+            return False
+        # op code check
+        op = int(self.response[1])
+        if op != self.command and op != (self.command + 128):
+            return False
+        # calculate expected length of input
+        if op > 128:
+            # 5 bytes for error response
+            n = 5
+        elif op > 4:
+            # single-byte operations
+            n = 8
+        else:
+            # multi-byte operations
+            n = int(self.response[2]) + 5
+        # wait for next bytes
+        while time.time() < self.read_timeout and len(self.response) < n:
+            self.response += self.com.read(1000)
+        if time.time() >= self.read_timeout:
+            return False
+        return self.check_response(self.response)
+
+    def check_response(self, cmd: bytes) -> bool:
+        if int(cmd[0]) != self.addr:
+            return False
+        if int(cmd[1]) != self.command:
+            return False
+        if not self.verify_checksum(cmd):
             return False
         return True
 
-    def read_device_id(self):
-        try:
-            if self.send_command(b'M') and self.check_response():
-                return self.response[3:-1].decode()
-            else:
-                return 'Unknown Device'
-        except KeyboardInterrupt:
-            raise
-        except:
-            log_exception(self.logger)
-            return 'Unknown Device'
+    def modbus_read(self, addr: int, start: int, length: int):
+        msg = addr.to_bytes(1) + b'\x03'
+        msg += int.to_bytes(start, 2)
+        msg += int.to_bytes(length, 2)
+        msg += modbus_crc(msg)
+        if self.write(msg) != len(msg):
+            return []
+        if not self.read():
+            return []
+        data = []
+        for i in range(length):
+            data.append(int.from_bytes(self.response[i + 3:i + 5], 'little'))
+        return data
+
+    def modbus_write(self, addr: int, start: int, data):
+        if isinstance(data, int):
+            length = 2
+            data = int.to_bytes(10,2)
+            msg = addr.to_bytes(1) + b'\x06'
+        length = len(data)
+        msg = addr.to_bytes(1) + b'\x10'
+        msg += int.to_bytes(start, 2)
+        msg += int.to_bytes(length, 2)
+        msg += data
+        msg += modbus_crc(msg)
+        if self.write(msg) != len(msg):
+            return []
+        if not self.read():
+            return []
+        data = []
+        for i in range(length):
+            data.append(int.from_bytes(self.response[i + 3:i + 5], 'little'))
+        return data
+
+    def read_start(self, n) -> int:
+        cmd = self.addr.to_bytes(1) + b'\x03'
+        cmd += int.to_bytes(16 * n + 1, 2)
+        cmd += b'\x00\x02'
+        self.write(self.add_checksum(cmd))
+        if not self.read():
+            return False
+        delay = int.from_bytes(self.response[3:7], 'little')
+        return delay
+
+    def read_run(self) -> int:
+        cmd = self.addr.to_bytes(1) + b'\x03'
+        cmd += b'\x00\x00'
+        cmd += b'\x00\x01'
+        cmd += self.add_checksum(cmd)
+        self.write(cmd)
+        if not self.read():
+            return False
+        data = int.from_bytes(self.response[3:7], 'little')
+        return data
 
 
-class FakeAdam(Adam):
+class FakeOtimer(Otimer):
     commands = {b'$010': b'!AA',
                 b'$011': b'!AA',
                 b'$016': b'!AA',
@@ -306,50 +377,10 @@ class FakeAdam(Adam):
 
 
 if __name__ == "__main__":
-    pd1 = FakeAdam("COM16", 11, baudrate=38400)
-    pd2 = FakeAdam("COM16", 16, baudrate=38400)
-    pd = [pd1, pd2]
-    n = 1
-    while n:
-        n -= 1
-        for p in pd:
-            t_0 = time.time()
-            v = p.read_device_id()
-            dt = int((time.time() - t_0) * 1000.0)  # ms
-            a = '%s %s %s %s %s' % (p.port, p.addr, 'read_device_id ->', v, '%4d ms ' % dt)
-            d = p
-            if d.di_n > 0:
-                v = d.read_di(3)
-                print(d.name, 'r di[3] =', v, d.response)
-                v = d.read_di()
-                print(d.name, 'r di[*] =', v, d.response)
-                v = d.read_do()
-                print(d.name, 'r do=[*]', v, d.response)
-                v = d.write_do(3, True)
-                print(d.name, 'w do[3] =', v, d.response)
-                v = d.read_di()
-                print(d.name, 'r di=[*]', v, d.response)
-                v = d.read_do()
-                print(d.name, 'r do=[*]', v, d.response)
-                v = d.read_di(3)
-                print(d.name, 'r di[3] =', v, d.response)
-                v = d.read_do(3)
-                print(d.name, 'r do[3] =', v, d.response)
-                v = d.read_do()
-                print(d.name, 'r do=[*]', v, d.response)
-            #
-            if d.ai_n > 0:
-                v2 = p.read_ai(3)
-                print(p.name, 'r ai[3] =', v2, p.response)
-                v2 = p.read_ai()
-                print(p.name, 'r ai[*] =', v2, p.response)
-            #
-            if d.ao_n > 0:
-                ao = -1.5
-                v2 = p.write_ao(1, ao)
-                print(p.name, 'w ao[1] =', v2, ao, p.response)
-                v2 = p.read_ao(1)
-                print(p.name, 'r ao[1] =', v2, p.response)
-
-            del p
+    ot1 = Otimer("COM16", 11)
+    t_0 = time.time()
+    v = ot1.read_device_id()
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s %s %s %s %s' % (ot1.port, ot1.addr, 'read_device_id ->', v, '%4d ms ' % dt)
+    print(a)
     print('Finished')
