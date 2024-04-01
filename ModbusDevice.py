@@ -176,12 +176,19 @@ class ModbusDevice:
 
     def check_response(self, cmd: bytes) -> bool:
         if int(cmd[0]) != self.addr:
+            self.debug('Wrong address %d returned', int.from_bytes(cmd[0]))
+            return False
+        op = int(cmd[1])
+        if op > 127:
+            self.debug('Error code %d returned', int.from_bytes(cmd[2:4]))
             return False
         if int(cmd[1]) != self.command:
+            self.debug('Wrong command code %d returned', int.from_bytes(cmd[0]))
             return False
         return self.verify_checksum(cmd)
 
     def modbus_read(self, start: int, length: int):
+        self.command = 3
         msg = self.addr.to_bytes(1) + b'\x03'
         msg += int.to_bytes(start, 2)
         msg += int.to_bytes(length, 2)
@@ -195,6 +202,7 @@ class ModbusDevice:
         return data
 
     def modbus_write(self, start: int, data):
+        self.command = 16
         if isinstance(data, int):
             length = 2
             data = int.to_bytes(data, 2)
@@ -208,12 +216,12 @@ class ModbusDevice:
             msg = self.addr.to_bytes(1) + b'\x10'
             msg += int.to_bytes(start, 2)
             msg += int.to_bytes(length, 2)
-            msg += int.to_bytes(start, 2)
             msg += int.to_bytes(len(data), 1)
             msg += data
         if not self.write(msg):
             return []
         if not self.read():
+            self.debug('read error')
             return []
         data = []
         for i in range(length):
@@ -226,8 +234,8 @@ class ModbusDevice:
         return delay
 
     def read_run(self) -> int:
-        self.modbus_read(1, 1)
-        data = int.from_bytes(self.response[2:4], 'little')
+        self.modbus_read(0, 1)
+        data = int.from_bytes(self.response[3:5], 'little')
         return data
 
     def write_output(self, v) -> int:
@@ -376,9 +384,12 @@ class FakeModbus_Device(ModbusDevice):
 if __name__ == "__main__":
     ot1 = ModbusDevice("COM17", 1)
     t_0 = time.time()
-    v = ot1.write_output(1)
-    v = ot1.write_output(0)
+    # v = ot1.write_output(1)
+    # v = ot1.write_output(0)
+    v = ot1.modbus_read(0, 9)
+    print(v)
+    v = ot1.read_run()
     dt = int((time.time() - t_0) * 1000.0)  # ms
-    a = '%s %s %s %s %s' % (ot1.port, ot1.addr, 'read_device_id ->', v, '%4d ms ' % dt)
+    a = '%s %s %s %s %s' % (ot1.port, ot1.addr, 'read_run->', v, '%4d ms ' % dt)
     print(a)
     print('Finished')
