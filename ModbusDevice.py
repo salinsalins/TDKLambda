@@ -14,7 +14,7 @@ from log_exception import log_exception
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Modbus Device sceleton module Python API'
-APPLICATION_NAME_SHORT = 'Modbus_Device'
+APPLICATION_NAME_SHORT = 'ModbusDevice'
 APPLICATION_VERSION = '0.1'
 
 
@@ -31,20 +31,12 @@ def modbus_crc(msg: bytes) -> int:
     return crc
 
 
-class Modbus_Device:
+class ModbusDevice:
     _devices = []
     _lock = Lock()
     SUSPEND_DELAY = 5.0
     READ_TIMEOUT = 1.0
     READ_RETRIES = 2
-    STATES = {
-        1: 'Initialized',
-        0: 'Pre init state',
-        -1: 'Wrong address',
-        -2: 'Address is in use',
-        -3: 'Address set error',
-        -4: 'Device is not recognized',
-        -5: 'COM port not ready'}
 
     def __init__(self, port: str, addr: int, **kwargs):
         # default com port, id, serial number, and ...
@@ -52,17 +44,13 @@ class Modbus_Device:
         self.id = 'Unknown Device'
         self.sn = ''
         self.suspend_to = 0.0
-        self.suspend_flag = False
-        self.state = 0
-        self.status = ''
         self.port = str(port).strip()
         self.addr = int(addr)
         self.command = 0
         self.request = b''
         self.response = b''
-        self.read_timeout = kwargs.pop('read_timeout', Modbus_Device.READ_TIMEOUT)
-        self.read_retries = kwargs.pop('read_retries', Modbus_Device.READ_RETRIES)
-        self.suspend_delay = kwargs.pop('suspend_delay', Modbus_Device.SUSPEND_DELAY)
+        self.read_timeout = kwargs.pop('read_timeout', ModbusDevice.READ_TIMEOUT)
+        self.suspend_delay = kwargs.pop('suspend_delay', ModbusDevice.SUSPEND_DELAY)
         # logger
         self.logger = kwargs.get('logger', config_logger())
         # logs prefix
@@ -71,39 +59,43 @@ class Modbus_Device:
         self.kwargs = kwargs
         # create COM port
         self.create_com_port()
-        # add device to list
-        with Modbus_Device._lock:
-            if self not in Modbus_Device._devices:
-                Modbus_Device._devices.append(self)
         # check device address
         if self.addr <= 0:
-            self.state = -1
-            self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
-            self.suspend()
+            self.warning('Wrong address')
+            self.suspend(1e6)
             return
         # check if port:address is in use
-        with Modbus_Device._lock:
-            for d in Modbus_Device._devices:
+        with ModbusDevice._lock:
+            for d in ModbusDevice._devices:
                 if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
-                    self.state = -2
-                    self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
-                    self.suspend()
+                    self.warning('Address is in use')
+                    self.suspend(1e6)
                     return
+        # add device to list
+        with ModbusDevice._lock:
+            if self not in ModbusDevice._devices:
+                ModbusDevice._devices.append(self)
         if not self.com.ready:
-            self.state = -5
-            self.logger.warning(f'{self.pre} ' + self.STATES[self.state])
-            self.suspend()
+            self.info('COM port not ready')
             return
-
-        self.logger.debug(f'{self.pre} has been initialized')
+        self.debug(f'has been initialized')
         return
 
     def __del__(self):
-        with Modbus_Device._lock:
-            if self in Modbus_Device._devices:
+        with ModbusDevice._lock:
+            if self in ModbusDevice._devices:
                 self.close_com_port()
-                Modbus_Device._devices.remove(self)
-                self.logger.debug(f'{self.pre} has been deleted')
+                ModbusDevice._devices.remove(self)
+                self.debug('has been deleted')
+
+    def debug(self, msg, *args, **kwargs):
+        self.logger.debug(f'{self.pre} {msg}', *args, **kwargs)
+
+    def info(self, msg, *args, **kwargs):
+        self.logger.info(f'{self.pre} {msg}', *args, **kwargs)
+
+    def warning(self, msg, *args, **kwargs):
+        self.logger.warning(f'{self.pre} {msg}', *args, **kwargs)
 
     def create_com_port(self):
         self.kwargs['baudrate'] = 115200
@@ -124,7 +116,7 @@ class Modbus_Device:
         if duration is None:
             duration = self.suspend_delay
         self.suspend_to = time.time() + duration
-        self.logger.debug(f'{self.pre} suspended for %5.2f sec', duration)
+        self.debug('suspended for %5.2f sec', duration)
 
     @staticmethod
     def checksum(cmd: bytes) -> bytes:
@@ -142,13 +134,17 @@ class Modbus_Device:
             cmd = cmd.encode()
         if not isinstance(cmd, bytes):
             return False
-        return self.com.write(cmd)
+        cmd = self.add_checksum(cmd)
+        self.request = cmd
+        return len(cmd) == self.com.write(cmd)
 
     def read(self) -> bool:
         self.response = b''
         while time.time() < self.read_timeout and len(self.response) < 3:
             self.response += self.com.read(1000)
+        # read timeout
         if time.time() >= self.read_timeout:
+            self.suspend()
             return False
         # addr check
         if int(self.response[0]) != self.addr:
@@ -160,15 +156,15 @@ class Modbus_Device:
         # calculate expected length of input
         if op > 128:
             # 5 bytes for error response
-            n = 5
+            k = 5
         elif op > 4:
             # single-byte operations
-            n = 8
+            k = 8
         else:
             # multi-byte operations
-            n = int(self.response[2]) + 5
+            k = int(self.response[2]) + 5
         # wait for next bytes
-        while time.time() < self.read_timeout and len(self.response) < n:
+        while time.time() < self.read_timeout and len(self.response) < k:
             self.response += self.com.read(1000)
         if time.time() >= self.read_timeout:
             return False
@@ -179,16 +175,13 @@ class Modbus_Device:
             return False
         if int(cmd[1]) != self.command:
             return False
-        if not self.verify_checksum(cmd):
-            return False
-        return True
+        return self.verify_checksum(cmd)
 
-    def modbus_read(self, addr: int, start: int, length: int):
-        msg = addr.to_bytes(1) + b'\x03'
+    def modbus_read(self, start: int, length: int):
+        msg = self.addr.to_bytes(1) + b'\x03'
         msg += int.to_bytes(start, 2)
         msg += int.to_bytes(length, 2)
-        msg += modbus_crc(msg)
-        if self.write(msg) != len(msg):
+        if not self.write(msg):
             return []
         if not self.read():
             return []
@@ -197,18 +190,18 @@ class Modbus_Device:
             data.append(int.from_bytes(self.response[i + 3:i + 5], 'little'))
         return data
 
-    def modbus_write(self, addr: int, start: int, data):
+    def modbus_write(self, start: int, data):
         if isinstance(data, int):
             length = 2
-            data = int.to_bytes(10,2)
-            msg = addr.to_bytes(1) + b'\x06'
-        length = len(data)
-        msg = addr.to_bytes(1) + b'\x10'
-        msg += int.to_bytes(start, 2)
-        msg += int.to_bytes(length, 2)
-        msg += data
-        msg += modbus_crc(msg)
-        if self.write(msg) != len(msg):
+            data = int.to_bytes(10, 2)
+            msg = self.addr.to_bytes(1) + b'\x06'
+        else:
+            length = len(data)
+            msg = self.addr.to_bytes(1) + b'\x10'
+            msg += int.to_bytes(start, 2)
+            msg += int.to_bytes(length, 2)
+            msg += data
+        if self.write(msg):
             return []
         if not self.read():
             return []
@@ -218,12 +211,7 @@ class Modbus_Device:
         return data
 
     def read_start(self, n) -> int:
-        cmd = self.addr.to_bytes(1) + b'\x03'
-        cmd += int.to_bytes(16 * n + 1, 2)
-        cmd += b'\x00\x02'
-        self.write(self.add_checksum(cmd))
-        if not self.read():
-            return False
+        self.modbus_read(16*n + 1, 2)
         delay = int.from_bytes(self.response[3:7], 'little')
         return delay
 
@@ -239,7 +227,7 @@ class Modbus_Device:
         return data
 
 
-class FakeModbus_Device(Modbus_Device):
+class FakeModbus_Device(ModbusDevice):
     commands = {b'$010': b'!AA',
                 b'$011': b'!AA',
                 b'$016': b'!AA',
@@ -314,8 +302,8 @@ class FakeModbus_Device(Modbus_Device):
             self.suspend()
             return False
         # check if port:address is in use
-        with Modbus_Device._lock:
-            for d in Modbus_Device._devices:
+        with ModbusDevice._lock:
+            for d in ModbusDevice._devices:
                 if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
                     self.state = -2
                     self.logger.info(f'{self.pre} ' + self.STATES[self.state])
@@ -377,7 +365,7 @@ class FakeModbus_Device(Modbus_Device):
 
 
 if __name__ == "__main__":
-    ot1 = Modbus_Device("COM16", 11)
+    ot1 = ModbusDevice("COM16", 11)
     t_0 = time.time()
     v = ot1.read_device_id()
     dt = int((time.time() - t_0) * 1000.0)  # ms
