@@ -78,6 +78,8 @@ class ModbusDevice:
         if not self.com.ready:
             self.info('COM port not ready')
             return
+        self.id = 'Timer'
+        self.pre = f'{self.id} at {self.port}: {self.addr} '
         self.debug(f'has been initialized')
         return
 
@@ -136,10 +138,12 @@ class ModbusDevice:
             return False
         cmd = self.add_checksum(cmd)
         self.request = cmd
-        return len(cmd) == self.com.write(cmd)
+        n = self.com.write(cmd)
+        return len(cmd) == n
 
     def read(self) -> bool:
         self.response = b''
+        self.read_timeout = time.time() + self.READ_TIMEOUT
         while time.time() < self.read_timeout and len(self.response) < 3:
             self.response += self.com.read(1000)
         # read timeout
@@ -193,15 +197,21 @@ class ModbusDevice:
     def modbus_write(self, start: int, data):
         if isinstance(data, int):
             length = 2
-            data = int.to_bytes(10, 2)
-            msg = self.addr.to_bytes(1) + b'\x06'
+            data = int.to_bytes(data, 2)
+            msg = self.addr.to_bytes(1) + b'\x10'
+            msg += int.to_bytes(start, 2)
+            msg += int.to_bytes(1, 2)
+            msg += b'\x02'
+            msg += data
         else:
             length = len(data)
             msg = self.addr.to_bytes(1) + b'\x10'
             msg += int.to_bytes(start, 2)
             msg += int.to_bytes(length, 2)
+            msg += int.to_bytes(start, 2)
+            msg += int.to_bytes(len(data), 1)
             msg += data
-        if self.write(msg):
+        if not self.write(msg):
             return []
         if not self.read():
             return []
@@ -216,15 +226,14 @@ class ModbusDevice:
         return delay
 
     def read_run(self) -> int:
-        cmd = self.addr.to_bytes(1) + b'\x03'
-        cmd += b'\x00\x00'
-        cmd += b'\x00\x01'
-        cmd += self.add_checksum(cmd)
-        self.write(cmd)
-        if not self.read():
-            return False
-        data = int.from_bytes(self.response[3:7], 'little')
+        self.modbus_read(1, 1)
+        data = int.from_bytes(self.response[2:4], 'little')
         return data
+
+    def write_output(self, v) -> int:
+        self.modbus_write(4, int(bool(v)))
+        delay = int.from_bytes(self.response[3:7], 'little')
+        return delay
 
 
 class FakeModbus_Device(ModbusDevice):
@@ -365,9 +374,10 @@ class FakeModbus_Device(ModbusDevice):
 
 
 if __name__ == "__main__":
-    ot1 = ModbusDevice("COM16", 11)
+    ot1 = ModbusDevice("COM17", 1)
     t_0 = time.time()
-    v = ot1.read_device_id()
+    v = ot1.write_output(1)
+    v = ot1.write_output(0)
     dt = int((time.time() - t_0) * 1000.0)  # ms
     a = '%s %s %s %s %s' % (ot1.port, ot1.addr, 'read_device_id ->', v, '%4d ms ' % dt)
     print(a)
