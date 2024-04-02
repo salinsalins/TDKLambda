@@ -217,8 +217,8 @@ class ModbusDevice:
                     return 0
         length = len(out)
         msg = self.addr.to_bytes(1) + self.command.to_bytes(1)
-        msg += int.to_bytes(start, 2)
-        msg += int.to_bytes(length//2, 2)
+        msg += int.to_bytes(start, 2, byteorder="big")
+        msg += int.to_bytes(length//2, 2, byteorder="big")
         msg += int.to_bytes(length, 1)
         msg += out
         if not self.write(msg):
@@ -389,7 +389,7 @@ if __name__ == "__main__":
     print('')
 
     t_0 = time.time()
-    v = md1.modbus_write(16, 0)
+    v = md1.modbus_write(16, [1, 0, 0, 0, 400, 0, 1, 1])
     dt = int((time.time() - t_0) * 1000.0)  # ms
     a = '%s %s %s %s %s' % (md1.port, md1.addr, 'modbus_write->', v, '%4d ms ' % dt)
     print(a)
@@ -405,5 +405,44 @@ if __name__ == "__main__":
     print(md1.request)
     print(md1.response)
     print('')
+
+    # a = []
+    # b = []
+    # for i in range(5, 500):
+    #     v = md1.modbus_write(i, [0, 0])
+    #     if v:
+    #         a.append(i)
+    #     if md1.response[2] == 3:
+    #         b.append(i)
+    #         # print(hex(i), v)
+    # print(a)
+    # print(b)
+
+    t_0 = time.time()
+    v = md1.modbus_write(0, 3)
+    # v = md1.modbus_write(16, [1, 0, 10, 0, 400])
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s %s %s %s %s' % (md1.port, md1.addr, 'modbus_write->', v, '%4d ms ' % dt)
+    print(a)
+
+    t_0 = time.time()
+    v = md1.modbus_write(0, 1)
+    # v = md1.modbus_write(16, [1, 0, 10, 0, 400])
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s %s %s %s %s' % (md1.port, md1.addr, 'modbus_write->', v, '%4d ms ' % dt)
+    print(a)
+
+    t_0 = time.time()
+    v = md1.modbus_write(32+4, 200)
+    # v = md1.modbus_write(16, [1, 0, 10, 0, 400])
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s %s %s %s %s' % (md1.port, md1.addr, 'modbus_write->', v, '%4d ms ' % dt)
+    print(a)
+
+    t_0 = time.time()
+    v = md1.modbus_read(16, 8)
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s %s %s %s %s' % (md1.port, md1.addr, 'modbus_read->', v, '%4d ms ' % dt)
+    print(a)
 
     print('Finished')
