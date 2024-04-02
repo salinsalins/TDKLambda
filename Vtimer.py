@@ -23,18 +23,25 @@ APPLICATION_VERSION = '0.1'
 class Vtimer(ModbusDevice):
 
     def read_start(self, n) -> int:
-        self.modbus_read(16*n + 1, 2)
-        delay = int.from_bytes(self.response[3:7], 'little')
-        return delay
+        delay = self.modbus_read(16*n + 1, 2)
+        if delay:
+            return delay[0] * 0x0100 + delay[1]
+
+    def read_stop(self, n) -> int:
+        delay = self.modbus_read(16*n + 3, 2)
+        if delay:
+            return delay[0] * 0x0100 + delay[1]
 
     def read_run(self) -> int:
-        self.modbus_read(0, 1)
-        data = int.from_bytes(self.response[3:5], 'little')
-        return data
+        data = self.modbus_read(0, 1)
+        if data:
+            return data[0]
+        else:
+            return -1
 
     def write_output(self, v) -> int:
         self.modbus_write(4, int(bool(v)))
-        delay = int.from_bytes(self.response[3:7], 'little')
+        delay = int.from_bytes(self.response[3:7])
         return delay
 
 class FakeVtimer(Vtimer):
@@ -175,14 +182,26 @@ class FakeVtimer(Vtimer):
 
 
 if __name__ == "__main__":
-    ot1 = ModbusDevice("COM17", 1)
+    ot1 = Vtimer("COM17", 1)
     t_0 = time.time()
-    # v = ot1.write_output(1)
-    # v = ot1.write_output(0)
-    v = ot1.modbus_read(0, 9)
-    print(v)
     v = ot1.read_run()
     dt = int((time.time() - t_0) * 1000.0)  # ms
-    a = '%s %s %s %s %s' % (ot1.port, ot1.addr, 'read_run->', v, '%4d ms ' % dt)
+    a = '%s:%s %s %s %s' % (ot1.port, ot1.addr, 'read_run->', v, '%4d ms ' % dt)
     print(a)
+    print('')
+
+    t_0 = time.time()
+    v = ot1.read_start(1)
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s:%s %s %s %s' % (ot1.port, ot1.addr, 'read_start(1)->', v, '%4d ms ' % dt)
+    print(a)
+    print('')
+
+    t_0 = time.time()
+    v = ot1.read_stop(1)
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s:%s %s %s %s' % (ot1.port, ot1.addr, 'read_stop(1)->', v, '%4d ms ' % dt)
+    print(a)
+    print('')
+
     print('Finished')
