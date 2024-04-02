@@ -8,7 +8,7 @@ del util_path
 
 
 ORGANIZATION_NAME = 'BINP'
-APPLICATION_NAME = 'Otimer I/O modules Python API'
+APPLICATION_NAME = 'Vtimer I/O modules Python API'
 APPLICATION_NAME_SHORT = 'Adam'
 APPLICATION_VERSION = '0.1'
 

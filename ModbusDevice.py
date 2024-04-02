@@ -180,16 +180,16 @@ class ModbusDevice:
             return False
         op = int(cmd[1])
         if op > 127:
-            self.debug('Error code %d returned', int.from_bytes(cmd[2:4]))
+            self.debug('Error code %d returned', int.from_bytes(cmd[2:3]))
             return False
         if int(cmd[1]) != self.command:
-            self.debug('Wrong command code %d returned', int.from_bytes(cmd[0]))
+            self.debug('Wrong command code %d returned', int.from_bytes(cmd[1]))
             return False
         return self.verify_checksum(cmd)
 
     def modbus_read(self, start: int, length: int):
         self.command = 3
-        msg = self.addr.to_bytes(1) + b'\x03'
+        msg = self.addr.to_bytes(1) + self.command.to_bytes(1)
         msg += int.to_bytes(start, 2)
         msg += int.to_bytes(length, 2)
         if not self.write(msg):
@@ -198,50 +198,35 @@ class ModbusDevice:
             return []
         data = []
         for i in range(length):
-            data.append(int.from_bytes(self.response[i + 3:i + 5], 'little'))
+            data.append(int.from_bytes(self.response[2*i + 3:2*i + 5]))
         return data
 
-    def modbus_write(self, start: int, data):
+    def modbus_write(self, start: int, data) -> int:
         self.command = 16
         if isinstance(data, int):
-            length = 2
-            data = int.to_bytes(data, 2)
-            msg = self.addr.to_bytes(1) + b'\x10'
-            msg += int.to_bytes(start, 2)
-            msg += int.to_bytes(1, 2)
-            msg += b'\x02'
-            msg += data
+            out = int.to_bytes(data, 2)
         else:
-            length = len(data)
-            msg = self.addr.to_bytes(1) + b'\x10'
-            msg += int.to_bytes(start, 2)
-            msg += int.to_bytes(length, 2)
-            msg += int.to_bytes(len(data), 1)
-            msg += data
+            out = b''
+            for d in data:
+                if isinstance(d, int):
+                    out += d.to_bytes(2)
+                elif isinstance(d, bytes):
+                    out += d
+                else:
+                    self.debug('Wrong data format for write')
+                    return 0
+        length = len(out)
+        msg = self.addr.to_bytes(1) + self.command.to_bytes(1)
+        msg += int.to_bytes(start, 2)
+        msg += int.to_bytes(length//2, 2)
+        msg += int.to_bytes(length, 1)
+        msg += out
         if not self.write(msg):
-            return []
+            return 0
         if not self.read():
-            self.debug('read error')
-            return []
-        data = []
-        for i in range(length):
-            data.append(int.from_bytes(self.response[i + 3:i + 5], 'little'))
+            return 0
+        data = int.from_bytes(self.response[4:6])
         return data
-
-    def read_start(self, n) -> int:
-        self.modbus_read(16*n + 1, 2)
-        delay = int.from_bytes(self.response[3:7], 'little')
-        return delay
-
-    def read_run(self) -> int:
-        self.modbus_read(0, 1)
-        data = int.from_bytes(self.response[3:5], 'little')
-        return data
-
-    def write_output(self, v) -> int:
-        self.modbus_write(4, int(bool(v)))
-        delay = int.from_bytes(self.response[3:7], 'little')
-        return delay
 
 
 class FakeModbus_Device(ModbusDevice):
@@ -382,14 +367,43 @@ class FakeModbus_Device(ModbusDevice):
 
 
 if __name__ == "__main__":
-    ot1 = ModbusDevice("COM17", 1)
+    md1 = ModbusDevice("COM17", 1)
+
     t_0 = time.time()
-    # v = ot1.write_output(1)
-    # v = ot1.write_output(0)
-    v = ot1.modbus_read(0, 9)
-    print(v)
-    v = ot1.read_run()
+    v = md1.modbus_write(1, [0,0,400,1])
+    # v = md1.modbus_write(16, [1, 0, 10, 0, 400])
     dt = int((time.time() - t_0) * 1000.0)  # ms
-    a = '%s %s %s %s %s' % (ot1.port, ot1.addr, 'read_run->', v, '%4d ms ' % dt)
+    a = '%s %s %s %s %s' % (md1.port, md1.addr, 'modbus_write->', v, '%4d ms ' % dt)
     print(a)
+    print(md1.request)
+    print(md1.response)
+    print('')
+
+    t_0 = time.time()
+    v = md1.modbus_read(0, 9)
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s %s %s %s %s' % (md1.port, md1.addr, 'modbus_read->', v, '%4d ms ' % dt)
+    print(a)
+    print(md1.request)
+    print(md1.response)
+    print('')
+
+    t_0 = time.time()
+    v = md1.modbus_write(16, 0)
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s %s %s %s %s' % (md1.port, md1.addr, 'modbus_write->', v, '%4d ms ' % dt)
+    print(a)
+    print(md1.request)
+    print(md1.response)
+    print('')
+
+    t_0 = time.time()
+    v = md1.modbus_read(16, 8)
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s %s %s %s %s' % (md1.port, md1.addr, 'modbus_read->', v, '%4d ms ' % dt)
+    print(a)
+    print(md1.request)
+    print(md1.response)
+    print('')
+
     print('Finished')
