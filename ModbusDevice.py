@@ -77,7 +77,7 @@ class ModbusDevice:
         if not self.com.ready:
             self.info('COM port not ready')
             return
-        self.id = 'Timer'
+        self.id = 'Modbus device'
         self.pre = f'{self.id} at {self.port}: {self.addr} '
         self.debug(f'has been initialized')
         return

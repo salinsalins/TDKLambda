@@ -21,164 +21,138 @@ APPLICATION_VERSION = '0.1'
 
 
 class Vtimer(ModbusDevice):
+    def __init__(self, port: str, addr: int, **kwargs):
+        super().__init__(port, addr, **kwargs)
+        self.id = 'Timer'
+        self.pre = f'{self.id} at {self.port}: {self.addr} '
+        v = self.modbus_write(0, [0, 0, 1, 0])
+        if v != 4:
+            self.info(f' Status initialization error')
+        data = [0, 0, 0, 0, 1, 0, 1, 1]
+        for i in range(1, 12):
+            v = self.modbus_write(16 * i, data)
+            if v != 8:
+                self.info(f' Channel {i} initialization error')
+        self.debug('has been initialized')
 
-    def read_start(self, n) -> int:
-        delay = self.modbus_read(16*n + 1, 2)
+    def read_channel_start(self, n: int) -> int:
+        delay = self.modbus_read(16 * n + 1, 2)
         if delay:
-            return delay[0] * 0x0100 + delay[1]
+            return delay[0] * 0x10000 + delay[1]
 
-    def read_stop(self, n) -> int:
-        delay = self.modbus_read(16*n + 3, 2)
+    def read_channel_stop(self, n: int) -> int:
+        delay = self.modbus_read(16 * n + 3, 2)
         if delay:
-            return delay[0] * 0x0100 + delay[1]
+            return delay[0] * 0x10000 + delay[1]
+
+    def read_channel_enable(self, n: int) -> int:
+        data = self.modbus_read(16 * n, 1)
+        if data:
+            return data[0]
+        else:
+            self.debug(f' Enable status for {n} read error')
+            return -1
 
     def read_run(self) -> int:
         data = self.modbus_read(0, 1)
         if data:
             return data[0]
         else:
+            self.debug(' Run register read error')
             return -1
 
-    def write_output(self, v) -> int:
-        self.modbus_write(4, int(bool(v)))
-        delay = int.from_bytes(self.response[3:7])
-        return delay
-
-class FakeVtimer(Vtimer):
-    commands = {b'$010': b'!AA',
-                b'$011': b'!AA',
-                b'$016': b'!AA',
-                b'$015': b'!AA',
-                b'#01N': b'>+2.2',
-                b'#01': b'>+1.0+2.0+3.0+4.0+5.0+6.0+7.0+8.0',
-                b'$01M': b'!AA4017',
-                b'$01F': b'!AA10',
-                b'$012': b'!AA',
-                b'%01': b'!AA',
-                }
-
-    def __init__(self, *args, **kwargs):
-        self.TTCCFF = b'000000'
-        self.VV = b'FF'
-        kwargs['auto_addr'] = False
-        super().__init__(*args, **kwargs)
-
-    def create_com_port(self):
-        self.com = EmptyComPort(True)
-        return self.com
-
-    def _send_command(self, cmd, terminator=None):
-        self.command = cmd
-        self.response = b''
-        AA = cmd[1:3]
-        cmd = cmd[:1] + b'01' + cmd[3:-1]
-        if cmd.startswith(b'$015'):
-            self.VV = cmd[4:]
-            cmd = b'$015'
-        if cmd.startswith(b'%01'):
-            self.TTCCFF = cmd[5:]
-            cmd = b'%01'
-        if cmd.startswith(b'#01') and len(cmd) > 3:
-            cmd = b'#01N'
-        if cmd not in self.commands:
-            return b''
-        v = self.commands[cmd]
-        v = v.replace(b'AA', AA)
-        if cmd.startswith(b'$012'):
-            v += self.TTCCFF
-        if cmd.startswith(b'$016'):
-            v += self.VV
-        self.response = v + b'\r'
-        return v
-
-    def init(self):
-        self.suspend_to = 0.0
-        self.pre = f'ADAMxxxx at {self.port}:{self.addr}'
-        self.addr_hex = (b'%02X' % self.addr)[:2]
-        self.head_ok = b'!' + self.addr_hex
-        self.head_err = b'?' + self.addr_hex
-        self.name = '0000'
-        self.ai_n = 0
-        self.ao_n = 0
-        self.di_n = 0
-        self.do_n = 0
-        self.ao_masks = []
-        self.ai_masks = []
-        self.ai_ranges = []
-        self.ai_min = []
-        self.ai_max = []
-        self.ai_units = []
-        self.ao_ranges = []
-        self.ao_min = []
-        self.ao_max = []
-        self.ao_units = []
-        # check device address
-        if self.addr <= 0:
-            self.state = -1
-            self.logger.info(f'{self.pre} ' + self.STATES[self.state])
-            self.suspend()
-            return False
-        # check if port:address is in use
-        with Vtimer._lock:
-            for d in Vtimer._devices:
-                if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
-                    self.state = -2
-                    self.logger.info(f'{self.pre} ' + self.STATES[self.state])
-                    self.suspend()
-                    return False
-        if not self.com.ready:
-            self.state = -5
-            self.logger.info(f'{self.pre} ' + self.STATES[self.state])
-            self.suspend()
-            return False
-        # read device type
-        # self.id = self.read_device_id()
-        n = 0
-        self.id = 'Unknown Device'
-        while n < self.read_retries:
-            n += 1
-            result = self._send_command(b'$' + self.addr_hex + b'M\r')
-            if result and self.check_response():
-                self.id = self.response[3:-1].decode()
-                break
-        #
-        if self.id in ADAM_DEVICES:
-            self.name = self.id
+    def read_mode(self) -> int:
+        data = self.modbus_read(1, 1)
+        if data:
+            return data[0]
         else:
-            self.name = '0000'
-            for key in ADAM_DEVICES:
-                if self.id[-2:] == key[-2:]:
-                    self.logger.info(f'{self.pre} Using {key} instead of {self.id} for devise type')
-                    self.name = key
-                    break
-        self.pre = f'FakeADAM{self.name} at {self.port}:{self.addr}'
-        if self.name == '0000' or (self.name not in ADAM_DEVICES):
-            self.logger.info(f'ADAM at {self.port}:{self.addr} is not recognized')
-            self.state = -4
-            self.suspend()
+            self.debug(' Mode register read error')
+            return -1
+
+    def read_status(self) -> int:
+        data = self.modbus_read(5, 1)
+        if data:
+            return data[0]
+        else:
+            self.debug(' Status register read error')
+            return -1
+
+    def read_output(self) -> int:
+        data = self.modbus_read(4, 1)
+        if data:
+            return data[0]
+        else:
+            self.debug(' Output register read error')
+            return -1
+
+    def read_fault(self) -> int:
+        data = self.modbus_read(1, 1)
+        if data:
+            return data[0]
+        else:
+            self.debug(' Fault register read error')
+            return -1
+
+    def read_duration(self) -> int:
+        data = self.modbus_read(2, 2)
+        if data:
+            return data[0] * 65536 + data[1]
+        else:
+            self.debug(' Script duration read error')
+            return -1
+
+    def read_last(self) -> int:
+        data = self.modbus_read(7, 2)
+        if data:
+            return data[0] * 65536 + data[1]
+        else:
+            self.debug(' Last pulse duration read error')
+            return -1
+
+    def write_channel_start(self, n: int, v: int) -> bool:
+        delay = [0, 0]
+        delay[0] = v // 0x10000
+        delay[1] = v % 0x10000
+        v = self.modbus_write(16 * n + 1, delay)
+        return v == 2
+
+    def write_channel_stop(self, n: int, v: int) -> bool:
+        delay = [0, 0]
+        delay[0] = v // 0x10000
+        delay[1] = v % 0x10000
+        v = self.modbus_write(16 * n + 3, delay)
+        return v == 2
+
+    def write_channel_enable(self, n: int, v: int) -> bool:
+        if self.modbus_write(16 * n, int(bool(v))) != 1:
+            # self.debug(' Output write error')
             return False
-        self.ai_n = ADAM_DEVICES[self.name]['ai']
-        self.ai_masks = [True] * self.ai_n
-        if self.ai_n > 0:
-            self.ai_masks = self.read_masks()
-        self.ao_n = ADAM_DEVICES[self.name]['ao']
-        self.ao_masks = [True] * self.ao_n
-        # if self.ao_n > 0:
-        #     self.ao_masks = self.read_masks()
-        self.di_n = ADAM_DEVICES[self.name]['di']
-        self.do_n = ADAM_DEVICES[self.name]['do']
-        self.ai_ranges = [self.read_range(c) for c in range(self.ai_n)]
-        self.ai_min = [i[0] for i in self.ai_ranges]
-        self.ai_max = [i[1] for i in self.ai_ranges]
-        self.ai_units = [i[2] for i in self.ai_ranges]
-        self.ao_ranges = [self.read_range(c) for c in range(self.ao_n)]
-        self.ao_min = [i[0] for i in self.ao_ranges]
-        self.ao_max = [i[1] for i in self.ao_ranges]
-        self.ao_units = [i[2] for i in self.ao_ranges]
-        self.state = 1
-        self.suspend_to = 0.0
-        self.logger.debug(f'{self.pre} has been initialized')
         return True
+
+    def enable_channel(self, n: int) -> bool:
+        return self.write_channel_enable(n, 1)
+
+    def disable_channel(self, n: int) -> bool:
+        return self.write_channel_enable(n, 0)
+
+    def write_run(self, n: int) -> bool:
+        m = self.modbus_write(0, n)
+        return m == 1
+
+    def write_mode(self, n: int) -> bool:
+        m = self.modbus_write(1, n)
+        return m == 1
+
+    def write_output(self, n: int) -> bool:
+        m = self.modbus_write(4, n)
+        return m == 1
+
+    def write_duration(self, n: int) -> bool:
+        v = [0, 0]
+        v[0] = n // 0x10000
+        v[1] = n % 0x10000
+        m = self.modbus_write(2, v)
+        return m == 2
 
 
 if __name__ == "__main__":
@@ -191,16 +165,43 @@ if __name__ == "__main__":
     print('')
 
     t_0 = time.time()
-    v = ot1.read_start(1)
+    v = ot1.write_channel_stop(1, 100)
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s:%s %s %s %s' % (ot1.port, ot1.addr, 'write_stop(1)->', v, '%4d ms ' % dt)
+    print(a)
+    print('')
+
+    t_0 = time.time()
+    v = ot1.read_channel_start(1)
     dt = int((time.time() - t_0) * 1000.0)  # ms
     a = '%s:%s %s %s %s' % (ot1.port, ot1.addr, 'read_start(1)->', v, '%4d ms ' % dt)
     print(a)
     print('')
 
     t_0 = time.time()
-    v = ot1.read_stop(1)
+    v = ot1.read_channel_stop(1)
     dt = int((time.time() - t_0) * 1000.0)  # ms
     a = '%s:%s %s %s %s' % (ot1.port, ot1.addr, 'read_stop(1)->', v, '%4d ms ' % dt)
+    print(a)
+    print('')
+
+    t_0 = time.time()
+    n = 500
+    v0 = ot1.write_output(1)
+    v1 = ot1.write_duration(12 * n + 1)
+    for i in range(1, 13):
+        v3 = ot1.write_channel_stop(i, i * n)
+        v2 = ot1.write_channel_start(i, (i - 1) * n)
+        v6 = ot1.enable_channel(i)
+    v8 = ot1.write_run(3)
+    v = ot1.write_run(1)
+    f = ot1.read_fault()
+    # while ot1.read_status():
+    #     pass
+    l = ot1.read_last()
+
+    dt = int((time.time() - t_0) * 1000.0)  # ms
+    a = '%s:%s %s %s %s %s %s' % (ot1.port, ot1.addr, '->', v, f, l, '%4d ms ' % dt)
     print(a)
     print('')
 
