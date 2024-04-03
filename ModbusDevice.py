@@ -45,6 +45,7 @@ class ModbusDevice:
         self.suspend_to = 0.0
         self.port = str(port).strip()
         self.addr = int(addr)
+        self.error = 0
         self.command = 0
         self.request = b''
         self.response = b''
@@ -141,6 +142,7 @@ class ModbusDevice:
         return len(cmd) == n
 
     def read(self) -> bool:
+        self.error = 0
         self.response = b''
         self.read_timeout = time.time() + self.READ_TIMEOUT
         while time.time() < self.read_timeout and len(self.response) < 3:
@@ -174,15 +176,16 @@ class ModbusDevice:
         return self.check_response(self.response)
 
     def check_response(self, cmd: bytes) -> bool:
-        if int(cmd[0]) != self.addr:
-            self.debug('Wrong address %d returned', int.from_bytes(cmd[0]))
+        if cmd[0] != self.addr:
+            self.debug('Wrong address %d returned', cmd[0])
             return False
         op = int(cmd[1])
         if op > 127:
-            self.debug('Error code %d returned', int.from_bytes(cmd[2:3]))
+            self.error = int.from_bytes(cmd[2:3])
+            self.debug('Error code %d returned for command %d', self.error, op-127)
             return False
         if int(cmd[1]) != self.command:
-            self.debug('Wrong command code %d returned', int.from_bytes(cmd[1]))
+            self.debug('Wrong command code %d returned', op)
             return False
         return self.verify_checksum(cmd)
 

@@ -17,7 +17,7 @@ from log_exception import log_exception
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Vtimer I/O modules Python API'
 APPLICATION_NAME_SHORT = 'Vtimer'
-APPLICATION_VERSION = '0.1'
+APPLICATION_VERSION = '1.0'
 
 
 class Vtimer(ModbusDevice):
@@ -25,14 +25,21 @@ class Vtimer(ModbusDevice):
         super().__init__(port, addr, **kwargs)
         self.id = 'Timer'
         self.pre = f'{self.id} at {self.port}: {self.addr} '
+        errors = 0
         v = self.modbus_write(0, [0, 0, 0, 1])
         if v != 4:
             self.info(f' Status initialization error')
+            errors += 1
         data = [0, 0, 0, 0, 1, 0, 1, 1]
         for i in range(1, 12):
             v = self.modbus_write(16 * i, data)
             if v != 8:
                 self.info(f' Channel {i} initialization error')
+                errors += 1
+        if errors == 0:
+            self.ready = True
+        else:
+            self.ready = False
         self.debug('has been initialized')
 
     def read_channel_start(self, n: int) -> int:
