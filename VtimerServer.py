@@ -637,7 +637,8 @@ class VtimerServer(TangoServerPrototype):
 def looping():
     for dev in TangoServerPrototype.devices:
         if dev.start_mode_value and dev.period_value > 0.0:
-            if dev.last_pulse_time + dev.period_value > time.time():
+            if dev.last_pulse_time + dev.period_value < time.time():
+                dev.last_pulse_time = time.time()
                 print('Pulse')
     time.sleep(0.1)
 
