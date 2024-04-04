@@ -4,12 +4,14 @@
 
 import os
 import sys
+import time
 
 util_path = os.path.realpath('../TangoUtils')
 if util_path not in sys.path:
     sys.path.append(util_path)
 del util_path
 
+import tango
 from tango import Attribute, AttrQuality, AttrWriteType, DispLevel
 from tango import DevState
 from tango.server import attribute, command
@@ -20,7 +22,7 @@ from Vtimer import Vtimer
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Vtimer Python Tango Server'
 APPLICATION_NAME_SHORT = os.path.basename(__file__).replace('.py', '')
-APPLICATION_VERSION = '2.0'
+APPLICATION_VERSION = '0.1'
 
 DEFAULT_PORT = 'COM17'
 DEFAULT_ADDRESS = 1
@@ -52,20 +54,103 @@ class VtimerServer(TangoServerPrototype):
     run = attribute(label="Run", dtype=int,
                     display_level=DispLevel.OPERATOR,
                     access=AttrWriteType.READ_WRITE,
+                    min_value=0,
+                    max_value=3,
                     unit="",
                     doc="Run register")
 
     mode = attribute(label="Mode", dtype=int,
                      display_level=DispLevel.OPERATOR,
                      access=AttrWriteType.READ_WRITE,
+                     min_value=0,
+                     max_value=2,
                      unit="",
                      doc="Mode register")
 
-    run_time = attribute(label="Run Time", dtype=float,
+    last = attribute(label="Last Run", dtype=int,
+                     display_level=DispLevel.OPERATOR,
+                     access=AttrWriteType.READ,
+                     unit="ms",
+                     format="%d",
+                     doc="Last script duration [ms]")
+
+    duration = attribute(label="Script duration", dtype=int,
                          display_level=DispLevel.OPERATOR,
-                         access=AttrWriteType.READ,
+                         access=AttrWriteType.READ_WRITE,
                          unit="ms", format="%d",
                          doc="Total script duration [ms]")
+
+    output = attribute(label="Output", dtype=bool,
+                       display_level=DispLevel.OPERATOR,
+                       access=AttrWriteType.READ_WRITE,
+                       unit="",
+                       doc="Optical output control")
+
+    pulse = attribute(label="Pulse state", dtype=bool,
+                      display_level=DispLevel.OPERATOR,
+                      access=AttrWriteType.READ,
+                      unit="",
+                      doc="Pulse ON/OFF state")
+
+    faults = attribute(label="Faults register", dtype=int,
+                       display_level=DispLevel.OPERATOR,
+                       access=AttrWriteType.READ,
+                       unit="",
+                       doc="Faults register state")
+
+    channel_enable0 = attribute(label="Channel 0", dtype=bool,
+                         display_level=DispLevel.OPERATOR,
+                         access=AttrWriteType.READ_WRITE,
+                         unit="",
+                         doc="Channel 0 ON/OFF state")
+
+    pulse_start0 = attribute(label="Channel 0 start", dtype=int,
+                               display_level=DispLevel.OPERATOR,
+                               access=AttrWriteType.READ_WRITE,
+                               unit="ms",
+                               doc="Channel 0 start time [ms]")
+
+    pulse_stop0 = attribute(label="Channel 0 stop", dtype=int,
+                              display_level=DispLevel.OPERATOR,
+                              access=AttrWriteType.READ_WRITE,
+                              unit="ms",
+                              doc="Channel 1 stop time [ms]")
+
+    channel_enable1 = attribute(label="Channel 1", dtype=bool,
+                         display_level=DispLevel.OPERATOR,
+                         access=AttrWriteType.READ_WRITE,
+                         unit="",
+                         doc="Channel 1 ON/OFF state")
+
+    pulse_start1 = attribute(label="Channel 1 start", dtype=int,
+                               display_level=DispLevel.OPERATOR,
+                               access=AttrWriteType.READ_WRITE,
+                               unit="ms",
+                               doc="Channel 1 start time [ms]")
+
+    pulse_stop1 = attribute(label="Channel 1 stop", dtype=int,
+                              display_level=DispLevel.OPERATOR,
+                              access=AttrWriteType.READ_WRITE,
+                              unit="ms",
+                              doc="Channel 1 stop time [ms]")
+
+    channel_enable2 = attribute(label="Channel 2", dtype=bool,
+                         display_level=DispLevel.OPERATOR,
+                         access=AttrWriteType.READ_WRITE,
+                         unit="",
+                         doc="Channel 2 ON/OFF state")
+
+    pulse_start2 = attribute(label="Channel 2 start", dtype=int,
+                               display_level=DispLevel.OPERATOR,
+                               access=AttrWriteType.READ_WRITE,
+                               unit="ms",
+                               doc="Channel 2 start time [ms]")
+
+    pulse_stop2 = attribute(label="Channel 2 stop", dtype=int,
+                              display_level=DispLevel.OPERATOR,
+                              access=AttrWriteType.READ_WRITE,
+                              unit="ms",
+                              doc="Channel 2 stop time [ms]")
 
     def init_device(self):
         super().init_device()
@@ -85,6 +170,8 @@ class VtimerServer(TangoServerPrototype):
         # check if device OK
         if self.tmr.ready:
             self.run.set_write_value(self.read_run())
+            self.mode.set_write_value(self.read_mode())
+            self.output.set_write_value(self.read_output())
             # set state to running
             msg = 'Created successfully'
             self.set_state(DevState.RUNNING, msg)
@@ -129,146 +216,309 @@ class VtimerServer(TangoServerPrototype):
             self.run.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.run.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'run state read error'
+        msg = 'Run state read error'
         self.set_fault(msg)
         return -1
 
     def read_mode(self):
         value = self.tmr.read_mode()
         if value >= 0:
-            self.run.set_quality(AttrQuality.ATTR_VALID)
+            self.mode.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.run.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'mode read error'
+        self.mode.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Mode read error'
         self.set_fault(msg)
         return -1
 
-    def read_run_time(self):
+    def read_duration(self):
+        value = self.tmr.read_duration()
+        if value >= 0:
+            self.duration.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.duration.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Script duration read error'
+        self.set_fault(msg)
+        return -1
+
+    def read_last(self):
         value = self.tmr.read_last()
         if value >= 0:
-            self.run.set_quality(AttrQuality.ATTR_VALID)
+            self.last.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.run.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'Run Time read error'
+        self.last.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Run Time read error'
         self.set_fault(msg)
         return -1
 
-    #   ---------------- custom attributes write --------------
-    def write_value(self, param: str, value):
-        resp = self.tmr.send_command(f'{param}={value}')
-        if resp:
-            return True
-        msg = f'{param} write error'
-        self.log_debug(msg)
+    def read_output(self):
+        value = self.tmr.read_output()
+        if value >= 0:
+            self.output.set_quality(AttrQuality.ATTR_VALID)
+            return bool(value)
+        self.output.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Output state read error'
+        self.set_fault(msg)
         return False
 
-    def write_bit(self, param: str, bit, value):
-        v0 = self.read_value(param, int)
-        if v0 is None:
-            msg = f'{param}_{bit} write error'
-            self.log_debug(msg)
-            return False
-        if value:
-            v1 = v0 | 2 ** bit
-        else:
-            v1 = v0 & ~(2 ** bit)
-        return self.write_value(param, v1)
-
-    def write_set_point(self, value):
-        result = self.write_value('1100', f'{value:.2f}')
-        if result:
-            self.set_point.set_quality(AttrQuality.ATTR_VALID)
-            self.set_point.set_write_value(value)
-            return value
-        self.set_point.set_quality(AttrQuality.ATTR_INVALID)
-        self.set_point.set_write_value(float('Nan'))
-        msg = 'Set point write error'
+    def read_pulse(self):
+        value = self.tmr.read_status()
+        if value >= 0:
+            self.pulse.set_quality(AttrQuality.ATTR_VALID)
+            return bool(value)
+        self.pulse.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Pulse ON|OFF state read error'
         self.set_fault(msg)
-        return float('Nan')
+        return False
 
-    def write_set_point_remote(self, value):
-        result = self.write_value('6200', f'{value:.2f}')
-        if result:
-            self.set_point_remote.set_quality(AttrQuality.ATTR_VALID)
-            self.set_point_remote.set_write_value(value)
+    def read_faults(self):
+        value = self.tmr.read_fault()
+        if value >= 0:
+            self.faults.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.set_point_remote.set_quality(AttrQuality.ATTR_INVALID)
-        self.set_point_remote.set_write_value(float('Nan'))
-        msg = 'Remote set point write error'
+        self.faults.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Faults register read error'
         self.set_fault(msg)
-        return float('Nan')
+        return False
+
+    def read_channel_enable0(self):
+        value = self.tmr.read_channel_enable(1)
+        if value >= 0:
+            self.channel_enable0.set_quality(AttrQuality.ATTR_VALID)
+            return bool(value)
+        self.channel_enable0.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Channel 0 state read error'
+        self.set_fault(msg)
+        return False
+
+    def read_pulse_start0(self):
+        value = self.tmr.read_channel_start(1)
+        if value >= 0:
+            self.pulse_start0.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.pulse_start0.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Channel 0 start time read error'
+        self.set_fault(msg)
+        return False
+
+    def read_pulse_stop0(self):
+        value = self.tmr.read_channel_stop(1)
+        if value >= 0:
+            self.pulse_stop0.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.pulse_stop0.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Channel 0 stop time read error'
+        self.set_fault(msg)
+        return False
+
+    def read_channel_n(self, n):
+        name = f'channel_enable{n}'
+        value = self.tmr.read_channel_enable(n+1)
+        if value >= 0:
+            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            return bool(value)
+        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'Channel {n} state read error'
+        self.set_fault(msg)
+        return False
+
+    def read_pulse_start_n(self, n):
+        name = f'pulse_start{n}'
+        value = self.tmr.read_channel_start(n+1)
+        if value >= 0:
+            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            return value
+        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'Channel {n} start time read error'
+        self.set_fault(msg)
+        return False
+
+    def read_pulse_stop_n(self, n):
+        name = f'pulse_stop{n}'
+        value = self.tmr.read_channel_stop(n+1)
+        if value >= 0:
+            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            return value
+        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'Channel {n} stop time read error'
+        self.set_fault(msg)
+        return False
+
+    def read_channel_enable1(self):
+        return self.read_channel_n(1)
+
+    def read_pulse_start1(self):
+        return self.read_pulse_start_n(1)
+
+    def read_pulse_stop1(self):
+        return self.read_pulse_stop_n(1)
+
+    def read_channel_enable2(self):
+        return self.read_channel_n(2)
+
+    def read_pulse_start2(self):
+        return self.read_pulse_start_n(2)
+
+    def read_pulse_stop2(self):
+        return self.read_pulse_stop_n(2)
+
+    #   ---------------- custom attributes write --------------
 
     def write_run(self, value):
-        result = self.write_bit('6210', 1, value)
+        result = self.tmr.write_run(value)
         if result:
+            self.run.set_value(value)
             self.run.set_quality(AttrQuality.ATTR_VALID)
-            self.run.set_write_value(value)
-            return value
+            return True
         self.run.set_quality(AttrQuality.ATTR_INVALID)
-        self.run.set_write_value(float('Nan'))
-        msg = 'Run switch write error'
+        msg = 'Run state write error'
         self.set_fault(msg)
+        self.run.set_write_value(-1)
         return False
 
-    def write_reset(self, value):
-        result = self.write_bit('6210', 2, value)
+    def write_mode(self, value):
+        result = self.tmr.write_mode(value)
         if result:
-            self.reset.set_quality(AttrQuality.ATTR_VALID)
-            self.reset.set_write_value(value)
-            return value
-        self.reset.set_quality(AttrQuality.ATTR_INVALID)
-        self.reset.set_write_value(float('Nan'))
-        msg = 'Reset switch write error'
+            self.mode.set_value(value)
+            self.mode.set_quality(AttrQuality.ATTR_VALID)
+            return True
+        self.mode.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Mode write error'
         self.set_fault(msg)
+        self.mode.set_write_value(-1)
         return False
 
-    def write_valve(self, value):
-        result = self.write_bit('6210', 3, value)
+    def write_output(self, value):
+        result = self.tmr.write_output(int(value))
         if result:
-            self.valve.set_quality(AttrQuality.ATTR_VALID)
-            self.valve.set_write_value(value)
-            return value
-        self.valve.set_quality(AttrQuality.ATTR_INVALID)
-        self.valve.set_write_value(float('Nan'))
-        msg = 'Valve switch write error'
+            self.output.set_value(bool(value))
+            self.output.set_quality(AttrQuality.ATTR_VALID)
+            return True
+        self.output.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Output write error'
         self.set_fault(msg)
+        self.output.set_write_value(False)
         return False
 
-    def write_enable(self, value):
-        result = self.write_bit('6210', 0, value)
+    def write_duration(self, value):
+        result = self.tmr.write_duration(int(value))
         if result:
-            self.enable.set_quality(AttrQuality.ATTR_VALID)
-            self.enable.set_write_value(value)
-            return value
-        self.enable.set_quality(AttrQuality.ATTR_INVALID)
-        self.enable.set_write_value(float('Nan'))
-        msg = f'enable switch write error'
+            self.duration.set_value(int(value))
+            self.duration.set_quality(AttrQuality.ATTR_VALID)
+            return True
+        self.duration.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Total duration write error'
         self.set_fault(msg)
+        self.duration.set_write_value(-1)
         return False
 
-    #   ---------------- end custom attributes --------------
-    def set_fault(self, msg=None):
-        if msg is None:
-            if self.tmr.ready:
-                msg = f'R/W error!'
-            else:
-                msg = f'was not initialized'
-        super().set_fault(msg)
+    def write_channel_enable0(self, value):
+        result = self.tmr.write_channel_enable(1, int(value))
+        if result:
+            self.channel_enable0.set_value(bool(value))
+            self.channel_enable0.set_quality(AttrQuality.ATTR_VALID)
+            return True
+        self.channel_enable0.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Channel 0 write error'
+        self.set_fault(msg)
+        self.channel1.set_write_value(False)
+        return False
 
-    # @command(dtype_in=str, doc_in='Directly send command to the Vtimer',
-    #          dtype_out=str, doc_out='Response from Vtimer PS without final <CR>')
-    # def send_command(self, cmd):
-    #     result = self.tmr.send_command(cmd)
-    #     rsp = self.tmr.get_response()
-    #     if result:
-    #         msg = f'Command {cmd} executed, result {rsp}'
-    #         self.log_debug(msg)
-    #         self.set_state(DevState.RUNNING, msg)
-    #     else:
-    #         msg = f'Command {cmd} ERROR, result {rsp}'
-    #         self.log_warning(msg)
-    #         self.set_state(DevState.FAULT, msg)
-    #     return msg
+    def write_pulse_start0(self, value):
+        result = self.tmr.write_channel_start(1, int(value))
+        if result:
+            self.pulse_start0.set_value(int(value))
+            self.pulse_start0.set_quality(AttrQuality.ATTR_VALID)
+            return True
+        self.pulse_start0.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Channel 0 start time write error'
+        self.set_fault(msg)
+        self.pulse_start0.set_write_value(-1)
+        return False
+
+    def write_pulse_stop0(self, value):
+        result = self.tmr.write_channel_stop(1, int(value))
+        if result:
+            self.pulse_stop0.set_value(int(value))
+            self.pulse_stop0.set_quality(AttrQuality.ATTR_VALID)
+            return True
+        self.pulse_stop0.set_quality(AttrQuality.ATTR_INVALID)
+        msg = 'Channel 1 start time write error'
+        self.set_fault(msg)
+        self.pulse_stop0.set_write_value(-1)
+        return False
+
+    def write_channel_enable1(self, value):
+        return self.write_channel_n(1, value)
+
+    def write_pulse_start1(self, value):
+        return self.write_pulse_start_n(1, value)
+
+    def write_pulse_stop1(self, value):
+        return self.write_pulse_stop_n(1, value)
+
+    def write_channel_enable2(self, value):
+        return self.write_channel_n(2, value)
+
+    def write_pulse_start2(self, value):
+        return self.write_pulse_start_n(2, value)
+
+    def write_pulse_stop2(self, value):
+        return self.write_pulse_stop_n(2, value)
+
+    def write_channel_n(self, n, value):
+        result = self.tmr.write_channel_enable(n+1, int(value))
+        name = f'channel_enable{n}'
+        if result:
+            getattr(self, name).set_value(bool(value))
+            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            return True
+        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'Channel {n} state write error'
+        self.set_fault(msg)
+        getattr(self, name).set_write_value(False)
+        return False
+
+    def write_pulse_start_n(self, n,  value):
+        name = f'pulse_start{n}'
+        result = self.tmr.write_channel_start(n+1, int(value))
+        if result:
+            getattr(self, name).set_value(int(value))
+            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            return True
+        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'Channel {n} start time write error'
+        self.set_fault(msg)
+        getattr(self, name).set_write_value(-1)
+        return False
+
+    def write_pulse_stop_n(self,n ,value):
+        name = f'pulse_stop{n}'
+        result = self.tmr.write_channel_stop(n+1, int(value))
+        if result:
+            getattr(self, name).set_value(int(value))
+            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            return True
+        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'Channel {n} stop time write error'
+        self.set_fault(msg)
+        getattr(self, name).set_write_value(-1)
+        return False
+
+    #   ---------------- custom commands --------------
+
+    @command(dtype_in=None, doc_in='Initiate timer pulse',
+             dtype_out=bool, doc_out='True if success')
+    def start_pulse(self):
+        result = self.tmr.write_run(3)
+        if result == 1:
+            result = self.tmr.write_run(0)
+            result = self.tmr.write_run(1)
+            if result == 1:
+                return True
+        msg = f'Start pulse execution error {self.tmr.error}'
+        self.log_debug(msg)
+        self.set_state(DevState.RUNNING, msg)
+        return False
 
 
 if __name__ == "__main__":
