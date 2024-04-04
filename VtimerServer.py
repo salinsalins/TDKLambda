@@ -225,6 +225,7 @@ class VtimerServer(TangoServerPrototype):
         self.log_debug(msg)
         self.set_state(DevState.INIT, msg)
         #
+        self.last_pulse_time = 0.0
         self.period_value = 0.0
         self.start_mode_value = False
         # get port and address from property
@@ -258,6 +259,7 @@ class VtimerServer(TangoServerPrototype):
         msg = 'Device has been deleted'
         self.log_info(msg)
 
+    #   ---------------- attributes read --------------
     def read_port(self):
         if self.tmr.ready:
             self.set_running()
@@ -624,6 +626,7 @@ class VtimerServer(TangoServerPrototype):
             result = self.tmr.write_run(0)
             result = self.tmr.write_run(1)
             if result == 1:
+                self.last_pulse_time = time.time()
                 return True
         msg = f'Start pulse execution error {self.tmr.error}'
         self.log_debug(msg)
@@ -631,5 +634,13 @@ class VtimerServer(TangoServerPrototype):
         return False
 
 
+def looping():
+    for dev in TangoServerPrototype.devices:
+        if dev.start_mode_value and dev.period_value > 0.0:
+            if dev.last_pulse_time + dev.period_value > time.time():
+                print('Pulse')
+    time.sleep(0.1)
+
+
 if __name__ == "__main__":
-    VtimerServer.run_server()
+    VtimerServer.run_server(event_loop=looping)
