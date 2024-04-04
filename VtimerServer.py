@@ -98,59 +98,125 @@ class VtimerServer(TangoServerPrototype):
                        unit="",
                        doc="Faults register state")
 
+    period = attribute(label="Period", dtype=float,
+                       display_level=DispLevel.OPERATOR,
+                       access=AttrWriteType.READ_WRITE,
+                       unit="s",
+                       doc="Automatic start period [s]")
+
+    start_mode = attribute(label="Auto start mode", dtype=bool,
+                           display_level=DispLevel.OPERATOR,
+                           access=AttrWriteType.READ_WRITE,
+                           unit="",
+                           doc="Auto start mode")
+
     channel_enable0 = attribute(label="Channel 0", dtype=bool,
-                         display_level=DispLevel.OPERATOR,
-                         access=AttrWriteType.READ_WRITE,
-                         unit="",
-                         doc="Channel 0 ON/OFF state")
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 0 ON/OFF state")
 
     pulse_start0 = attribute(label="Channel 0 start", dtype=int,
-                               display_level=DispLevel.OPERATOR,
-                               access=AttrWriteType.READ_WRITE,
-                               unit="ms",
-                               doc="Channel 0 start time [ms]")
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 0 start time [ms]")
 
     pulse_stop0 = attribute(label="Channel 0 stop", dtype=int,
-                              display_level=DispLevel.OPERATOR,
-                              access=AttrWriteType.READ_WRITE,
-                              unit="ms",
-                              doc="Channel 1 stop time [ms]")
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 1 stop time [ms]")
 
     channel_enable1 = attribute(label="Channel 1", dtype=bool,
-                         display_level=DispLevel.OPERATOR,
-                         access=AttrWriteType.READ_WRITE,
-                         unit="",
-                         doc="Channel 1 ON/OFF state")
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 1 ON/OFF state")
 
     pulse_start1 = attribute(label="Channel 1 start", dtype=int,
-                               display_level=DispLevel.OPERATOR,
-                               access=AttrWriteType.READ_WRITE,
-                               unit="ms",
-                               doc="Channel 1 start time [ms]")
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 1 start time [ms]")
 
     pulse_stop1 = attribute(label="Channel 1 stop", dtype=int,
-                              display_level=DispLevel.OPERATOR,
-                              access=AttrWriteType.READ_WRITE,
-                              unit="ms",
-                              doc="Channel 1 stop time [ms]")
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 1 stop time [ms]")
 
     channel_enable2 = attribute(label="Channel 2", dtype=bool,
-                         display_level=DispLevel.OPERATOR,
-                         access=AttrWriteType.READ_WRITE,
-                         unit="",
-                         doc="Channel 2 ON/OFF state")
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 2 ON/OFF state")
 
     pulse_start2 = attribute(label="Channel 2 start", dtype=int,
-                               display_level=DispLevel.OPERATOR,
-                               access=AttrWriteType.READ_WRITE,
-                               unit="ms",
-                               doc="Channel 2 start time [ms]")
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 2 start time [ms]")
 
     pulse_stop2 = attribute(label="Channel 2 stop", dtype=int,
-                              display_level=DispLevel.OPERATOR,
-                              access=AttrWriteType.READ_WRITE,
-                              unit="ms",
-                              doc="Channel 2 stop time [ms]")
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 2 stop time [ms]")
+
+    channel_enable3 = attribute(label="Channel 3", dtype=bool,
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 3 ON/OFF state")
+
+    pulse_start3 = attribute(label="Channel 3 start", dtype=int,
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 3 start time [ms]")
+
+    pulse_stop3 = attribute(label="Channel 3 stop", dtype=int,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 3 stop time [ms]")
+
+    channel_enable4 = attribute(label="Channel 4", dtype=bool,
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 4 ON/OFF state")
+
+    pulse_start4 = attribute(label="Channel 4 start", dtype=int,
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 4 start time [ms]")
+
+    pulse_stop4 = attribute(label="Channel 4 stop", dtype=int,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 4 stop time [ms]")
+
+    channel_enable5 = attribute(label="Channel 5", dtype=bool,
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 5 ON/OFF state")
+
+    pulse_start5 = attribute(label="Channel 5 start", dtype=int,
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 5 start time [ms]")
+
+    pulse_stop5 = attribute(label="Channel 5 stop", dtype=int,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 5 stop time [ms]")
 
     def init_device(self):
         super().init_device()
@@ -158,6 +224,9 @@ class VtimerServer(TangoServerPrototype):
         msg = f'Initialization'
         self.log_debug(msg)
         self.set_state(DevState.INIT, msg)
+        #
+        self.period_value = 0.0
+        self.start_mode_value = False
         # get port and address from property
         kwargs = {}
         port = self.config.get('port', DEFAULT_PORT)
@@ -172,6 +241,8 @@ class VtimerServer(TangoServerPrototype):
             self.run.set_write_value(self.read_run())
             self.mode.set_write_value(self.read_mode())
             self.output.set_write_value(self.read_output())
+            self.period.set_write_value(self.read_period())
+            self.start_mode.set_write_value(self.read_start_mode())
             # set state to running
             msg = 'Created successfully'
             self.set_state(DevState.RUNNING, msg)
@@ -210,6 +281,12 @@ class VtimerServer(TangoServerPrototype):
             return "Uninitialized"
 
     #   ---------------- custom attributes read --------------
+    def read_start_mode(self):
+        return self.start_mode_value
+
+    def read_period(self):
+        return self.period_value
+
     def read_run(self):
         value = self.tmr.read_run()
         if value >= 0:
@@ -312,7 +389,7 @@ class VtimerServer(TangoServerPrototype):
 
     def read_channel_n(self, n):
         name = f'channel_enable{n}'
-        value = self.tmr.read_channel_enable(n+1)
+        value = self.tmr.read_channel_enable(n + 1)
         if value >= 0:
             getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
             return bool(value)
@@ -323,7 +400,7 @@ class VtimerServer(TangoServerPrototype):
 
     def read_pulse_start_n(self, n):
         name = f'pulse_start{n}'
-        value = self.tmr.read_channel_start(n+1)
+        value = self.tmr.read_channel_start(n + 1)
         if value >= 0:
             getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
             return value
@@ -334,7 +411,7 @@ class VtimerServer(TangoServerPrototype):
 
     def read_pulse_stop_n(self, n):
         name = f'pulse_stop{n}'
-        value = self.tmr.read_channel_stop(n+1)
+        value = self.tmr.read_channel_stop(n + 1)
         if value >= 0:
             getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
             return value
@@ -361,7 +438,40 @@ class VtimerServer(TangoServerPrototype):
     def read_pulse_stop2(self):
         return self.read_pulse_stop_n(2)
 
+    def read_channel_enable3(self):
+        return self.read_channel_n(3)
+
+    def read_pulse_start3(self):
+        return self.read_pulse_start_n(3)
+
+    def read_pulse_stop3(self):
+        return self.read_pulse_stop_n(3)
+
+    def read_channel_enable4(self):
+        return self.read_channel_n(4)
+
+    def read_pulse_start4(self):
+        return self.read_pulse_start_n(4)
+
+    def read_pulse_stop4(self):
+        return self.read_pulse_stop_n(4)
+
+    def read_channel_enable5(self):
+        return self.read_channel_n(5)
+
+    def read_pulse_start5(self):
+        return self.read_pulse_start_n(5)
+
+    def read_pulse_stop5(self):
+        return self.read_pulse_stop_n(5)
+
     #   ---------------- custom attributes write --------------
+
+    def write_start_mode(self, v):
+        self.start_mode_value = v
+
+    def write_period(self, v):
+        self.period_value = v
 
     def write_run(self, value):
         result = self.tmr.write_run(value)
@@ -411,41 +521,53 @@ class VtimerServer(TangoServerPrototype):
         self.duration.set_write_value(-1)
         return False
 
-    def write_channel_enable0(self, value):
-        result = self.tmr.write_channel_enable(1, int(value))
+    def write_channel_n(self, n, value):
+        result = self.tmr.write_channel_enable(n + 1, int(value))
+        name = f'channel_enable{n}'
         if result:
-            self.channel_enable0.set_value(bool(value))
-            self.channel_enable0.set_quality(AttrQuality.ATTR_VALID)
+            getattr(self, name).set_value(bool(value))
+            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
             return True
-        self.channel_enable0.set_quality(AttrQuality.ATTR_INVALID)
-        msg = 'Channel 0 write error'
+        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'Channel {n} state write error'
         self.set_fault(msg)
-        self.channel1.set_write_value(False)
+        getattr(self, name).set_write_value(False)
         return False
+
+    def write_pulse_start_n(self, n, value):
+        name = f'pulse_start{n}'
+        result = self.tmr.write_channel_start(n + 1, int(value))
+        if result:
+            getattr(self, name).set_value(int(value))
+            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            return True
+        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'Channel {n} start time write error'
+        self.set_fault(msg)
+        getattr(self, name).set_write_value(-1)
+        return False
+
+    def write_pulse_stop_n(self, n, value):
+        name = f'pulse_stop{n}'
+        result = self.tmr.write_channel_stop(n + 1, int(value))
+        if result:
+            getattr(self, name).set_value(int(value))
+            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            return True
+        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'Channel {n} stop time write error'
+        self.set_fault(msg)
+        getattr(self, name).set_write_value(-1)
+        return False
+
+    def write_channel_enable0(self, value):
+        return self.write_channel_n(0, value)
 
     def write_pulse_start0(self, value):
-        result = self.tmr.write_channel_start(1, int(value))
-        if result:
-            self.pulse_start0.set_value(int(value))
-            self.pulse_start0.set_quality(AttrQuality.ATTR_VALID)
-            return True
-        self.pulse_start0.set_quality(AttrQuality.ATTR_INVALID)
-        msg = 'Channel 0 start time write error'
-        self.set_fault(msg)
-        self.pulse_start0.set_write_value(-1)
-        return False
+        return self.write_pulse_start_n(0, value)
 
     def write_pulse_stop0(self, value):
-        result = self.tmr.write_channel_stop(1, int(value))
-        if result:
-            self.pulse_stop0.set_value(int(value))
-            self.pulse_stop0.set_quality(AttrQuality.ATTR_VALID)
-            return True
-        self.pulse_stop0.set_quality(AttrQuality.ATTR_INVALID)
-        msg = 'Channel 1 start time write error'
-        self.set_fault(msg)
-        self.pulse_stop0.set_write_value(-1)
-        return False
+        return self.write_pulse_stop_n(0, value)
 
     def write_channel_enable1(self, value):
         return self.write_channel_n(1, value)
@@ -465,44 +587,32 @@ class VtimerServer(TangoServerPrototype):
     def write_pulse_stop2(self, value):
         return self.write_pulse_stop_n(2, value)
 
-    def write_channel_n(self, n, value):
-        result = self.tmr.write_channel_enable(n+1, int(value))
-        name = f'channel_enable{n}'
-        if result:
-            getattr(self, name).set_value(bool(value))
-            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
-            return True
-        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'Channel {n} state write error'
-        self.set_fault(msg)
-        getattr(self, name).set_write_value(False)
-        return False
+    def write_channel_enable3(self, value):
+        return self.write_channel_n(3, value)
 
-    def write_pulse_start_n(self, n,  value):
-        name = f'pulse_start{n}'
-        result = self.tmr.write_channel_start(n+1, int(value))
-        if result:
-            getattr(self, name).set_value(int(value))
-            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
-            return True
-        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'Channel {n} start time write error'
-        self.set_fault(msg)
-        getattr(self, name).set_write_value(-1)
-        return False
+    def write_pulse_start3(self, value):
+        return self.write_pulse_start_n(3, value)
 
-    def write_pulse_stop_n(self,n ,value):
-        name = f'pulse_stop{n}'
-        result = self.tmr.write_channel_stop(n+1, int(value))
-        if result:
-            getattr(self, name).set_value(int(value))
-            getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
-            return True
-        getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'Channel {n} stop time write error'
-        self.set_fault(msg)
-        getattr(self, name).set_write_value(-1)
-        return False
+    def write_pulse_stop3(self, value):
+        return self.write_pulse_stop_n(3, value)
+
+    def write_channel_enable4(self, value):
+        return self.write_channel_n(4, value)
+
+    def write_pulse_start4(self, value):
+        return self.write_pulse_start_n(4, value)
+
+    def write_pulse_stop4(self, value):
+        return self.write_pulse_stop_n(4, value)
+
+    def write_channel_enable5(self, value):
+        return self.write_channel_n(5, value)
+
+    def write_pulse_start5(self, value):
+        return self.write_pulse_start_n(5, value)
+
+    def write_pulse_stop5(self, value):
+        return self.write_pulse_stop_n(5, value)
 
     #   ---------------- custom commands --------------
 
