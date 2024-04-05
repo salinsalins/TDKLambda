@@ -25,38 +25,44 @@ class Vtimer(ModbusDevice):
         super().__init__(port, addr, **kwargs)
         self.id = 'Timer'
         self.pre = f'{self.id} at {self.port}: {self.addr} '
+        self.config = {'settings': [0, 0, 0, 1, 1], 'channels': [[0, 0, 0, 0, 1, 0, 1, 1] for i in range(12)]}
         errors = 0
-        v = self.modbus_write(0, [0, 0, 0, 1])
-        if v != 4:
-            self.info(f' Status initialization error')
+        v = self.modbus_write(0, self.config['settings'])
+        if v != 5:
+            self.debug(f'Settings initialization error')
             errors += 1
-        data = [0, 0, 0, 0, 1, 0, 1, 1]
         for i in range(1, 12):
-            v = self.modbus_write(16 * i, data)
+            v = self.modbus_write(16 * i, self.config['channels'][i])
             if v != 8:
-                self.info(f' Channel {i} initialization error')
+                self.debug(f'Channel {i} initialization error')
                 errors += 1
         if errors == 0:
             self.ready = True
+            self.info('has been initialized')
         else:
             self.ready = False
-        self.debug('has been initialized')
+            self.info('has been initialized with errors')
 
     def read_channel_start(self, n: int) -> int:
         delay = self.modbus_read(16 * n + 1, 2)
         if delay:
-            return delay[0] * 0x10000 + delay[1]
+            v= delay[0] * 0x10000 + delay[1]
+            self.config['channels'][n][0] = v
+            return v
         return -1
 
     def read_channel_stop(self, n: int) -> int:
         delay = self.modbus_read(16 * n + 3, 2)
         if delay:
-            return delay[0] * 0x10000 + delay[1]
+            v = delay[0] * 0x10000 + delay[1]
+            self.config['channels'][n][1] = v
+            return v
         return -1
 
     def read_channel_enable(self, n: int) -> int:
         data = self.modbus_read(16 * n, 1)
         if data:
+            self.config['channels'][n][1] = data[0]
             return data[0]
         else:
             return -1
@@ -64,6 +70,7 @@ class Vtimer(ModbusDevice):
     def read_run(self) -> int:
         data = self.modbus_read(0, 1)
         if data:
+            self.config['settings'][0] = data[0]
             return data[0]
         else:
             return -1
@@ -71,6 +78,7 @@ class Vtimer(ModbusDevice):
     def read_mode(self) -> int:
         data = self.modbus_read(1, 1)
         if data:
+            self.config['settings'][1] = data[0]
             return data[0]
         else:
             return -1
@@ -86,6 +94,7 @@ class Vtimer(ModbusDevice):
     def read_output(self) -> int:
         data = self.modbus_read(4, 1)
         if data:
+            self.config['settings'][4] = data[0]
             return data[0]
         else:
             # self.debug(' Output register read error')
@@ -102,7 +111,9 @@ class Vtimer(ModbusDevice):
     def read_duration(self) -> int:
         data = self.modbus_read(2, 2)
         if data:
-            return data[0] * 65536 + data[1]
+            v = data[0] * 0x10000 + data[1]
+            self.config['settings'][2] = v
+            return v
         else:
             # self.debug(' Script duration read error')
             return -1

@@ -15,7 +15,7 @@ from log_exception import log_exception
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Modbus Device sceleton module Python API'
 APPLICATION_NAME_SHORT = 'ModbusDevice'
-APPLICATION_VERSION = '0.1'
+APPLICATION_VERSION = '1.0'
 
 
 def modbus_crc(msg: bytes) -> int:
@@ -91,12 +91,21 @@ class ModbusDevice:
                 self.debug('has been deleted')
 
     def debug(self, msg, *args, **kwargs):
+        sl = kwargs.pop('stacklevel', 1)
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 8:
+            kwargs['stacklevel'] = sl + 2
         self.logger.debug(f'{self.pre} {msg}', *args, **kwargs)
 
     def info(self, msg, *args, **kwargs):
+        sl = kwargs.pop('stacklevel', 1)
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 8:
+            kwargs['stacklevel'] = sl + 2
         self.logger.info(f'{self.pre} {msg}', *args, **kwargs)
 
     def warning(self, msg, *args, **kwargs):
+        sl = kwargs.pop('stacklevel', 1)
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 8:
+            kwargs['stacklevel'] = sl + 2
         self.logger.warning(f'{self.pre} {msg}', *args, **kwargs)
 
     def create_com_port(self):

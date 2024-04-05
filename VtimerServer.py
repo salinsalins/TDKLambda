@@ -22,7 +22,7 @@ from Vtimer import Vtimer
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Vtimer Python Tango Server'
 APPLICATION_NAME_SHORT = os.path.basename(__file__).replace('.py', '')
-APPLICATION_VERSION = '0.1'
+APPLICATION_VERSION = '1.0'
 
 DEFAULT_PORT = 'COM17'
 DEFAULT_ADDRESS = 1
@@ -635,9 +635,11 @@ class VtimerServer(TangoServerPrototype):
 
 
 def looping():
-    for dev in TangoServerPrototype.devices:
+    for dn in TangoServerPrototype.devices:
+        dev = TangoServerPrototype.devices[dn]
         if dev.start_mode_value and dev.period_value > 0.0:
             if dev.last_pulse_time + dev.period_value < time.time():
+                # dev.start_pulse()
                 dev.last_pulse_time = time.time()
                 print('Pulse')
     time.sleep(0.1)
