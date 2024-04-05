@@ -11,8 +11,7 @@ if util_path not in sys.path:
     sys.path.append(util_path)
 del util_path
 
-import tango
-from tango import Attribute, AttrQuality, AttrWriteType, DispLevel
+from tango import AttrQuality, AttrWriteType, DispLevel
 from tango import DevState
 from tango.server import attribute, command
 
@@ -218,6 +217,114 @@ class VtimerServer(TangoServerPrototype):
                             unit="ms",
                             doc="Channel 5 stop time [ms]")
 
+    channel_enable6 = attribute(label="Channel 6", dtype=bool,
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 6 ON/OFF state")
+
+    pulse_start6 = attribute(label="Channel 6 start", dtype=int,
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 6 start time [ms]")
+
+    pulse_stop6 = attribute(label="Channel 6 stop", dtype=int,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 6 stop time [ms]")
+
+    channel_enable7 = attribute(label="Channel 7", dtype=bool,
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 7 ON/OFF state")
+
+    pulse_start7 = attribute(label="Channel 7 start", dtype=int,
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 7 start time [ms]")
+
+    pulse_stop7 = attribute(label="Channel 7 stop", dtype=int,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 7 stop time [ms]")
+
+    channel_enable8 = attribute(label="Channel 8", dtype=bool,
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 8 ON/OFF state")
+
+    pulse_start8 = attribute(label="Channel 8 start", dtype=int,
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 5 start time [ms]")
+
+    pulse_stop8 = attribute(label="Channel 8 stop", dtype=int,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 8 stop time [ms]")
+
+    channel_enable9 = attribute(label="Channel 9", dtype=bool,
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 9 ON/OFF state")
+
+    pulse_start9 = attribute(label="Channel 9 start", dtype=int,
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 9 start time [ms]")
+
+    pulse_stop9 = attribute(label="Channel 9 stop", dtype=int,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 9 stop time [ms]")
+
+    channel_enable10 = attribute(label="Channel 10", dtype=bool,
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 10 ON/OFF state")
+
+    pulse_start10 = attribute(label="Channel 10 start", dtype=int,
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 10 start time [ms]")
+
+    pulse_stop10 = attribute(label="Channel 10 stop", dtype=int,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 10 stop time [ms]")
+
+    channel_enable11 = attribute(label="Channel 11", dtype=bool,
+                                display_level=DispLevel.OPERATOR,
+                                access=AttrWriteType.READ_WRITE,
+                                unit="",
+                                doc="Channel 11 ON/OFF state")
+
+    pulse_start11 = attribute(label="Channel 11 start", dtype=int,
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 5 start time [ms]")
+
+    pulse_stop11 = attribute(label="Channel 11 stop", dtype=int,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="ms",
+                            doc="Channel 11 stop time [ms]")
+
     def init_device(self):
         super().init_device()
         self.pre = f'{self.get_name()} Vtimer'
@@ -259,7 +366,7 @@ class VtimerServer(TangoServerPrototype):
         msg = 'Device has been deleted'
         self.log_info(msg)
 
-    #   ---------------- attributes read --------------
+    # region ---------------- attributes read --------------
     def read_port(self):
         if self.tmr.ready:
             self.set_running()
@@ -281,8 +388,9 @@ class VtimerServer(TangoServerPrototype):
         else:
             self.set_fault()
             return "Uninitialized"
+    # endregion
 
-    #   ---------------- custom attributes read --------------
+    # region ---------------- custom attributes read --------------
     def read_start_mode(self):
         return self.start_mode_value
 
@@ -359,36 +467,6 @@ class VtimerServer(TangoServerPrototype):
         self.set_fault(msg)
         return False
 
-    def read_channel_enable0(self):
-        value = self.tmr.read_channel_enable(1)
-        if value >= 0:
-            self.channel_enable0.set_quality(AttrQuality.ATTR_VALID)
-            return bool(value)
-        self.channel_enable0.set_quality(AttrQuality.ATTR_INVALID)
-        msg = 'Channel 0 state read error'
-        self.set_fault(msg)
-        return False
-
-    def read_pulse_start0(self):
-        value = self.tmr.read_channel_start(1)
-        if value >= 0:
-            self.pulse_start0.set_quality(AttrQuality.ATTR_VALID)
-            return value
-        self.pulse_start0.set_quality(AttrQuality.ATTR_INVALID)
-        msg = 'Channel 0 start time read error'
-        self.set_fault(msg)
-        return False
-
-    def read_pulse_stop0(self):
-        value = self.tmr.read_channel_stop(1)
-        if value >= 0:
-            self.pulse_stop0.set_quality(AttrQuality.ATTR_VALID)
-            return value
-        self.pulse_stop0.set_quality(AttrQuality.ATTR_INVALID)
-        msg = 'Channel 0 stop time read error'
-        self.set_fault(msg)
-        return False
-
     def read_channel_n(self, n):
         name = f'channel_enable{n}'
         value = self.tmr.read_channel_enable(n + 1)
@@ -421,6 +499,15 @@ class VtimerServer(TangoServerPrototype):
         msg = f'Channel {n} stop time read error'
         self.set_fault(msg)
         return False
+
+    def read_channel_enable0(self):
+        return self.read_channel_n(0)
+
+    def read_pulse_start0(self):
+        return self.read_pulse_start_n(0)
+
+    def read_pulse_stop0(self):
+        return self.read_pulse_stop_n(0)
 
     def read_channel_enable1(self):
         return self.read_channel_n(1)
@@ -467,7 +554,62 @@ class VtimerServer(TangoServerPrototype):
     def read_pulse_stop5(self):
         return self.read_pulse_stop_n(5)
 
-    #   ---------------- custom attributes write --------------
+    def read_channel_enable6(self):
+        return self.read_channel_n(6)
+
+    def read_pulse_start6(self):
+        return self.read_pulse_start_n(6)
+
+    def read_pulse_stop6(self):
+        return self.read_pulse_stop_n(6)
+
+    def read_channel_enable7(self):
+        return self.read_channel_n(7)
+
+    def read_pulse_start7(self):
+        return self.read_pulse_start_n(7)
+
+    def read_pulse_stop7(self):
+        return self.read_pulse_stop_n(7)
+
+    def read_channel_enable8(self):
+        return self.read_channel_n(8)
+
+    def read_pulse_start8(self):
+        return self.read_pulse_start_n(8)
+
+    def read_pulse_stop8(self):
+        return self.read_pulse_stop_n(8)
+
+    def read_channel_enable9(self):
+        return self.read_channel_n(9)
+
+    def read_pulse_start9(self):
+        return self.read_pulse_start_n(9)
+
+    def read_pulse_stop9(self):
+        return self.read_pulse_stop_n(9)
+
+    def read_channel_enable10(self):
+        return self.read_channel_n(10)
+
+    def read_pulse_start10(self):
+        return self.read_pulse_start_n(10)
+
+    def read_pulse_stop10(self):
+        return self.read_pulse_stop_n(10)
+
+    def read_channel_enable11(self):
+        return self.read_channel_n(11)
+
+    def read_pulse_start11(self):
+        return self.read_pulse_start_n(11)
+
+    def read_pulse_stop11(self):
+        return self.read_pulse_stop_n(11)
+    # endregion
+
+    # region ---------------- custom attributes write --------------
 
     def write_start_mode(self, v):
         self.start_mode_value = v
@@ -616,7 +758,62 @@ class VtimerServer(TangoServerPrototype):
     def write_pulse_stop5(self, value):
         return self.write_pulse_stop_n(5, value)
 
-    #   ---------------- custom commands --------------
+    def write_channel_enable6(self, value):
+        return self.write_channel_n(6, value)
+
+    def write_pulse_start6(self, value):
+        return self.write_pulse_start_n(6, value)
+
+    def write_pulse_stop6(self, value):
+        return self.write_pulse_stop_n(6, value)
+
+    def write_channel_enable7(self, value):
+        return self.write_channel_n(7, value)
+
+    def write_pulse_start7(self, value):
+        return self.write_pulse_start_n(7, value)
+
+    def write_pulse_stop7(self, value):
+        return self.write_pulse_stop_n(7, value)
+
+    def write_channel_enable8(self, value):
+        return self.write_channel_n(8, value)
+
+    def write_pulse_start8(self, value):
+        return self.write_pulse_start_n(8, value)
+
+    def write_pulse_stop8(self, value):
+        return self.write_pulse_stop_n(8, value)
+
+    def write_channel_enable9(self, value):
+        return self.write_channel_n(9, value)
+
+    def write_pulse_start9(self, value):
+        return self.write_pulse_start_n(9, value)
+
+    def write_pulse_stop9(self, value):
+        return self.write_pulse_stop_n(9, value)
+
+    def write_channel_enable10(self, value):
+        return self.write_channel_n(10, value)
+
+    def write_pulse_start10(self, value):
+        return self.write_pulse_start_n(10, value)
+
+    def write_pulse_stop10(self, value):
+        return self.write_pulse_stop_n(10, value)
+
+    def write_channel_enable11(self, value):
+        return self.write_channel_n(11, value)
+
+    def write_pulse_start11(self, value):
+        return self.write_pulse_start_n(11, value)
+
+    def write_pulse_stop11(self, value):
+        return self.write_pulse_stop_n(11, value)
+    # endregion
+
+    # region ---------------- custom commands --------------
 
     @command(dtype_in=None, doc_in='Initiate timer pulse',
              dtype_out=bool, doc_out='True if success')
@@ -632,6 +829,7 @@ class VtimerServer(TangoServerPrototype):
         self.log_debug(msg)
         self.set_state(DevState.RUNNING, msg)
         return False
+    # endregion
 
 
 def looping():
