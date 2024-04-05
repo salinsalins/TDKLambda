@@ -77,6 +77,7 @@ class ModbusDevice:
                 ModbusDevice._devices.append(self)
         if not self.com.ready:
             self.info('COM port not ready')
+            self.suspend()
             return
         self.id = 'Modbus device'
         self.pre = f'{self.id} at {self.port}: {self.addr} '
@@ -238,6 +239,16 @@ class ModbusDevice:
             return 0
         data = int.from_bytes(self.response[4:6])
         return data
+
+    @property
+    def ready(self):
+        if time.time() < self.suspend_to:
+            return False
+        # was suspended try to init
+        if self.suspend_to > 0.0:
+            self.__del__()
+            self.__init__(self.port, self.addr, **self.kwargs)
+        return self.suspend_to <= 0.0
 
 
 if __name__ == "__main__":
