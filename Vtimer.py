@@ -1,18 +1,6 @@
-import os
-import sys
 import time
-from threading import Lock
 
 from ModbusDevice import ModbusDevice
-
-util_path = os.path.realpath('../TangoUtils')
-if util_path not in sys.path:
-    sys.path.append(util_path)
-del util_path
-
-from ComPort import EmptyComPort, ComPort
-from config_logger import config_logger
-from log_exception import log_exception
 
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Vtimer I/O modules Python API'
