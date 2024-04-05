@@ -50,6 +50,7 @@ class VtimerServer(TangoServerPrototype):
                             unit="", format="%s",
                             doc="Vtimer device type")
 
+    # region ---------------- custom attributes --------------
     run = attribute(label="Run", dtype=int,
                     display_level=DispLevel.OPERATOR,
                     access=AttrWriteType.READ_WRITE,
@@ -108,7 +109,9 @@ class VtimerServer(TangoServerPrototype):
                            access=AttrWriteType.READ_WRITE,
                            unit="",
                            doc="Auto start mode")
+    # endregion
 
+    # region ---------------- channels --------------
     channel_enable0 = attribute(label="Channel 0", dtype=bool,
                                 display_level=DispLevel.OPERATOR,
                                 access=AttrWriteType.READ_WRITE,
@@ -290,40 +293,41 @@ class VtimerServer(TangoServerPrototype):
                             doc="Channel 9 stop time [ms]")
 
     channel_enable10 = attribute(label="Channel 10", dtype=bool,
-                                display_level=DispLevel.OPERATOR,
-                                access=AttrWriteType.READ_WRITE,
-                                unit="",
-                                doc="Channel 10 ON/OFF state")
+                                 display_level=DispLevel.OPERATOR,
+                                 access=AttrWriteType.READ_WRITE,
+                                 unit="",
+                                 doc="Channel 10 ON/OFF state")
 
     pulse_start10 = attribute(label="Channel 10 start", dtype=int,
-                             display_level=DispLevel.OPERATOR,
-                             access=AttrWriteType.READ_WRITE,
-                             unit="ms",
-                             doc="Channel 10 start time [ms]")
+                              display_level=DispLevel.OPERATOR,
+                              access=AttrWriteType.READ_WRITE,
+                              unit="ms",
+                              doc="Channel 10 start time [ms]")
 
     pulse_stop10 = attribute(label="Channel 10 stop", dtype=int,
-                            display_level=DispLevel.OPERATOR,
-                            access=AttrWriteType.READ_WRITE,
-                            unit="ms",
-                            doc="Channel 10 stop time [ms]")
-
-    channel_enable11 = attribute(label="Channel 11", dtype=bool,
-                                display_level=DispLevel.OPERATOR,
-                                access=AttrWriteType.READ_WRITE,
-                                unit="",
-                                doc="Channel 11 ON/OFF state")
-
-    pulse_start11 = attribute(label="Channel 11 start", dtype=int,
                              display_level=DispLevel.OPERATOR,
                              access=AttrWriteType.READ_WRITE,
                              unit="ms",
-                             doc="Channel 5 start time [ms]")
+                             doc="Channel 10 stop time [ms]")
+
+    channel_enable11 = attribute(label="Channel 11", dtype=bool,
+                                 display_level=DispLevel.OPERATOR,
+                                 access=AttrWriteType.READ_WRITE,
+                                 unit="",
+                                 doc="Channel 11 ON/OFF state")
+
+    pulse_start11 = attribute(label="Channel 11 start", dtype=int,
+                              display_level=DispLevel.OPERATOR,
+                              access=AttrWriteType.READ_WRITE,
+                              unit="ms",
+                              doc="Channel 5 start time [ms]")
 
     pulse_stop11 = attribute(label="Channel 11 stop", dtype=int,
-                            display_level=DispLevel.OPERATOR,
-                            access=AttrWriteType.READ_WRITE,
-                            unit="ms",
-                            doc="Channel 11 stop time [ms]")
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ_WRITE,
+                             unit="ms",
+                             doc="Channel 11 stop time [ms]")
+    # endregion
 
     def init_device(self):
         super().init_device()
@@ -388,6 +392,7 @@ class VtimerServer(TangoServerPrototype):
         else:
             self.set_fault()
             return "Uninitialized"
+
     # endregion
 
     # region ---------------- custom attributes read --------------
@@ -607,6 +612,7 @@ class VtimerServer(TangoServerPrototype):
 
     def read_pulse_stop11(self):
         return self.read_pulse_stop_n(11)
+
     # endregion
 
     # region ---------------- custom attributes write --------------
@@ -811,6 +817,7 @@ class VtimerServer(TangoServerPrototype):
 
     def write_pulse_stop11(self, value):
         return self.write_pulse_stop_n(11, value)
+
     # endregion
 
     # region ---------------- custom commands --------------
