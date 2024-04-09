@@ -13,7 +13,7 @@ class Vtimer(ModbusDevice):
         super().__init__(port, addr, **kwargs)
         self.id = 'Timer'
         self.pre = f'{self.id} at {self.port}: {self.addr} '
-        self.config = {'settings': [0, 0, 0, 1, 1], 'channels': [[0, 0, 0, 0, 1, 0, 1, 1] for i in range(12)]}
+        self.config = {'settings': [0, 0, 0, 1, 1], 'channels': [[0, 0, 0, 0, 1, 0, 1, 1] for i in range(13)]}
         errors = 0
         v = self.modbus_write(0, self.config['settings'])
         if v != 5:
