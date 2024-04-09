@@ -25,10 +25,10 @@ class Vtimer(ModbusDevice):
                 self.debug(f'Channel {i} initialization error')
                 errors += 1
         if errors == 0:
-            self.ready = True
+            self.vt_ready = True
             self.info('has been initialized')
         else:
-            self.ready = False
+            self.vt_ready = False
             self.info('has been initialized with errors')
 
     def read_channel_start(self, n: int) -> int:
