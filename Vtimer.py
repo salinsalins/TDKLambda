@@ -157,7 +157,7 @@ class Vtimer(ModbusDevice):
             return False
         self.stop[n-1] = v
         ms = max(self.stop)
-        if self.duration < ms:
+        if self.duration != ms:
             return self.write_duration(ms)
         return True
 
