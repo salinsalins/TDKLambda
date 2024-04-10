@@ -80,6 +80,12 @@ class Vtimer(ModbusDevice):
         else:
             return -1
 
+    def read_channel(self, n: int) -> [int]:
+        result = self.modbus_read(16 * n, 5)
+        if len(result) != 5:
+            return []
+        return result
+
     def read_run(self) -> int:
         data = self.modbus_read(0, 1)
         if data:
@@ -212,10 +218,13 @@ if __name__ == "__main__":
     print(a)
     print('')
 
+    n = 100
     t_0 = time.time()
-    v = ot1.write_channel_stop(1, 100)
-    dt = int((time.time() - t_0) * 1000.0)  # ms
-    a = '%s:%s %s %s %s' % (ot1.port, ot1.addr, 'write_stop(1)->', v, '%4d ms ' % dt)
+    for i in range(n):
+        # v = ot1.write_channel_stop(1, 100)
+        v = ot1.modbus_read(16, 5)
+    dt = ((time.time() - t_0) * 1000.0)  # ms
+    a = '%s:%s %s %s %s' % (ot1.port, ot1.addr, 'write_stop(1)->', v, '%4f ms ' % (dt/n))
     print(a)
     print('')
 
@@ -228,7 +237,7 @@ if __name__ == "__main__":
 
     t_0 = time.time()
     v = ot1.read_channel_stop(1)
-    dt = int((time.time() - t_0) * 1000.0)  # ms
+    dt = ((time.time() - t_0) * 1000.0)  # ms
     a = '%s:%s %s %s %s' % (ot1.port, ot1.addr, 'read_stop(1)->', v, '%4d ms ' % dt)
     print(a)
     print('')
