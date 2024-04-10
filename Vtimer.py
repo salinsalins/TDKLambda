@@ -84,7 +84,13 @@ class Vtimer(ModbusDevice):
         result = self.modbus_read(16 * n, 5)
         if len(result) != 5:
             return []
-        return result
+        s1 = result[0]
+        self.enable[n-1] = s1
+        s2 = result[1] * 0x10000 + result[2]
+        self.start[n - 1] = s2
+        s3 = result[3] * 0x10000 + result[4]
+        self.stop[n - 1] = s3
+        return [s1, s2, s3]
 
     def read_run(self) -> int:
         data = self.modbus_read(0, 1)

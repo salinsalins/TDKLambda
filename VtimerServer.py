@@ -834,10 +834,23 @@ class VtimerServer(TangoServerPrototype):
             result = self.tmr.write_run(1)
             if result == 1:
                 self.last_pulse_time = time.time()
+                self.set_running()
                 return True
         msg = f'Start pulse execution error {self.tmr.error}'
         self.log_debug(msg)
-        self.set_state(DevState.RUNNING, msg)
+        self.set_fault(msg)
+        return False
+
+    @command(dtype_in=int, doc_in='Fast read channel data',
+             dtype_out=[int], doc_out='[Enable, Start, Stop]')
+    def read_channel(self, n):
+        result = self.tmr.read_channel(n+1)
+        if result:
+            self.set_running()
+            return result
+        msg = f'Fast read channel error {self.tmr.error}'
+        self.log_debug(msg)
+        self.set_fault(msg)
         return False
     # endregion
 
