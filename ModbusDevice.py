@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import time
@@ -52,7 +53,7 @@ class ModbusDevice:
         self.read_timeout = kwargs.pop('read_timeout', ModbusDevice.READ_TIMEOUT)
         self.suspend_delay = kwargs.pop('suspend_delay', ModbusDevice.SUSPEND_DELAY)
         # logger
-        self.logger = kwargs.get('logger', config_logger())
+        self.logger = kwargs.get('logger', config_logger(level=logging.DEBUG))
         # logs prefix
         self.pre = f'{self.id} at {self.port}: {self.addr} '
         # additional arguments for COM port creation
@@ -142,6 +143,8 @@ class ModbusDevice:
         return cmd[-2:] == cs
 
     def write(self, cmd) -> bool:
+        if not self.ready:
+            return False
         if isinstance(cmd, str):
             cmd = cmd.encode()
         if not isinstance(cmd, bytes):
@@ -149,9 +152,14 @@ class ModbusDevice:
         cmd = self.add_checksum(cmd)
         self.request = cmd
         n = self.com.write(cmd)
-        return len(cmd) == n
+        if len(cmd) != n:
+            self.suspend()
+            return False
+        return True
 
     def read(self) -> bool:
+        if not self.ready:
+            return False
         self.error = 0
         self.response = b''
         self.read_timeout = time.time() + self.READ_TIMEOUT
@@ -182,6 +190,7 @@ class ModbusDevice:
         while time.time() < self.read_timeout and len(self.response) < k:
             self.response += self.com.read(1000)
         if time.time() >= self.read_timeout:
+            self.suspend()
             return False
         return self.check_response(self.response)
 
