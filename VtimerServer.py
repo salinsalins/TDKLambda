@@ -428,6 +428,7 @@ class VtimerServer(TangoServerPrototype):
         value = self.tmr.read_duration()
         if value >= 0:
             self.duration.set_quality(AttrQuality.ATTR_VALID)
+            self.duration.set_write_value(value)
             return value
         self.duration.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Script duration read error'
