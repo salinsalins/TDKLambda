@@ -266,7 +266,7 @@ class VtimerServer(TangoServerPrototype):
                              display_level=DispLevel.OPERATOR,
                              access=AttrWriteType.READ_WRITE,
                              unit="ms",
-                             doc="Channel 5 start time [ms]")
+                             doc="Channel 8 start time [ms]")
 
     pulse_stop8 = attribute(label="Channel 8 stop", dtype=int,
                             display_level=DispLevel.OPERATOR,
@@ -339,6 +339,7 @@ class VtimerServer(TangoServerPrototype):
         self.last_pulse_time = 0.0
         self.period_value = 0.0
         self.start_mode_value = False
+        self.max_time = 0
         # get port and address from property
         kwargs = {}
         port = self.config.get('port', DEFAULT_PORT)
@@ -354,6 +355,7 @@ class VtimerServer(TangoServerPrototype):
             self.mode.set_write_value(self.read_mode())
             self.output.set_write_value(self.read_output())
             self.period.set_write_value(self.read_period())
+            self.duration.set_write_value(self.read_duration())
             self.start_mode.set_write_value(self.read_start_mode())
             # set state to running
             msg = 'Created successfully'
