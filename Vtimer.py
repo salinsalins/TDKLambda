@@ -214,6 +214,13 @@ class Vtimer(ModbusDevice):
         self.duration = n
         return True
 
+def prr(obj):
+    print('Request')
+    for i in obj.request:
+        print(hex(i))
+    print('Response')
+    for i in obj.response:
+        print(hex(i))
 
 if __name__ == "__main__":
     ot1 = Vtimer("COM17", 1)
@@ -251,7 +258,7 @@ if __name__ == "__main__":
     t_0 = time.time()
     n = 500
     v0 = ot1.write_output(1)
-    v1 = ot1.write_duration(12 * n + 1)
+    # v1 = ot1.write_duration(12 * n + 1)
     for i in range(1, 13):
         v3 = ot1.write_channel_stop(i, i * n)
         v2 = ot1.write_channel_start(i, (i - 1) * n)

@@ -502,6 +502,7 @@ class VtimerServer(TangoServerPrototype):
         value = self.tmr.read_channel_stop(n + 1)
         if value >= 0:
             getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            # self.logger.debug('read %d %s', n, value)
             return value
         getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
         msg = f'Channel {n} stop time read error'
@@ -706,6 +707,7 @@ class VtimerServer(TangoServerPrototype):
         if result:
             getattr(self, name).set_value(int(value))
             getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            # self.logger.debug('write %d %s %s', n, value, result)
             return True
         getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
         msg = f'Channel {n} stop time write error'
