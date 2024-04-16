@@ -21,7 +21,7 @@ from Vtimer import Vtimer
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Vtimer Python Tango Server'
 APPLICATION_NAME_SHORT = os.path.basename(__file__).replace('.py', '')
-APPLICATION_VERSION = '1.0'
+APPLICATION_VERSION = '1.1'
 
 DEFAULT_PORT = 'COM17'
 DEFAULT_ADDRESS = 1
@@ -32,6 +32,7 @@ class VtimerServer(TangoServerPrototype):
     server_version_value = APPLICATION_VERSION
     server_name_value = APPLICATION_NAME
 
+    # region ---------------- standard attributes --------------
     port = attribute(label="Port", dtype=str,
                      display_level=DispLevel.OPERATOR,
                      access=AttrWriteType.READ,
@@ -50,6 +51,8 @@ class VtimerServer(TangoServerPrototype):
                             unit="", format="%s",
                             doc="Vtimer device type")
 
+    # endregion
+
     # region ---------------- custom attributes --------------
     run = attribute(label="Run", dtype=int,
                     display_level=DispLevel.OPERATOR,
@@ -67,12 +70,19 @@ class VtimerServer(TangoServerPrototype):
                      unit="",
                      doc="Mode register")
 
-    last = attribute(label="Last Run", dtype=int,
-                     display_level=DispLevel.OPERATOR,
-                     access=AttrWriteType.READ,
-                     unit="ms",
-                     format="%d",
-                     doc="Last script duration [ms]")
+    last_duration = attribute(label="Last Run", dtype=int,
+                              display_level=DispLevel.OPERATOR,
+                              access=AttrWriteType.READ,
+                              unit="ms",
+                              format="%d",
+                              doc="Last script duration [ms]")
+
+    last_time = attribute(label="Last Shot Time", dtype=float,
+                          display_level=DispLevel.OPERATOR,
+                          access=AttrWriteType.READ,
+                          unit="",
+                          format="%f",
+                          doc="Last shot time UTF")
 
     duration = attribute(label="Script duration", dtype=int,
                          display_level=DispLevel.OPERATOR,
@@ -327,6 +337,7 @@ class VtimerServer(TangoServerPrototype):
                              access=AttrWriteType.READ_WRITE,
                              unit="ms",
                              doc="Channel 11 stop time [ms]")
+
     # endregion
 
     def init_device(self):
@@ -408,6 +419,7 @@ class VtimerServer(TangoServerPrototype):
         value = self.tmr.read_run()
         if value >= 0:
             self.run.set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return value
         self.run.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Run state read error'
@@ -418,6 +430,7 @@ class VtimerServer(TangoServerPrototype):
         value = self.tmr.read_mode()
         if value >= 0:
             self.mode.set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return value
         self.mode.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Mode read error'
@@ -429,26 +442,32 @@ class VtimerServer(TangoServerPrototype):
         if value >= 0:
             self.duration.set_quality(AttrQuality.ATTR_VALID)
             self.duration.set_write_value(value)
+            self.set_running()
             return value
         self.duration.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Script duration read error'
         self.set_fault(msg)
         return -1
 
-    def read_last(self):
+    def read_last_duration(self):
         value = self.tmr.read_last()
         if value >= 0:
-            self.last.set_quality(AttrQuality.ATTR_VALID)
+            self.last_duration.set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return value
-        self.last.set_quality(AttrQuality.ATTR_INVALID)
+        self.last_duration.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Run Time read error'
         self.set_fault(msg)
         return -1
+
+    def read_last_time(self):
+        return self.last_pulse_time
 
     def read_output(self):
         value = self.tmr.read_output()
         if value >= 0:
             self.output.set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return bool(value)
         self.output.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Output state read error'
@@ -459,6 +478,7 @@ class VtimerServer(TangoServerPrototype):
         value = self.tmr.read_status()
         if value >= 0:
             self.pulse.set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return bool(value)
         self.pulse.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Pulse ON|OFF state read error'
@@ -469,6 +489,7 @@ class VtimerServer(TangoServerPrototype):
         value = self.tmr.read_fault()
         if value >= 0:
             self.faults.set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return value
         self.faults.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Faults register read error'
@@ -480,6 +501,7 @@ class VtimerServer(TangoServerPrototype):
         value = self.tmr.read_channel_enable(n + 1)
         if value >= 0:
             getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return bool(value)
         getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
         msg = f'Channel {n} state read error'
@@ -632,6 +654,7 @@ class VtimerServer(TangoServerPrototype):
         if result:
             self.run.set_value(value)
             self.run.set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return True
         self.run.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Run state write error'
@@ -644,6 +667,7 @@ class VtimerServer(TangoServerPrototype):
         if result:
             self.mode.set_value(value)
             self.mode.set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return True
         self.mode.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Mode write error'
@@ -656,6 +680,7 @@ class VtimerServer(TangoServerPrototype):
         if result:
             self.output.set_value(bool(value))
             self.output.set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return True
         self.output.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Output write error'
@@ -668,6 +693,7 @@ class VtimerServer(TangoServerPrototype):
         if result:
             self.duration.set_value(int(value))
             self.duration.set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return True
         self.duration.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Total duration write error'
@@ -681,6 +707,7 @@ class VtimerServer(TangoServerPrototype):
         if result:
             getattr(self, name).set_value(bool(value))
             getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return True
         getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
         msg = f'Channel {n} state write error'
@@ -694,6 +721,7 @@ class VtimerServer(TangoServerPrototype):
         if result:
             getattr(self, name).set_value(int(value))
             getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
+            self.set_running()
             return True
         getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
         msg = f'Channel {n} start time write error'
@@ -707,7 +735,7 @@ class VtimerServer(TangoServerPrototype):
         if result:
             getattr(self, name).set_value(int(value))
             getattr(self, name).set_quality(AttrQuality.ATTR_VALID)
-            # self.logger.debug('write %d %s %s', n, value, result)
+            self.set_running()
             return True
         getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
         msg = f'Channel {n} stop time write error'
@@ -846,7 +874,7 @@ class VtimerServer(TangoServerPrototype):
     @command(dtype_in=int, doc_in='Fast read channel data',
              dtype_out=[int], doc_out='[Enable, Start, Stop]')
     def read_channel(self, n):
-        result = self.tmr.read_channel(n+1)
+        result = self.tmr.read_channel(n + 1)
         if result:
             self.set_running()
             return result
@@ -858,13 +886,13 @@ class VtimerServer(TangoServerPrototype):
 
 
 def looping():
-    for dn in TangoServerPrototype.devices:
-        dev = TangoServerPrototype.devices[dn]
-        if dev.start_mode_value and dev.period_value > 0.0:
-            if dev.last_pulse_time + dev.period_value < time.time():
-                # dev.start_pulse()
-                dev.last_pulse_time = time.time()
-                print('Pulse')
+    # for dn in TangoServerPrototype.devices:
+    #     dev = TangoServerPrototype.devices[dn]
+    #     if dev.start_mode_value and dev.period_value > 0.0:
+    #         if dev.last_pulse_time + dev.period_value < time.time():
+    #             # dev.start_pulse()
+    #             dev.last_pulse_time = time.time()
+    #             # print('Pulse')
     time.sleep(0.1)
 
 
