@@ -429,7 +429,7 @@ class VtimerServer(TangoServerPrototype):
         self.run.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Run state read error'
         self.set_fault(msg)
-        return -1
+        return 0
 
     def read_mode(self):
         value = self.tmr.read_mode()
@@ -440,7 +440,7 @@ class VtimerServer(TangoServerPrototype):
         self.mode.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Mode read error'
         self.set_fault(msg)
-        return -1
+        return 0
 
     def read_duration(self):
         value = self.tmr.read_duration()
@@ -452,7 +452,7 @@ class VtimerServer(TangoServerPrototype):
         self.duration.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Script duration read error'
         self.set_fault(msg)
-        return -1
+        return 0
 
     def read_last_duration(self):
         value = self.tmr.read_last()
@@ -463,7 +463,7 @@ class VtimerServer(TangoServerPrototype):
         self.last_duration.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Run Time read error'
         self.set_fault(msg)
-        return -1
+        return 0
 
     def read_last_time(self):
         return self.last_pulse_time
@@ -664,7 +664,7 @@ class VtimerServer(TangoServerPrototype):
         self.run.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Run state write error'
         self.set_fault(msg)
-        self.run.set_write_value(-1)
+        self.run.set_write_value(0)
         return False
 
     def write_mode(self, value):
@@ -677,7 +677,7 @@ class VtimerServer(TangoServerPrototype):
         self.mode.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Mode write error'
         self.set_fault(msg)
-        self.mode.set_write_value(-1)
+        self.mode.set_write_value(0)
         return False
 
     def write_output(self, value):
@@ -703,7 +703,7 @@ class VtimerServer(TangoServerPrototype):
         self.duration.set_quality(AttrQuality.ATTR_INVALID)
         msg = 'Total duration write error'
         self.set_fault(msg)
-        self.duration.set_write_value(-1)
+        self.duration.set_write_value(0)
         return False
 
     def write_channel_n(self, n, value):
@@ -731,7 +731,7 @@ class VtimerServer(TangoServerPrototype):
         getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
         msg = f'Channel {n} start time write error'
         self.set_fault(msg)
-        getattr(self, name).set_write_value(-1)
+        getattr(self, name).set_write_value(0)
         return False
 
     def write_pulse_stop_n(self, n, value):
@@ -745,7 +745,7 @@ class VtimerServer(TangoServerPrototype):
         getattr(self, name).set_quality(AttrQuality.ATTR_INVALID)
         msg = f'Channel {n} stop time write error'
         self.set_fault(msg)
-        getattr(self, name).set_write_value(-1)
+        getattr(self, name).set_write_value(0)
         return False
 
     def write_channel_enable0(self, value):
