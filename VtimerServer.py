@@ -351,6 +351,7 @@ class VtimerServer(TangoServerPrototype):
         self.period_value = 0.0
         self.start_mode_value = False
         self.max_time = 0
+        self.ready = False
         # get port and address from property
         kwargs = {}
         port = self.config.get('port', DEFAULT_PORT)
@@ -868,9 +869,28 @@ class VtimerServer(TangoServerPrototype):
             result = self.tmr.write_run(1)
             if result == 1:
                 self.last_pulse_time = time.time()
+                self.log_info('Pulse has been started')
                 self.set_running()
                 return True
         msg = f'Start pulse execution error {self.tmr.error}'
+        self.log_debug(msg)
+        self.set_fault(msg)
+        return False
+
+    @command(dtype_in=None, doc_in='Initiate timer pulse',
+             dtype_out=bool, doc_out='True if success')
+    def get_reday(self):
+        result = self.tmr.write_run(3)
+        if result == 1:
+            result = self.tmr.write_run(0)
+            result = self.tmr.write_run(2)
+            if result == 1:
+                # self.last_pulse_time = time.time()
+                self.ready = True
+                self.log_info('Ready for Pulse')
+                self.set_running()
+                return True
+        msg = f'Pulse enable execution error {self.tmr.error}'
         self.log_debug(msg)
         self.set_fault(msg)
         return False
@@ -890,13 +910,18 @@ class VtimerServer(TangoServerPrototype):
 
 
 def looping():
-    # for dn in TangoServerPrototype.devices:
-    #     dev = TangoServerPrototype.devices[dn]
-    #     if dev.start_mode_value and dev.period_value > 0.0:
-    #         if dev.last_pulse_time + dev.period_value < time.time():
-    #             # dev.start_pulse()
-    #             dev.last_pulse_time = time.time()
-    #             # print('Pulse')
+    for dn in TangoServerPrototype.devices:
+        dev = TangoServerPrototype.devices[dn]
+        # if dev.mode == 2:
+        #     if not dev.pulse:
+        #         dev.get_ready()
+        #     else:
+        #         dev.ready = False
+        # if dev.start_mode_value and dev.period_value > 0.0:
+            # if dev.last_pulse_time + dev.period_value < time.time():
+                # dev.start_pulse()
+                # dev.last_pulse_time = time.time()
+                # print('Pulse')
     time.sleep(0.1)
 
 
