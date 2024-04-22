@@ -21,7 +21,7 @@ from Vtimer import Vtimer
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Vtimer Python Tango Server'
 APPLICATION_NAME_SHORT = os.path.basename(__file__).replace('.py', '')
-APPLICATION_VERSION = '1.1'
+APPLICATION_VERSION = '1.2'
 
 DEFAULT_PORT = 'COM17'
 DEFAULT_ADDRESS = 1
@@ -362,6 +362,10 @@ class VtimerServer(TangoServerPrototype):
         self.pre = f'{self.get_name()} {self.tmr.pre}'
         # check if device OK
         if self.tmr.ready:
+            if 'mode' in self.config:
+                self.write_mode(self.config.get('mode', 0))
+            if 'output' in self.config:
+                self.write_output(self.config.get('output', True))
             self.run.set_write_value(self.read_run())
             self.mode.set_write_value(self.read_mode())
             self.output.set_write_value(self.read_output())
