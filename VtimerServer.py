@@ -373,6 +373,7 @@ class VtimerServer(TangoServerPrototype):
             self.period.set_write_value(self.read_period())
             self.duration.set_write_value(self.read_duration())
             self.start_mode.set_write_value(self.read_start_mode())
+            self.pulse_stop0.set_write_value(self.read_pulse_stop0())
             # set state to running
             msg = 'Created successfully'
             self.set_state(DevState.RUNNING, msg)
