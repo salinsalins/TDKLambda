@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Vtimer tango device server
-
+import json
 import os
 import sys
 import time
@@ -21,7 +21,7 @@ from Vtimer import Vtimer
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Vtimer Python Tango Server'
 APPLICATION_NAME_SHORT = os.path.basename(__file__).replace('.py', '')
-APPLICATION_VERSION = '1.2'
+APPLICATION_VERSION = '1.3'
 
 DEFAULT_PORT = 'COM17'
 DEFAULT_ADDRESS = 1
@@ -880,7 +880,7 @@ class VtimerServer(TangoServerPrototype):
 
     @command(dtype_in=None, doc_in='Initiate timer pulse',
              dtype_out=bool, doc_out='True if success')
-    def get_reday(self):
+    def get_ready(self):
         result = self.tmr.write_run(3)
         if result == 1:
             result = self.tmr.write_run(0)
@@ -908,6 +908,26 @@ class VtimerServer(TangoServerPrototype):
         self.set_fault(msg)
         return False
     # endregion
+
+    @command(dtype_in=None, doc_in='Save current timer state',
+             dtype_out=None)
+    def save_state(self):
+        state = {}
+        state['mode'] = self.mode
+        state['output'] = self.output
+        state['period'] = self.period
+        state['duration'] = self.duration
+        for i in range(12):
+            name = f'channel_enable{i}'
+            state[name] = getattr(self, name)
+            name = f'pulse_start{i}'
+            state[name] = getattr(self, name)
+            name = f'pulse_stop{i}'
+            state[name] = getattr(self, name)
+        js = json.dumps(state)
+        self.set_device_property('state', js)
+        self.logger.debug('state %s', js)
+        self.set_running()
 
 
 def looping():
