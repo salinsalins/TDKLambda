@@ -144,21 +144,25 @@ class ModbusDevice:
 
     def write(self, cmd) -> bool:
         if not self.ready:
+            self.error = 262
             return False
         if isinstance(cmd, str):
             cmd = cmd.encode()
         if not isinstance(cmd, bytes):
             return False
+        self.error = 0
         cmd = self.add_checksum(cmd)
         self.request = cmd
         n = self.com.write(cmd)
         if len(cmd) != n:
+            self.error = 263
             self.suspend()
             return False
         return True
 
     def read(self) -> bool:
         if not self.ready:
+            self.error = 262
             return False
         self.error = 0
         self.response = b''
@@ -167,14 +171,17 @@ class ModbusDevice:
             self.response += self.com.read(1000)
         # read timeout
         if time.time() >= self.read_timeout:
+            self.error = 259
             self.suspend()
             return False
         # addr check
         if int(self.response[0]) != self.addr:
+            self.error = 260
             return False
         # op code check
         op = int(self.response[1])
         if op != self.command and op != (self.command + 128):
+            self.error = 261
             return False
         # calculate expected length of input
         if op > 128:
@@ -190,12 +197,15 @@ class ModbusDevice:
         while time.time() < self.read_timeout and len(self.response) < k:
             self.response += self.com.read(1000)
         if time.time() >= self.read_timeout:
+            self.error = 259
             self.suspend()
             return False
         return self.check_response(self.response)
 
     def check_response(self, cmd: bytes) -> bool:
+        self.error = 0
         if cmd[0] != self.addr:
+            self.error = 257
             self.debug('Wrong address %d returned', cmd[0])
             return False
         op = int(cmd[1])
@@ -204,6 +214,7 @@ class ModbusDevice:
             self.debug('Error code %d returned for command %d', self.error, op-127)
             return False
         if int(cmd[1]) != self.command:
+            self.error = 258
             self.debug('Wrong command code %d returned', op)
             return False
         return self.verify_checksum(cmd)
