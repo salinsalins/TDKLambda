@@ -210,7 +210,7 @@ class ModbusDevice:
             return False
         op = int(cmd[1])
         if op > 127:
-            self.error = int.from_bytes(cmd[2:3])
+            self.error = int.from_bytes(cmd[2:3], byteorder='big')
             self.debug('Error code %d returned for command %d', self.error, op-127)
             return False
         if int(cmd[1]) != self.command:
@@ -221,43 +221,43 @@ class ModbusDevice:
 
     def modbus_read(self, start: int, length: int):
         self.command = 3
-        msg = self.addr.to_bytes(1) + self.command.to_bytes(1)
-        msg += int.to_bytes(start, 2)
-        msg += int.to_bytes(length, 2)
+        msg = self.addr.to_bytes(1, byteorder='big') + self.command.to_bytes(1, byteorder='big')
+        msg += int.to_bytes(start, 2, byteorder='big')
+        msg += int.to_bytes(length, 2, byteorder='big')
         if not self.write(msg):
             return []
         if not self.read():
             return []
         data = []
         for i in range(length):
-            data.append(int.from_bytes(self.response[2 * i + 3:2 * i + 5]))
+            data.append(int.from_bytes(self.response[2 * i + 3:2 * i + 5], byteorder='big'))
         return data
 
     def modbus_write(self, start: int, data) -> int:
         self.command = 16
         if isinstance(data, int):
-            out = int.to_bytes(data, 2)
+            out = int.to_bytes(data, 2, byteorder='big')
         else:
             out = b''
             for d in data:
                 if isinstance(d, int):
-                    out += d.to_bytes(2)
+                    out += d.to_bytes(2, byteorder='big')
                 elif isinstance(d, bytes):
                     out += d
                 else:
                     self.debug('Wrong data format for write')
                     return 0
         length = len(out)
-        msg = self.addr.to_bytes(1) + self.command.to_bytes(1)
+        msg = self.addr.to_bytes(1, byteorder='big') + self.command.to_bytes(1, byteorder='big')
         msg += int.to_bytes(start, 2, byteorder="big")
         msg += int.to_bytes(length // 2, 2, byteorder="big")
-        msg += int.to_bytes(length, 1)
+        msg += int.to_bytes(length, 1, byteorder='big')
         msg += out
         if not self.write(msg):
             return 0
         if not self.read():
             return 0
-        data = int.from_bytes(self.response[4:6])
+        data = int.from_bytes(self.response[4:6], byteorder='big')
         return data
 
     @property
