@@ -861,7 +861,7 @@ class VtimerServer(TangoServerPrototype):
 
     # region ---------------- custom commands --------------
 
-    @command(dtype_in=None, doc_in='Initiate timer pulse',
+    @command(dtype_in=None, doc_in='Start timer pulse',
              dtype_out=bool, doc_out='True if success')
     def start_pulse(self):
         result = self.tmr.write_run(3)
@@ -878,26 +878,28 @@ class VtimerServer(TangoServerPrototype):
         self.set_fault(msg)
         return False
 
-    @command(dtype_in=None, doc_in='Initiate timer pulse',
+    @command(dtype_in=None, doc_in='Prepare for external timer trigger',
              dtype_out=bool, doc_out='True if success')
     def get_ready(self):
         result = self.tmr.write_run(3)
         if result == 1:
             result = self.tmr.write_run(0)
-            result = self.tmr.write_run(2)
             if result == 1:
-                # self.last_pulse_time = time.time()
-                self.ready = True
-                self.log_info('Ready for Pulse')
-                self.set_running()
-                return True
+                result = self.tmr.write_run(2)
+                if result == 1:
+                    # self.last_pulse_time = time.time()
+                    self.ready = True
+                    self.log_info('Ready for Pulse')
+                    self.set_running()
+                    return True
+        self.ready = False
         msg = f'Pulse enable execution error {self.tmr.error}'
         self.log_debug(msg)
         self.set_fault(msg)
         return False
 
     @command(dtype_in=int, doc_in='Fast read channel data',
-             dtype_out=[int], doc_out='[Enable, Start, Stop]')
+             dtype_out=[int], doc_out='[Enable, Start, Stop]; [] if error')
     def read_channel(self, n):
         result = self.tmr.read_channel(n + 1)
         if result:
@@ -906,7 +908,7 @@ class VtimerServer(TangoServerPrototype):
         msg = f'Fast read channel error {self.tmr.error}'
         self.log_debug(msg)
         self.set_fault(msg)
-        return False
+        return []
     # endregion
 
     @command(dtype_in=None, doc_in='Save current timer state',
