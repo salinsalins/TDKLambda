@@ -51,16 +51,16 @@ class Vtimer(ModbusDevice):
                 self.write_duration(self.duration)
                 self.write_mode(self.mode)
                 for i in range(12):
-                    self.write_channel_stop(i+1, self.stop[i])
-                    self.write_channel_start(i+1, self.start[i])
-                    self.write_channel_enable(i+1, self.enable[i])
+                    self.write_channel_stop(i + 1, self.stop[i])
+                    self.write_channel_start(i + 1, self.start[i])
+                    self.write_channel_enable(i + 1, self.enable[i])
         return self.suspend_to <= 0.0
 
     def read_channel_start(self, n: int) -> int:
         delay = self.modbus_read(16 * n + 1, 2)
         if delay:
-            v= delay[0] * 0x10000 + delay[1]
-            self.start[n-1] = v
+            v = delay[0] * 0x10000 + delay[1]
+            self.start[n - 1] = v
             return v
         return -1
 
@@ -68,14 +68,14 @@ class Vtimer(ModbusDevice):
         delay = self.modbus_read(16 * n + 3, 2)
         if delay:
             v = delay[0] * 0x10000 + delay[1]
-            self.stop[n-1] = v
+            self.stop[n - 1] = v
             return v
         return -1
 
     def read_channel_enable(self, n: int) -> int:
         data = self.modbus_read(16 * n, 1)
         if data:
-            self.enable[n-1] = data[0]
+            self.enable[n - 1] = data[0]
             return data[0]
         else:
             return -1
@@ -85,7 +85,7 @@ class Vtimer(ModbusDevice):
         if len(result) != 5:
             return []
         s1 = result[0]
-        self.enable[n-1] = s1
+        self.enable[n - 1] = s1
         s2 = result[1] * 0x10000 + result[2]
         self.start[n - 1] = s2
         s3 = result[3] * 0x10000 + result[4]
@@ -157,7 +157,7 @@ class Vtimer(ModbusDevice):
         result = self.modbus_write(16 * n + 1, delay)
         if result != 2:
             return False
-        self.start[n-1] = v
+        self.start[n - 1] = v
         return True
 
     def write_channel_stop(self, n: int, v: int) -> bool:
@@ -167,7 +167,7 @@ class Vtimer(ModbusDevice):
         result = self.modbus_write(16 * n + 3, delay)
         if result != 2:
             return False
-        self.stop[n-1] = v
+        self.stop[n - 1] = v
         ms = max(self.stop)
         if self.duration != ms:
             return self.write_duration(ms)
@@ -177,7 +177,7 @@ class Vtimer(ModbusDevice):
         result = self.modbus_write(16 * n, int(bool(v)))
         if result != 1:
             return False
-        self.enable[n-1] = v
+        self.enable[n - 1] = v
         return True
 
     def enable_channel(self, n: int) -> bool:
@@ -214,6 +214,7 @@ class Vtimer(ModbusDevice):
         self.duration = n
         return True
 
+
 def prr(obj):
     print('Request')
     for i in obj.request:
@@ -221,6 +222,7 @@ def prr(obj):
     print('Response')
     for i in obj.response:
         print(hex(i))
+
 
 if __name__ == "__main__":
     ot1 = Vtimer("COM17", 1)
@@ -237,7 +239,7 @@ if __name__ == "__main__":
         # v = ot1.write_channel_stop(1, 100)
         v = ot1.modbus_read(16, 5)
     dt = ((time.time() - t_0) * 1000.0)  # ms
-    a = '%s:%s %s %s %s' % (ot1.port, ot1.addr, 'write_stop(1)->', v, '%4f ms ' % (dt/n))
+    a = '%s:%s %s %s %s' % (ot1.port, ot1.addr, 'write_stop(1)->', v, '%4f ms ' % (dt / n))
     print(a)
     print('')
 
