@@ -1,8 +1,10 @@
 import sys
+
 if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
-if '../IT6900' not in sys.path: sys.path.append('../IT6900')
+# if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 import time
 
+from ComPort import EmptyComPort
 from log_exception import log_exception
 from TDKLambda import TDKLambda
 
@@ -13,10 +15,18 @@ APPLICATION_VERSION = '2.0'
 
 ADAM_DEVICES = {
     '0000': {'di': 0, 'do': 0, 'ai': 0, 'ao': 0},
-    '4117': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
+    '4017+': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
+    '4017': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
+    '4119': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
     '4118': {'di': 0, 'do': 0, 'ai': 8, 'ao': 0},
+    '4021': {'di': 0, 'do': 0, 'ai': 0, 'ao': 1},
     '4024': {'di': 0, 'do': 0, 'ai': 0, 'ao': 4},
-    '4055': {'di': 8, 'do': 8, 'ai': 0, 'ao': 0}
+    '4050': {'di': 7, 'do': 8, 'ai': 0, 'ao': 0},
+    '4055': {'di': 8, 'do': 8, 'ai': 0, 'ao': 0},
+    '4056': {'di': 0, 'do': 12, 'ai': 0, 'ao': 0},
+    '4060': {'di': 0, 'do': 4, 'ai': 0, 'ao': 0},
+    '4068': {'di': 0, 'do': 8, 'ai': 0, 'ao': 0},
+    '4069': {'di': 0, 'do': 8, 'ai': 0, 'ao': 0}
 }
 ADAM_RANGES = {
     b'00': [-15, 15, 'mV'],
@@ -139,7 +149,7 @@ class Adam(TDKLambda):
         self.id = 'Unknown Device'
         while n < self.read_retries:
             n += 1
-            result = self._send_command(b'$'+self.addr_hex + b'M\r')
+            result = self._send_command(b'$' + self.addr_hex + b'M\r')
             if result and self.check_response():
                 self.id = self.response[3:-1].decode()
                 break
@@ -154,7 +164,7 @@ class Adam(TDKLambda):
                     self.name = key
                     break
         self.pre = f'ADAM{self.name} at {self.port}:{self.addr}'
-        if self.name == '0000':
+        if self.name == '0000' or (self.name not in ADAM_DEVICES):
             self.logger.info(f'ADAM at {self.port}:{self.addr} is not recognized')
             self.state = -4
             self.suspend()
@@ -263,6 +273,8 @@ class Adam(TDKLambda):
         return result
 
     def read_di(self, chan=None):
+        if self.di_n <= 0:
+            return None
         try:
             do, di = self.read_di_do()
             if chan is None:
@@ -356,7 +368,9 @@ class Adam(TDKLambda):
                 if not self.response.startswith(rsp):
                     self.logger.debug('Wrong response %s', self.response)
                     return None
-            return float(self.response[3:])
+                f = float(self.response[3:])
+                return f
+            return None
         except KeyboardInterrupt:
             raise
         except:
@@ -378,6 +392,21 @@ class Adam(TDKLambda):
             log_exception(self)
 
     def read_range(self, chan):
+        no_8c_modules = ['4017']
+        if self.name in no_8c_modules:
+            cmd = b'$%s2' % self.addr_hex
+            rsp = b'!%s' % self.addr_hex
+            try:
+                if self.send_command(cmd, prefix=b'', addr=False):
+                    if not self.response.startswith(rsp):
+                        return None
+                r = ADAM_RANGES[self.response[3:5]]
+                return r
+            except KeyboardInterrupt:
+                raise
+            except:
+                log_exception(self.logger, 'Error respotce %s', self.response)
+                return None
         cmd = b'$%s8C%X' % (self.addr_hex, chan)
         rsp = b'!%sC%X' % (self.addr_hex, chan)
         try:
@@ -392,58 +421,191 @@ class Adam(TDKLambda):
         except KeyboardInterrupt:
             raise
         except:
-            log_exception(self)
+            log_exception(self.logger, 'Error: Response = %s', self.response)
+
+
+class FakeAdam(Adam):
+    commands = {b'$010': b'!AA',
+                b'$011': b'!AA',
+                b'$016': b'!AA',
+                b'$015': b'!AA',
+                b'#01N': b'>+2.2',
+                b'#01': b'>+1.0+2.0+3.0+4.0+5.0+6.0+7.0+8.0',
+                b'$01M': b'!AA4017',
+                b'$01F': b'!AA10',
+                b'$012': b'!AA',
+                b'%01': b'!AA',
+                }
+
+    def __init__(self, *args, **kwargs):
+        self.TTCCFF = b'000000'
+        self.VV = b'FF'
+        kwargs['auto_addr'] = False
+        super().__init__(*args, **kwargs)
+
+    def create_com_port(self):
+        self.com = EmptyComPort(True)
+        return self.com
+
+    def _send_command(self, cmd, terminator=None):
+        self.command = cmd
+        self.response = b''
+        AA = cmd[1:3]
+        cmd = cmd[:1] + b'01' + cmd[3:-1]
+        if cmd.startswith(b'$015'):
+            self.VV = cmd[4:]
+            cmd = b'$015'
+        if cmd.startswith(b'%01'):
+            self.TTCCFF = cmd[5:]
+            cmd = b'%01'
+        if cmd.startswith(b'#01') and len(cmd) > 3:
+            cmd = b'#01N'
+        if cmd not in self.commands:
+            return b''
+        v = self.commands[cmd]
+        v = v.replace(b'AA', AA)
+        if cmd.startswith(b'$012'):
+            v += self.TTCCFF
+        if cmd.startswith(b'$016'):
+            v += self.VV
+        self.response = v + b'\r'
+        return v
+
+    def init(self):
+        self.suspend_to = 0.0
+        self.pre = f'ADAMxxxx at {self.port}:{self.addr}'
+        self.addr_hex = (b'%02X' % self.addr)[:2]
+        self.head_ok = b'!' + self.addr_hex
+        self.head_err = b'?' + self.addr_hex
+        self.name = '0000'
+        self.ai_n = 0
+        self.ao_n = 0
+        self.di_n = 0
+        self.do_n = 0
+        self.ao_masks = []
+        self.ai_masks = []
+        self.ai_ranges = []
+        self.ai_min = []
+        self.ai_max = []
+        self.ai_units = []
+        self.ao_ranges = []
+        self.ao_min = []
+        self.ao_max = []
+        self.ao_units = []
+        # check device address
+        if self.addr <= 0:
+            self.state = -1
+            self.logger.info(f'{self.pre} ' + self.STATES[self.state])
+            self.suspend()
+            return False
+        # check if port:address is in use
+        with TDKLambda._lock:
+            for d in TDKLambda._devices:
+                if d != self and d.port == self.port and d.addr == self.addr and d.state > 0:
+                    self.state = -2
+                    self.logger.info(f'{self.pre} ' + self.STATES[self.state])
+                    self.suspend()
+                    return False
+        if not self.com.ready:
+            self.state = -5
+            self.logger.info(f'{self.pre} ' + self.STATES[self.state])
+            self.suspend()
+            return False
+        # read device type
+        # self.id = self.read_device_id()
+        n = 0
+        self.id = 'Unknown Device'
+        while n < self.read_retries:
+            n += 1
+            result = self._send_command(b'$' + self.addr_hex + b'M\r')
+            if result and self.check_response():
+                self.id = self.response[3:-1].decode()
+                break
+        #
+        if self.id in ADAM_DEVICES:
+            self.name = self.id
+        else:
+            self.name = '0000'
+            for key in ADAM_DEVICES:
+                if self.id[-2:] == key[-2:]:
+                    self.logger.info(f'{self.pre} Using {key} instead of {self.id} for devise type')
+                    self.name = key
+                    break
+        self.pre = f'FakeADAM{self.name} at {self.port}:{self.addr}'
+        if self.name == '0000' or (self.name not in ADAM_DEVICES):
+            self.logger.info(f'ADAM at {self.port}:{self.addr} is not recognized')
+            self.state = -4
+            self.suspend()
+            return False
+        self.ai_n = ADAM_DEVICES[self.name]['ai']
+        self.ai_masks = [True] * self.ai_n
+        if self.ai_n > 0:
+            self.ai_masks = self.read_masks()
+        self.ao_n = ADAM_DEVICES[self.name]['ao']
+        self.ao_masks = [True] * self.ao_n
+        # if self.ao_n > 0:
+        #     self.ao_masks = self.read_masks()
+        self.di_n = ADAM_DEVICES[self.name]['di']
+        self.do_n = ADAM_DEVICES[self.name]['do']
+        self.ai_ranges = [self.read_range(c) for c in range(self.ai_n)]
+        self.ai_min = [i[0] for i in self.ai_ranges]
+        self.ai_max = [i[1] for i in self.ai_ranges]
+        self.ai_units = [i[2] for i in self.ai_ranges]
+        self.ao_ranges = [self.read_range(c) for c in range(self.ao_n)]
+        self.ao_min = [i[0] for i in self.ao_ranges]
+        self.ao_max = [i[1] for i in self.ao_ranges]
+        self.ao_units = [i[2] for i in self.ao_ranges]
+        self.state = 1
+        self.suspend_to = 0.0
+        self.logger.debug(f'{self.pre} has been initialized')
+        return True
 
 
 if __name__ == "__main__":
-    pd1 = Adam("COM12", 11, baudrate=38400)
-    pd2 = Adam("COM12", 16, baudrate=38400)
-    while True:
-        t_0 = time.time()
-        v1 = pd1.read_device_id()
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        a = '%s %s %s %s %s' % (pd1.port, pd1.addr, 'read_device_id ->', v1, '%4d ms ' % dt1)
-        # print(a)
+    pd1 = FakeAdam("COM16", 11, baudrate=38400)
+    pd2 = FakeAdam("COM16", 16, baudrate=38400)
+    pd = [pd1, pd2]
+    n = 1
+    while n:
+        n -= 1
+        for p in pd:
+            t_0 = time.time()
+            v = p.read_device_id()
+            dt = int((time.time() - t_0) * 1000.0)  # ms
+            a = '%s %s %s %s %s' % (p.port, p.addr, 'read_device_id ->', v, '%4d ms ' % dt)
+            d = p
+            if d.di_n > 0:
+                v = d.read_di(3)
+                print(d.name, 'r di[3] =', v, d.response)
+                v = d.read_di()
+                print(d.name, 'r di[*] =', v, d.response)
+                v = d.read_do()
+                print(d.name, 'r do=[*]', v, d.response)
+                v = d.write_do(3, True)
+                print(d.name, 'w do[3] =', v, d.response)
+                v = d.read_di()
+                print(d.name, 'r di=[*]', v, d.response)
+                v = d.read_do()
+                print(d.name, 'r do=[*]', v, d.response)
+                v = d.read_di(3)
+                print(d.name, 'r di[3] =', v, d.response)
+                v = d.read_do(3)
+                print(d.name, 'r do[3] =', v, d.response)
+                v = d.read_do()
+                print(d.name, 'r do=[*]', v, d.response)
+            #
+            if d.ai_n > 0:
+                v2 = p.read_ai(3)
+                print(p.name, 'r ai[3] =', v2, p.response)
+                v2 = p.read_ai()
+                print(p.name, 'r ai[*] =', v2, p.response)
+            #
+            if d.ao_n > 0:
+                ao = -1.5
+                v2 = p.write_ao(1, ao)
+                print(p.name, 'w ao[1] =', v2, ao, p.response)
+                v2 = p.read_ao(1)
+                print(p.name, 'r ao[1] =', v2, p.response)
 
-        t_0 = time.time()
-        v2 = pd2.read_device_id()
-        dt2 = int((time.time() - t_0) * 1000.0)  # ms
-        a = '%s %s %s %s %s' % (pd2.port, pd2.addr, 'read_device_id ->', v2, '%4d ms ' % dt2)
-        # print(a)
-
-    d = pd1
-    v = d.read_di(3)
-    print(d.name, 'r di[3]=', v, d.response)
-    v = d.read_di()
-    print(d.name, 'r di[*]=', v, d.response)
-    v = d.read_do()
-    print(d.name, 'r do=[*]', v, d.response)
-    v = d.write_do(3, False)
-    print(d.name, 'w do[3]=', v, d.response)
-    v = d.read_di()
-    print(d.name, 'r di=[*]', v, d.response)
-    v = d.read_do()
-    print(d.name, 'r do=[*]', v, d.response)
-    v = d.read_di(3)
-    print(d.name, 'r di[3]=', v, d.response)
-    v = d.read_do(3)
-    print(d.name, 'r do[3]=', v, d.response)
-    v = d.read_do()
-    print(d.name, 'r do=[*]', v, d.response)
-    #
-    v2 = pd1.read_ai(3)
-    print(pd1.name, 'r ai[3]=', v2, pd1.response)
-    v2 = pd1.read_ai()
-    print(pd1.name, 'r ai[*]=', v2, pd1.response)
-    v2 = pd1.read_di()
-    print(pd1.name, 'r di[*]=', v2, pd1.response)
-    #
-    ao = -1.5
-    v2 = pd2.write_ao(1, ao)
-    print(pd2.name, 'w ao[1]=', v2, ao, pd2.response)
-    v2 = pd2.read_ao(1)
-    print(pd2.name, 'r ao[1]=', v2, pd2.response)
-
-    del pd1
-    del pd2
+            del p
     print('Finished')

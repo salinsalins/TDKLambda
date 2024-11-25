@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""TDK Lambda Genesis series power supply tango device server"""
+"""Oreshonok timer tango device server"""
+import os
 import sys
+util_path = os.path.realpath('../TangoUtils')
+if util_path not in sys.path:
+    sys.path.append(util_path)
+del util_path
 
-if '../TangoUtils' not in sys.path: sys.path.append('../TangoUtils')
-# if '../IT6900' not in sys.path: sys.path.append('../IT6900')
 import json
 import math
-import os
-
 import time
 from threading import Lock
 
