@@ -76,7 +76,7 @@ class CKD(ModbusDevice):
 
 
 def print_ints(arr, r, base=None):
-    d = 3
+    d = 0
     n = 0
     rr = r[d:]
     for i in arr[d:]:
@@ -102,7 +102,7 @@ def print_ints(arr, r, base=None):
 
 if __name__ == "__main__":
     print('')
-    md1 = CKD("COM10")
+    md1 = CKD("COM14")
     r1 = []
     r2 = []
     print('')
@@ -143,15 +143,17 @@ if __name__ == "__main__":
         print('')
 
         t_0 = time.time()
-        v = md1.modbus_write(4100, [2731, 4096])
-        v = md1.modbus_write(4105, [2000, 100])
+        v = md1.modbus_write_ckd(192, [1280, ], command=38)
+        # v = md1.modbus_write(4105, [2000, 100])
         # v = md1.modbus_write(4106, [640])
         # v = md1.modbus_write(16, [1, 0, 10, 0, 400])
         # dt = int((time.time() - t_0) * 1000.0)  # ms
         # a = '%s %s %s %s %s' % (md1.port, md1.addr, 'modbus_write->', v, '%4d ms ' % dt)
         # print(a)
+        print_ints(md1.request, r2, base=0)
         print(md1.request)
         print(md1.response)
+        print_ints(md1.response, r2, base=0)
         print('')
 
         v1 = md1.modbus_read(a01, 18, command=3)

@@ -110,6 +110,22 @@ class CKDServer(TangoServerPrototype):
                     unit="",
                     doc="Password to unlock CKD")
 
+    k1_level = attribute(label="K1_Level", dtype=float,
+                    display_level=DispLevel.OPERATOR,
+                    access=AttrWriteType.READ_WRITE,
+                    min_value=0.,
+                    max_value=40.,
+                    unit="%",
+                    doc="Level for K1")
+
+    k2_level = attribute(label="K2_Level", dtype=float,
+                    display_level=DispLevel.OPERATOR,
+                    access=AttrWriteType.READ_WRITE,
+                    min_value=0.,
+                    max_value=100.,
+                    unit="%",
+                    doc="Level for K2")
+
     # start = attribute(label="Start", dtype=bool,
     #                 display_level=DispLevel.OPERATOR,
     #                 access=AttrWriteType.READ_WRITE,
@@ -184,6 +200,28 @@ class CKDServer(TangoServerPrototype):
     # endregion
 
     # region ---------------- custom attributes read --------------
+    def read_k1_level(self):
+        v = [1,1]
+        # v = self.ckd.modbus_read(192, 1, command=35)
+        # if v is None:
+        #     self.set_fault()
+        #     self.k1_level.set_quality(AttrQuality.ATTR_INVALID)
+        #     return 0.0
+        # self.set_running()
+        # self.k1_level.set_quality(AttrQuality.ATTR_VALID)
+        return (v[1]*256.+v[0])/64.
+
+    def read_k2_level(self):
+        v = [1,1]
+        # v = self.ckd.modbus_read(193, 1, command=35)
+        # if v is None:
+        #     self.set_fault()
+        #     self.k2_level.set_quality(AttrQuality.ATTR_INVALID)
+        #     return 0.0
+        # self.set_running()
+        # self.k2_level.set_quality(AttrQuality.ATTR_VALID)
+        return (v[1]*256.+v[0])/64.
+
     def read_password(self):
         v = self.ckd._read(4102)
         if v is None:
@@ -306,6 +344,29 @@ class CKDServer(TangoServerPrototype):
     #     else:
     #         self.set_fault('Stop fault')
     #         return False
+
+
+    def write_k1_level(self, v):
+        data = int(v * 64.)
+        self.ckd.modbus_write_ckd(192, [data,], command=35)
+        if v is None:
+            self.set_fault()
+            self.k1_level.set_quality(AttrQuality.ATTR_INVALID)
+            return False
+        self.set_running()
+        self.k1_level.set_quality(AttrQuality.ATTR_VALID)
+        return True
+
+    def write_k2_level(self, v):
+        data = int(v * 64.)
+        self.ckd.modbus_write_ckd(193, [data,], command=35)
+        if v is None:
+            self.set_fault()
+            self.k2_level.set_quality(AttrQuality.ATTR_INVALID)
+            return False
+        self.set_running()
+        self.k2_level.set_quality(AttrQuality.ATTR_VALID)
+        return True
 
     def write_password(self, v):
         if self.ckd.modbus_write(4102, [v,]) == 1:

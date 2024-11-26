@@ -267,6 +267,37 @@ class ModbusDevice:
         data = int.from_bytes(self.response[4:6], byteorder='big')
         return data
 
+    def modbus_write_ckd(self, start: int, data, address=None, command=16) -> int:
+        self.command = command
+        if len(data) <= 0:
+            return 0
+        if address is None:
+            address = self.addr
+        if isinstance(data, int):
+            out = int.to_bytes(data, 2, byteorder='big')
+        else:
+            out = b''
+            for d in data:
+                if isinstance(d, int):
+                    out += d.to_bytes(2, byteorder='big')
+                elif isinstance(d, bytes):
+                    out += d
+                else:
+                    self.debug('Wrong data format for write')
+                    return 0
+        length = len(out)
+        msg = self.addr.to_bytes(1, byteorder='big') + self.command.to_bytes(1, byteorder='big')
+        msg += int.to_bytes(start, 2, byteorder="big")
+        # msg += int.to_bytes(length // 2, 2, byteorder="big")
+        # msg += int.to_bytes(length, 1, byteorder='big')
+        msg += out
+        if not self.write(msg):
+            return 0
+        if not self.read():
+            return 0
+        data = int.from_bytes(self.response[4:6], byteorder='big')
+        return data
+
     @property
     def ready(self):
         if time.time() < self.suspend_to:
