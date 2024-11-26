@@ -86,7 +86,7 @@ class CKDServer(TangoServerPrototype):
                     unit="A",
                     doc="Output Current")
 
-    out_rectifier_current = attribute(label="Output Rectifier Current", dtype=int,
+    rectifier_current = attribute(label="Output Rectifier Current", dtype=int,
                     display_level=DispLevel.OPERATOR,
                     access=AttrWriteType.READ,
                     unit="A",
@@ -94,7 +94,7 @@ class CKDServer(TangoServerPrototype):
 
     error_state = attribute(label="Error State", dtype=bool,
                      display_level=DispLevel.OPERATOR,
-                     access=AttrWriteType.READ,
+                     access=AttrWriteType.READ_WRITE,
                      unit="",
                      doc="Error State")
 
@@ -103,6 +103,24 @@ class CKDServer(TangoServerPrototype):
                      access=AttrWriteType.READ,
                      unit="",
                      doc="Operation State")
+
+    password = attribute(label="Password", dtype=int,
+                    display_level=DispLevel.EXPERT,
+                    access=AttrWriteType.READ_WRITE,
+                    unit="",
+                    doc="Password to unlock CKD")
+
+    # start = attribute(label="Start", dtype=bool,
+    #                 display_level=DispLevel.OPERATOR,
+    #                 access=AttrWriteType.READ_WRITE,
+    #                 unit="",
+    #                 doc="Switch output ON")
+    #
+    # stop = attribute(label="Stop", dtype=bool,
+    #                 display_level=DispLevel.OPERATOR,
+    #                 access=AttrWriteType.READ_WRITE,
+    #                 unit="",
+    #                 doc="Switch output OFF")
 
     # endregion
 
@@ -166,14 +184,24 @@ class CKDServer(TangoServerPrototype):
     # endregion
 
     # region ---------------- custom attributes read --------------
+    def read_password(self):
+        v = self.ckd._read(4102)
+        if v is None:
+            self.set_fault()
+            self.password.set_quality(AttrQuality.ATTR_INVALID)
+            return 0
+        self.set_running()
+        self.password.set_quality(AttrQuality.ATTR_VALID)
+        return v
+
     def read_set_voltage(self):
         v = self.ckd.read_set_voltage()
         if v is None:
             self.set_fault()
             self.set_voltage.set_quality(AttrQuality.ATTR_INVALID)
-            return -1
+            return 0
         self.set_running()
-        self.set_voltage.set_quality(AttrQuality.INVALID)
+        self.set_voltage.set_quality(AttrQuality.ATTR_VALID)
         return v
 
     def read_set_current(self):
@@ -181,9 +209,9 @@ class CKDServer(TangoServerPrototype):
         if v is None:
             self.set_fault()
             self.set_current.set_quality(AttrQuality.ATTR_INVALID)
-            return -1
+            return 0
         self.set_running()
-        self.set_current.set_quality(AttrQuality.INVALID)
+        self.set_current.set_quality(AttrQuality.ATTR_VALID)
         return v
 
     def read_out_current(self):
@@ -193,7 +221,7 @@ class CKDServer(TangoServerPrototype):
             self.out_current.set_quality(AttrQuality.ATTR_INVALID)
             return -1
         self.set_running()
-        self.out_current.set_quality(AttrQuality.INVALID)
+        self.out_current.set_quality(AttrQuality.ATTR_VALID)
         return v
 
     def read_out_voltage(self):
@@ -203,7 +231,7 @@ class CKDServer(TangoServerPrototype):
             self.out_voltage.set_quality(AttrQuality.ATTR_INVALID)
             return -1
         self.set_running()
-        self.out_voltage.set_quality(AttrQuality.INVALID)
+        self.out_voltage.set_quality(AttrQuality.ATTR_VALID)
         return v
 
     def read_rectifier_current(self):
@@ -213,12 +241,12 @@ class CKDServer(TangoServerPrototype):
             self.rectifier_current.set_quality(AttrQuality.ATTR_INVALID)
             return -1
         self.set_running()
-        self.rectifier_current.set_quality(AttrQuality.INVALID)
+        self.rectifier_current.set_quality(AttrQuality.ATTR_VALID)
         return v
 
     def read_error_state(self):
         if self.ckd.read_error():
-            self.set_fault('CKD ERROR')
+            self.set_fault('ERROR State')
             return True
         self.set_running()
         return  False
@@ -232,14 +260,60 @@ class CKDServer(TangoServerPrototype):
             self.set_running()
             return "WORKING"
         if v == 128:
-            self.set_fault('CKD ERROR')
+            self.set_fault('ERROR State')
             return "ERROR"
         self.set_fault('Unknown state')
         return "UNKNOWN"
 
         # endregion
 
+    # def read_start(self):
+    #     v = self.ckd._read(4096, 1)
+    #     if v is None:
+    #         self.start.set_quality(AttrQuality.ATTR_INVALID)
+    #         self.set_fault()
+    #         return False
+    #     self.start.set_quality(AttrQuality.ATTR_VALID)
+    #     self.set_running()
+    #     return v & 2
+    #
+    # def read_stop(self):
+    #     v = self.ckd._read(4096, 1)
+    #     if v is None:
+    #         self.stop.set_quality(AttrQuality.ATTR_INVALID)
+    #         self.set_fault()
+    #         return False
+    #     self.stop.set_quality(AttrQuality.ATTR_VALID)
+    #     self.set_running()
+    #     return v & 4
+
     # region ---------------- custom attributes write --------------
+
+    # def write_start(self, v):
+    #     self.ckd.modbus_write(4097, [2,])
+    #     if self.ckd.modbus_write(4096, [2,]) == 1:
+    #         self.set_running()
+    #         return True
+    #     else:
+    #         self.set_fault('Start fault')
+    #         return False
+    #
+    # def write_stop(self, v):
+    #     self.ckd.modbus_write(4097, [4,])
+    #     if self.ckd.modbus_write(4096, [4,]) == 1:
+    #         self.set_running()
+    #         return True
+    #     else:
+    #         self.set_fault('Stop fault')
+    #         return False
+
+    def write_password(self, v):
+        if self.ckd.modbus_write(4102, [v,]) == 1:
+            self.set_running()
+            return True
+        else:
+            self.set_fault('Write voltage fault')
+            return False
 
     def write_set_voltage(self, v):
         if self.ckd.write_set_voltage(v):
@@ -251,6 +325,14 @@ class CKDServer(TangoServerPrototype):
 
     def write_set_current(self, v):
         if self.ckd.write_set_current(v):
+            self.set_running()
+            return True
+        else:
+            self.set_fault('Write current fault')
+            return False
+
+    def write_error_state(self, v):
+        if self.ckd.write_error_state(v):
             self.set_running()
             return True
         else:
@@ -273,6 +355,7 @@ class CKDServer(TangoServerPrototype):
         return False
 
     # endregion
+
 
 
 if __name__ == "__main__":

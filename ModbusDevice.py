@@ -111,7 +111,8 @@ class ModbusDevice:
         self.logger.warning(f'{self.pre} {msg}', *args, **kwargs)
 
     def create_com_port(self):
-        self.kwargs['baudrate'] = 115200
+        if 'baudrate' not in self.kwargs:
+            self.kwargs['baudrate'] = 115200
         self.com = ComPort(self.port, emulated=EmptyComPort, **self.kwargs)
         return self.com
 
@@ -304,7 +305,7 @@ def print_ints(arr, r, base=None):
 
 if __name__ == "__main__":
     print('')
-    md1 = ModbusDevice("COM14", 1)
+    md1 = ModbusDevice("COM10", 1, baudrate=57600, parity='E')
 
     r1 = []
     r2 = []
@@ -318,7 +319,7 @@ if __name__ == "__main__":
         print(a1)
         print(md1.request)
         print(md1.response)
-        if md1.response[1] > 127:
+        if len(md1.response) > 2 and md1.response[1] > 127:
             print("ERROR", md1.response[2])
         print_ints(md1.response, r1, base=a01)
         r1 = list(md1.response)

@@ -9,6 +9,10 @@ APPLICATION_VERSION = '1.0'
 class CKD(ModbusDevice):
 
     def __init__(self, port: str, **kwargs):
+        if 'baudrate' not in kwargs:
+            kwargs['baudrate'] = 57600
+        if 'parity' not in kwargs:
+            kwargs['parity'] = 'E'
         super().__init__(port, 1, **kwargs)
         self.id = 'CKD'
         self.pre = f'{self.id} at {self.port}: {self.addr} '
@@ -32,6 +36,10 @@ class CKD(ModbusDevice):
 
     def write_set_current(self, v:int):
         return self.modbus_write(4106, [v,]) == 1
+
+    def write_error_state(self, v:bool):
+        self.modbus_write(4096, [256,])
+        return self.modbus_write(4097, [1,]) == 1
 
     def _read(self, addr, length=1):
         v = self.modbus_read(addr, length=1)
@@ -94,8 +102,7 @@ def print_ints(arr, r, base=None):
 
 if __name__ == "__main__":
     print('')
-    md1 = ModbusDevice("COM14", 1)
-
+    md1 = CKD("COM10")
     r1 = []
     r2 = []
     print('')
