@@ -23,7 +23,7 @@ from Vtimer import Vtimer
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'CKD Python Tango Server'
 APPLICATION_NAME_SHORT = os.path.basename(__file__).replace('.py', '')
-APPLICATION_VERSION = '1.0'
+APPLICATION_VERSION = '1.1'
 
 DEFAULT_PORT = 'COM10'
 DEFAULT_ADDRESS = 1
@@ -104,11 +104,11 @@ class CKDServer(TangoServerPrototype):
                      unit="",
                      doc="Operation State")
 
-    password = attribute(label="Password", dtype=int,
-                    display_level=DispLevel.EXPERT,
-                    access=AttrWriteType.READ_WRITE,
-                    unit="",
-                    doc="Password to unlock CKD")
+    # password = attribute(label="Password", dtype=int,
+    #                 display_level=DispLevel.EXPERT,
+    #                 access=AttrWriteType.READ_WRITE,
+    #                 unit="",
+    #                 doc="Password to unlock CKD")
 
     k1_level = attribute(label="K1_Level", dtype=float,
                     display_level=DispLevel.OPERATOR,
@@ -159,6 +159,8 @@ class CKDServer(TangoServerPrototype):
         if self.ckd.ready:
             self.set_current.set_write_value(self.read_set_current())
             self.set_voltage.set_write_value(self.read_set_voltage())
+            self.k1_level.set_write_value(self.read_k1_level())
+            self.k2_level.set_write_value(self.read_k2_level())
             # set state to running
             msg = 'Created successfully'
             self.set_state(DevState.RUNNING, msg)
@@ -201,29 +203,27 @@ class CKDServer(TangoServerPrototype):
 
     # region ---------------- custom attributes read --------------
     def read_k1_level(self):
-        v = [1,1]
-        # v = self.ckd.modbus_read(192, 1, command=35)
-        # if v is None:
-        #     self.set_fault()
-        #     self.k1_level.set_quality(AttrQuality.ATTR_INVALID)
-        #     return 0.0
-        # self.set_running()
-        # self.k1_level.set_quality(AttrQuality.ATTR_VALID)
-        return (v[1]*256.+v[0])/64.
+        v = self.ckd.modbus_read_ckd(192)
+        if not v:
+            self.set_fault()
+            self.k1_level.set_quality(AttrQuality.ATTR_INVALID)
+            return float('nan')
+        self.set_running()
+        self.k1_level.set_quality(AttrQuality.ATTR_VALID)
+        return v / 64.
 
     def read_k2_level(self):
-        v = [1,1]
-        # v = self.ckd.modbus_read(193, 1, command=35)
-        # if v is None:
-        #     self.set_fault()
-        #     self.k2_level.set_quality(AttrQuality.ATTR_INVALID)
-        #     return 0.0
-        # self.set_running()
-        # self.k2_level.set_quality(AttrQuality.ATTR_VALID)
-        return (v[1]*256.+v[0])/64.
+        v = self.ckd.modbus_read_ckd(193)
+        if not v:
+            self.set_fault()
+            self.k2_level.set_quality(AttrQuality.ATTR_INVALID)
+            return float('nan')
+        self.set_running()
+        self.k2_level.set_quality(AttrQuality.ATTR_VALID)
+        return v / 64.
 
     def read_password(self):
-        v = self.ckd._read(4102)
+        v = self.ckd.read_one(4102)
         if v is None:
             self.set_fault()
             self.password.set_quality(AttrQuality.ATTR_INVALID)
@@ -348,8 +348,8 @@ class CKDServer(TangoServerPrototype):
 
     def write_k1_level(self, v):
         data = int(v * 64.)
-        self.ckd.modbus_write_ckd(192, [data,], command=35)
-        if v is None:
+        n = self.ckd.modbus_write_ckd(192, data)
+        if n != 2:
             self.set_fault()
             self.k1_level.set_quality(AttrQuality.ATTR_INVALID)
             return False
@@ -359,8 +359,8 @@ class CKDServer(TangoServerPrototype):
 
     def write_k2_level(self, v):
         data = int(v * 64.)
-        self.ckd.modbus_write_ckd(193, [data,], command=35)
-        if v is None:
+        n = self.ckd.modbus_write_ckd(193, data)
+        if n != 2:
             self.set_fault()
             self.k2_level.set_quality(AttrQuality.ATTR_INVALID)
             return False
@@ -397,7 +397,7 @@ class CKDServer(TangoServerPrototype):
             self.set_running()
             return True
         else:
-            self.set_fault('Write current fault')
+            self.set_fault('Reset Error Fault')
             return False
 
     # endregion
@@ -407,7 +407,7 @@ class CKDServer(TangoServerPrototype):
     @command(dtype_in=int, doc_in='Read Modbus Address',
              dtype_out=int, doc_out='Red Data')
     def read_modbus(self, addr):
-        result = self.ckd._read(addr)
+        result = self.ckd.read_one(addr)
         if result is not None:
             self.set_running()
             return result
@@ -416,7 +416,6 @@ class CKDServer(TangoServerPrototype):
         return False
 
     # endregion
-
 
 
 if __name__ == "__main__":

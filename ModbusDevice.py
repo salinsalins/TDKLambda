@@ -152,6 +152,10 @@ class ModbusDevice:
         if not isinstance(cmd, bytes):
             return False
         self.error = 0
+        self.com.reset_input_buffer()
+        self.com.reset_output_buffer()
+        while self.com.in_waiting > 0:
+            self.com.read()
         cmd = self.add_checksum(cmd)
         self.request = cmd
         n = self.com.write(cmd)
@@ -161,7 +165,7 @@ class ModbusDevice:
             return False
         return True
 
-    def read(self) -> bool:
+    def read(self, extra_bytes=5) -> bool:
         if not self.ready:
             self.error = 262
             return False
@@ -188,12 +192,12 @@ class ModbusDevice:
         if op > 128:
             # 5 bytes for error response
             k = 5
-        elif op > 4:
+        elif op > 4 and op < 17:
             # single-byte operations
             k = 8
         else:
             # multi-byte operations
-            k = int(self.response[2]) + 5
+            k = int(self.response[2]) + extra_bytes
         # wait for next bytes
         while time.time() < self.read_timeout and len(self.response) < k:
             self.response += self.com.read(1000)
@@ -220,76 +224,47 @@ class ModbusDevice:
             return False
         return self.verify_checksum(cmd)
 
-    def modbus_read(self, start: int, length: int, address=None, command=3):
+    def modbus_read(self, start: int, length: int=1, address=None, command=3):
         self.command = command
         if address is None:
             address = self.addr
         msg = address.to_bytes(1, byteorder='big') + self.command.to_bytes(1, byteorder='big')
         msg += int.to_bytes(start, 2, byteorder='big')
         msg += int.to_bytes(length, 2, byteorder='big')
-        if not self.write(msg):
-            return []
-        if not self.read():
-            return []
         data = []
+        if not self.write(msg):
+            return data
+        if not self.read():
+            return data
         for i in range(length):
             data.append(int.from_bytes(self.response[2 * i + 3:2 * i + 5], byteorder='big'))
         return data
 
     def modbus_write(self, start: int, data, address=None, command=16) -> int:
-        self.command = command
-        if len(data) <= 0:
+        if isinstance(data, int):
+            data = [data,]
+        try:
+            if len(data) <= 0:
+                return 0
+        except:
             return 0
+        self.command = command
         if address is None:
             address = self.addr
-        if isinstance(data, int):
-            out = int.to_bytes(data, 2, byteorder='big')
-        else:
-            out = b''
-            for d in data:
-                if isinstance(d, int):
-                    out += d.to_bytes(2, byteorder='big')
-                elif isinstance(d, bytes):
-                    out += d
-                else:
-                    self.debug('Wrong data format for write')
-                    return 0
-        length = len(out)
-        msg = self.addr.to_bytes(1, byteorder='big') + self.command.to_bytes(1, byteorder='big')
+        msg = address.to_bytes(1, byteorder='big') + self.command.to_bytes(1, byteorder='big')
         msg += int.to_bytes(start, 2, byteorder="big")
+        out = b''
+        for d in data:
+            if isinstance(d, int):
+                out += d.to_bytes(2, byteorder='big')
+            elif isinstance(d, bytes):
+                out += d
+            else:
+                self.debug('Wrong data format for write')
+                return 0
+        length = len(out)
         msg += int.to_bytes(length // 2, 2, byteorder="big")
         msg += int.to_bytes(length, 1, byteorder='big')
-        msg += out
-        if not self.write(msg):
-            return 0
-        if not self.read():
-            return 0
-        data = int.from_bytes(self.response[4:6], byteorder='big')
-        return data
-
-    def modbus_write_ckd(self, start: int, data, address=None, command=16) -> int:
-        self.command = command
-        if len(data) <= 0:
-            return 0
-        if address is None:
-            address = self.addr
-        if isinstance(data, int):
-            out = int.to_bytes(data, 2, byteorder='big')
-        else:
-            out = b''
-            for d in data:
-                if isinstance(d, int):
-                    out += d.to_bytes(2, byteorder='big')
-                elif isinstance(d, bytes):
-                    out += d
-                else:
-                    self.debug('Wrong data format for write')
-                    return 0
-        length = len(out)
-        msg = self.addr.to_bytes(1, byteorder='big') + self.command.to_bytes(1, byteorder='big')
-        msg += int.to_bytes(start, 2, byteorder="big")
-        # msg += int.to_bytes(length // 2, 2, byteorder="big")
-        # msg += int.to_bytes(length, 1, byteorder='big')
         msg += out
         if not self.write(msg):
             return 0
