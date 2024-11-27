@@ -6,6 +6,8 @@ import os
 import sys
 import time
 
+from numpy.array_api import int64
+
 from CKD import CKD
 
 util_path = os.path.realpath('../TangoUtils')
@@ -404,16 +406,33 @@ class CKDServer(TangoServerPrototype):
 
     # region ---------------- custom commands --------------
 
-    @command(dtype_in=int, doc_in='Read Modbus Address',
-             dtype_out=int, doc_out='Red Data')
+    @command(dtype_in=int, doc_in='Read Modbus Single Word at Address',
+             dtype_out=int, doc_out='Red Data (int)')
     def read_modbus(self, addr):
         result = self.ckd.read_one(addr)
         if result is not None:
             self.set_running()
             return result
-        msg = f'Pulse enable execution error {self.tmr.error}'
+        msg = f'Rad Address %s Error {addr}'
         self.set_fault(msg)
-        return False
+        return 0
+
+    @command(dtype_in=int, doc_in='Read CKD Parameter',
+             dtype_out=int, doc_out='Red Data')
+    def read_parameter(self, addr):
+        # print('addr', addr)
+        if addr < 0:
+            addr = 256 + addr
+        # print('addr', addr)
+        result = self.ckd.modbus_read_ckd(addr)
+        # print('result', result)
+        return result
+
+    # @command(dtype_in=[int], doc_in='Read CKD Parameter',
+    #          dtype_out=int, doc_out='Red Data')
+    # def write_parameter(self, value):
+    #     result = self.ckd.modbus_write_ckd(value[0], value[1])
+    #     return result
 
     # endregion
 
