@@ -1,10 +1,13 @@
-import logging
+import datetime
+# import logging
 import os
 import time
 import sys
 
+from ComPort import EmptyComPort
+
 if os.path.realpath('../TangoUtils') not in sys.path: sys.path.append(os.path.realpath('../TangoUtils'))
-if os.path.realpath('../IT6900') not in sys.path: sys.path.append(os.path.realpath('../IT6900'))
+# if os.path.realpath('../IT6900') not in sys.path: sys.path.append(os.path.realpath('../IT6900'))
 
 from config_logger import config_logger
 from log_exception import log_exception
@@ -146,40 +149,114 @@ ERR_36 No set point input possible. Programmer is running or is paused.
 ERR_37 No start from programmer possible, analogue setpoint input is switched on.
 """
 
-WRITE_COMMANDS = (b"OUT", b"START", b"STOP")
-READ_COMMANDS = (b"IN", b"TYPE", b"VERSION", b"STATUS", b'STAT', b'RMP_IN', b'LOG_IN')
+WRITE_COMMANDS = ("OUT", "START", "STOP")
+READ_COMMANDS = ("IN", "TYPE", "VERSION", "STATUS", 'STAT', 'RMP_IN', 'LOG_IN')
 LAUDA_ERRORS = {
-b"ERR_2": "Wrong input (e.g. buffer overflow)",
-b"ERR_3": "Wrong command",
-b"ERR_5": "Syntax error in value",
-b"ERR_6": "Illegal value",
-b"ERR_8": "Module (ext. temperature) not available",
-b"ERR_30": "Programmer, all segments occupied",
-b"ERR_31": "Set point not possible, analogue set point input ON",
-b"ERR_32": "TiH <= TiL",
-b"ERR_33": "No external sensor:",
-b"ERR_34": "Analogue value not available",
-b"ERR_35": "Automatic is selected",
-b"ERR_36": "No set point input possible. Programmer is running or is paused",
-b"ERR_37": "No start from programmer possible, analogue setpoint input is switched on"
+    b'': '',
+    b"ERR_2": "Wrong input (e.g. buffer overflow)",
+    b"ERR_3": "Wrong command",
+    b"ERR_5": "Syntax error in value",
+    b"ERR_6": "Illegal value",
+    b"ERR_8": "Module (ext. temperature) not available",
+    b"ERR_30": "Programmer, all segments occupied",
+    b"ERR_31": "Set point not possible, analogue set point input ON",
+    b"ERR_32": "TiH <= TiL",
+    b"ERR_33": "No external sensor:",
+    b"ERR_34": "Analogue value not available",
+    b"ERR_35": "Automatic is selected",
+    b"ERR_36": "No set point input possible. Programmer is running or is paused",
+    b"ERR_37": "No start from programmer possible, analogue setpoint input is switched on",
+    b'ERR_38': 'The operator does not have the privileges',
+    b'ERR_39': 'Operation is not permitted. Safe Mode is active.',
+    b'ERR_40': 'Operation is not permitted. Safe Mode is switched off.',
+    b'ERR_41': 'Operation is not permitted. Constant temperature equipment is in error status.'
 }
+
+TEST_COMMANDS = [
+    'IN_PV_00',
+    'IN_PV_01',
+    'IN_PV_02',
+    'IN_PV_03',
+    'IN_PV_04',
+    'IN_PV_05',
+    'IN_PV_06',
+    'IN_PV_08',
+    'IN_PV_10',
+    'IN_PV_13',
+    'IN_SP_00',
+    'IN_SP_01',
+    'IN_SP_02',
+    'IN_SP_03',
+    'IN_SP_04',
+    'IN_SP_05',
+    'IN_SP_06',
+    'IN_SP_07',
+    'IN_PAR_00',
+    'IN_PAR_01',
+    'IN_PAR_02',
+    'IN_PAR_03',
+    'IN_PAR_04',
+    'IN_PAR_05',
+    'IN_PAR_06',
+    'IN_PAR_07',
+    'IN_PAR_09',
+    'IN_PAR_10',
+    'IN_PAR_14',
+    'IN_PAR_15',
+    'IN_DI_01',
+    'IN_DI_02',
+    'IN_DI_03',
+    'IN_DO_01',
+    'IN_DO_02',
+    'IN_DO_03',
+    'IN_MODE_00',
+    'IN_MODE_01',
+    'IN_MODE_02',
+    'IN_MODE_03',
+    'IN_MODE_04',
+    'TYPE',
+    'VERSION_R',
+    'VERSION_S',
+    'VERSION_B',
+    'VERSION_T',
+    'VERSION_A',
+    'VERSION_V',
+    'VERSION_Y',
+    'VERSION_Z',
+    'VERSION_D',
+    'VERSION_M_0',
+    'VERSION_M_3',
+    'VERSION_M_4',
+    'VERSION_P_0',
+    'VERSION_P_1',
+    'VERSION_P_2',
+    'VERSION_P_3',
+    'STATUS',
+    'STAT',
+    'SERIAL_NO'
+]
+
 
 # os.environ["TANGO_HOST"] = '192.168.1.41:10000'
 # db = tango.Database('192.168.1.41', '10000')
 
 class LaudaSmall(TDKLambda):
-    def __init__(self, port, addr: int=None, **kwargs):
+    def __init__(self, port, addr: int = None, **kwargs):
         kwargs['baudrate'] = 9600
         self.addr_prefix = b''
         self.name = 'LAUDA'
+        self.error = b''
         super().__init__(port, addr, **kwargs)
+        # self._response = self.response
 
     def init(self):
         self.suspend_to = 0.0
-        if self.addr is not None:   # RS485 connection
+        if self.addr is not None:  # RS485 connection
             self.pre = f'LAUDA at {self.port}:{self.addr}'
             try:
-                if self.com.device is not MoxaTCPComPort and (self.addr) >= 0 and int(self.addr) < 128:
+                if (self.com.device is not MoxaTCPComPort and
+                        self.com.device is not EmptyComPort and
+                        (self.addr) >= 0 and int(self.addr) < 128):
                     self.addr_prefix = ('A%03i_' % int(self.addr)).encode()
                 else:
                     self.state = -1
@@ -191,7 +268,7 @@ class LaudaSmall(TDKLambda):
                 self.info(self.STATES[self.state])
                 self.suspend()
                 return False
-        else:   # RS232 or Ethernet connection
+        else:  # RS232 or Ethernet connection
             self.pre = f'LAUDA at {self.port}'
             self.addr_prefix = b''
         self.id = 'LAUDA'
@@ -212,13 +289,20 @@ class LaudaSmall(TDKLambda):
         self.id = self.read_device_id()
         self.pre = self.pre.replace('LAUDA ', f'LAUDA {self.id} ')
         self.state = 1
-        self.info('has been initialized')
+        self.info('Has been initialized')
         return True
+
+    @property
+    def resp(self):
+        result = self.response.replace(self.addr_prefix, b'')
+        result = result.replace(b'\n', b'')
+        result = result.replace(b'\r', b'')
+        return result.decode()
 
     def read_device_id(self):
         try:
             if self.send_command(b'TYPE') and self.check_response():
-                return self.response.decode()
+                return self.resp
             else:
                 return 'Unknown Device'
         except KeyboardInterrupt:
@@ -244,15 +328,21 @@ class LaudaSmall(TDKLambda):
                 n += 1
                 result = self._send_command(cmd_out)
                 self.read_until(b'\n')
-                if cmd.startswith(WRITE_COMMANDS):
-                    if result == self.addr_prefix + b'OK':
+                if self.response.startswith(self.addr_prefix + b'ERR'):
+                    self.error = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S') + ' ' + LAUDA_ERRORS[self.resp.encode()]
+                    self.debug(f'Error: {self.error}')
+                    return False
+                if cmd.decode().upper().startswith(WRITE_COMMANDS):
+                    if self.response.startswith(self.addr_prefix + b'OK'):
+                        # self.error = ''
                         return True
                 else:
                     if result:
                         return True
                 self.info(f'Command {cmd} retry {n} of {self.read_retries}')
+            self.error = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S') + ' ' + f'Can not send command {cmd}'
             self.info(f'Can not send command {cmd}')
-            self.response = b''
+            # self.response = b''
             self.suspend()
             return False
         except KeyboardInterrupt:
@@ -266,11 +356,17 @@ class LaudaSmall(TDKLambda):
     def check_response(self, expected=b'OK', response=None):
         if response is None:
             response = self.response
-        if self.command.startswith(WRITE_COMMANDS):
-            if response == self.addr_prefix + b'OK':
+        if self.command.decode().upper().startswith(WRITE_COMMANDS):
+            if response.startswith(self.addr_prefix + b'OK'):
+                # self.error = ''
                 return True
         else:
             if response:
+                if response.startswith(self.addr_prefix + b'ERR'):
+                    self.error = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S') + ' ' + LAUDA_ERRORS[
+                        response.replace(self.addr_prefix, b'')[:-1]]
+                    self.debug(f'Error: {self.error}')
+                    return False
                 if response.startswith(self.addr_prefix):
                     return True
         self.debug(f'Unexpected response {response}')
@@ -298,22 +394,28 @@ class LaudaSmall(TDKLambda):
     def read_value(self, command: str, result_type=float):
         self.send_command(command)
         if self.check_response():
-            if not self.command.startswith(WRITE_COMMANDS):
+            if not self.command.decode().upper().startswith(WRITE_COMMANDS):
                 try:
-                    value = result_type(self.response.replace(self.addr_prefix, b''))
+                    value = result_type(self.resp)
                     return value
                 except KeyboardInterrupt:
                     raise
-            return self.response.replace(self.addr_prefix, b'').decode()
+            return self.resp
         # self.debug(f'{command} -> read value error')
         return None
 
     def write_value(self, cmd, value, expect=b'OK'):
+        cmd = cmd.upper()
+        if isinstance(cmd, bytes):
+            cmd = cmd.decode()
         if not cmd.startswith(WRITE_COMMANDS):
             self.debug(f'Not write command {cmd}')
             return False
         try:
-            cmd = f'{cmd}_{value:.2f}'
+            if isinstance(value, float):
+                cmd = f'{cmd}_{value:.2f}'
+            else:
+                cmd = f'{cmd}_{value}'
         except KeyboardInterrupt:
             raise
         self.send_command(cmd)
@@ -323,10 +425,12 @@ class LaudaSmall(TDKLambda):
 if __name__ == "__main__":
     logger = config_logger()
     print(f'Simple Small LAUDA control utility ver.{APPLICATION_VERSION}')
-    port = input('LAUDA Port <COM4>: ')
+    # port = input('LAUDA Port <COM3>: ')
+    port = ''
     if not port:
-        port = 'COM4'
-    addr = input('LAUDA Address: ')
+        port = 'COM3'
+    addr = None
+    # addr = input('LAUDA Address: ')
     if not addr:
         lda = LaudaSmall(port)
     else:
@@ -342,5 +446,19 @@ if __name__ == "__main__":
         dt1 = int((time.time() - t_0) * 1000.0)  # ms
         a = f'{lda.pre} {command} -> {r1} in {dt1} ms {lda.check_response()}'
         print(a)
+    print(lda.read_value('in_mode_02'))
+    print(lda.write_value('out_sp_00', 34.0))
+    print(lda.read_value('in_sp_00'))
+    print(lda.read_value('in_pv_05'))
+    print(lda.write_value('OUT_SP_01', 3))
+    for cmd in TEST_COMMANDS:
+        t_0 = time.time()
+        lda.error = ''
+        v1 = lda.send_command(cmd)
+        r1 = lda.resp
+        dt = int((time.time() - t_0) * 1000.0)  # ms
+        a = f'{lda.pre} {cmd} -> {r1} in {dt} ms {lda.check_response()} {lda.error}'
+        print(a)
+
     del lda
     print('Finished')

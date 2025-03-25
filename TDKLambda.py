@@ -277,6 +277,8 @@ class TDKLambda:
             return False
 
     def _send_command(self, cmd, terminator=CR):
+        if not cmd.endswith(terminator):
+            cmd += terminator
         self.command = cmd
         self.response = b''
         t0 = time.perf_counter()

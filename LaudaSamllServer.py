@@ -6,6 +6,8 @@ LAUDA tango device server
 import os
 import sys
 
+from LaudaSmall import LaudaSmall
+
 if os.path.realpath('../TangoUtils') not in sys.path: sys.path.append(os.path.realpath('../TangoUtils'))
 
 from tango import Attribute, AttrQuality, AttrWriteType, DispLevel
@@ -18,7 +20,7 @@ from Lauda import Lauda
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'LUDA Integral XT Python Tango Server'
 APPLICATION_NAME_SHORT = os.path.basename(__file__).replace('.py', '')
-APPLICATION_VERSION = '2.0'
+APPLICATION_VERSION = '1.0'
 
 LAUDA_DEFAULT_PORT = 'COM4'
 LAUDA_DEFAULT_ADDRESS =  None
@@ -37,10 +39,10 @@ class LaudaSmallServer(TangoServerPrototype):
                      unit="", format="%s",
                      doc="LAUDA COM port")
 
-    address = attribute(label="Address", dtype=int,
+    address = attribute(label="Address", dtype=str,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
-                        unit="", format="%d",
+                        unit="", format="%s",
                         doc="LAUDA address (Default None for COM port)")
 
     device_type = attribute(label="LAUDA Type", dtype=str,
@@ -56,24 +58,11 @@ class LaudaSmallServer(TangoServerPrototype):
                           min_value=0.0,
                           doc="Local SetPoint")
 
-    # set_point_remote = attribute(label="Remote Set Point", dtype=float,
-    #                              display_level=DispLevel.OPERATOR,
-    #                              access=AttrWriteType.READ_WRITE,
-    #                              unit="", format="%6.2f",
-    #                              min_value=0.0,
-    #                              doc="Remote SetPoint")
-
     run = attribute(label="Run", dtype=bool,
                     display_level=DispLevel.OPERATOR,
                     access=AttrWriteType.READ_WRITE,
                     unit="",
                     doc="Run/Stop Button")
-
-    # reset = attribute(label="Reset", dtype=bool,
-    #                   display_level=DispLevel.OPERATOR,
-    #                   access=AttrWriteType.READ_WRITE,
-    #                   unit="",
-    #                   doc="Reset button")
 
     pump = attribute(label="Pump Level", dtype=int,
                      display_level=DispLevel.OPERATOR,
@@ -101,11 +90,31 @@ class LaudaSmallServer(TangoServerPrototype):
                             unit="", format="%1d",
                             doc="Fluid Level in the Expansion Tank (0-9)")
 
+    cooling_mode = attribute(label="Cooling operating mode", dtype=int,
+                            display_level=DispLevel.OPERATOR,
+                            min_value=0,
+                            max_value=2,
+                            access=AttrWriteType.READ_WRITE,
+                            unit="", format="%1d",
+                            doc="Cooling operating mode (0 = OFF / 1 = ON / 2 = AUTOMATIC)")
+
     pressure = attribute(label="Output Pressure", dtype=float,
                             display_level=DispLevel.OPERATOR,
                             access=AttrWriteType.READ,
                             unit="bar", format="%6.2f",
                             doc="Output Pressure (bar)")
+
+    last_error = attribute(label="Last Error", dtype=str,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ,
+                            unit="", format="%s",
+                            doc="Last Error")
+
+    error_diagnosis = attribute(label="Error diagnosis response", dtype=str,
+                            display_level=DispLevel.OPERATOR,
+                            access=AttrWriteType.READ,
+                            unit="", format="%s",
+                            doc="Error diagnosis response")
 
     def init_device(self):
         super().init_device()
@@ -123,14 +132,14 @@ class LaudaSmallServer(TangoServerPrototype):
         kwargs['read_timeout'] = self.config.get('read_timeout', LAUDA_DEFAULT_READ_TIMEOUT)
         kwargs['read_retries'] = self.config.get('read_retries', LAUDA_DEFAULT_READ_RETRIES)
         # create LAUDA device
-        self.lda = Lauda(port, addr, **kwargs)
+        self.lda = LaudaSmall(port, addr, **kwargs)
         self.pre = f'{self.get_name()} {self.lda.pre}'
         # check if device OK
         if self.lda.ready:
             self.set_point.set_write_value(self.read_set_point())
-            self.set_point_remote.set_write_value(self.read_set_point_remote())
+            self.pump.set_write_value(self.read_pump())
             self.run.set_write_value(self.read_run())
-            # self.reset.set_write_value(self.read_reset())
+            self.cooling_mode.set_write_value(self.read_cooling_mode())
             # set state to running
             msg = 'Created successfully'
             self.set_state(DevState.RUNNING, msg)
@@ -179,34 +188,46 @@ class LaudaSmallServer(TangoServerPrototype):
         self.set_fault(msg)
         return float('Nan')
 
-    # def read_set_point_remote(self):
-    #     value = self.lda.read_value('IN_SP_00')
-    #     if value is not None:
-    #         self.set_point_remote.set_quality(AttrQuality.ATTR_VALID)
-    #         return value
-    #     self.set_point_remote.set_quality(AttrQuality.ATTR_INVALID)
-    #     msg = 'Remote set point read error'
-    #     self.set_fault(msg)
-    #     return float('Nan')
-
     def read_run(self):
-        value = self.lda.read_value('IN_MODE_02', int)
+        value = int(self.lda.read_value('IN_MODE_02'))
         if value is not None:
             self.run.set_quality(AttrQuality.ATTR_VALID)
+            if value != 0:
+                self.set_state(DevState.RUNNING)
+            else:
+                self.set_state(DevState.STANDBY)
             return value == 0
         self.run.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'run state read error'
-        self.set_fault(msg)
+        self.set_fault('Running state read error')
         return False
 
+    def read_last_error(self):
+        return self.lda.error
+
+    def read_error_diagnosis(self):
+        if self.lda.send_command('STAT'):
+            self.error_diagnosis.set_quality(AttrQuality.ATTR_VALID)
+        else:
+            self.error_diagnosis.set_quality(AttrQuality.ATTR_INVALID)
+        return self.lda.resp
+
     def read_pump(self):
-        value = self.lda.read_value('IN_SP_01')
+        value = int(self.lda.read_value('IN_SP_01'))
         if value is not None:
             self.pump.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.pump.set_quality(AttrQuality.ATTR_INVALID)
-        self.set_fault(f'Pump Level read error')
-        return False
+        self.set_fault('Pump Level read error')
+        return value
+
+    def read_cooling_mode(self):
+        value = int(self.lda.read_value('IN_SP_02'))
+        if value is not None:
+            self.pump.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.pump.set_quality(AttrQuality.ATTR_INVALID)
+        self.set_fault('Cooling operating mode read error')
+        return value
 
     def read_output_temp(self):
         value = self.lda.read_value('IN_PV_00')
@@ -214,18 +235,28 @@ class LaudaSmallServer(TangoServerPrototype):
             self.output_temp.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.output_temp.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'output temperature read error'
+        msg = f'Output temperature read error'
+        self.set_fault(msg)
+        return float('Nan')
+
+    def read_external_temp(self):
+        value = self.lda.read_value('IN_PV_00')
+        if value is not None:
+            self.output_temp.set_quality(AttrQuality.ATTR_VALID)
+            return value
+        self.output_temp.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'Output temperature read error'
         self.set_fault(msg)
         return float('Nan')
 
     def read_level(self):
-        value = self.lda.read_value('IN_PV_05')
+        value = int(self.lda.read_value('IN_PV_05'))
         if value is not None:
             self.pump.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.pump.set_quality(AttrQuality.ATTR_INVALID)
         self.set_fault(f'Pump Level read error')
-        return False
+        return value
 
     def read_pressure(self):
         value = self.lda.read_value('IN_PV_02')
@@ -233,8 +264,8 @@ class LaudaSmallServer(TangoServerPrototype):
             self.pump.set_quality(AttrQuality.ATTR_VALID)
             return value
         self.pump.set_quality(AttrQuality.ATTR_INVALID)
-        self.set_fault(f'Pump Level read error')
-        return False
+        self.set_fault(f'Pressure read error')
+        return value
 
     #   ---------------- custom attributes write --------------
     def write_set_point(self, value):
@@ -258,22 +289,38 @@ class LaudaSmallServer(TangoServerPrototype):
         if result:
             self.run.set_quality(AttrQuality.ATTR_VALID)
             self.run.set_write_value(value)
+            if value:
+                self.set_state(DevState.RUNNING)
+            else:
+                self.set_state(DevState.STANDBY)
             return value
         self.run.set_quality(AttrQuality.ATTR_INVALID)
         self.run.set_write_value(float('Nan'))
-        msg = 'Run switch write error'
+        msg = 'Can not Run'
         self.set_fault(msg)
         return False
 
     def write_pump(self, value):
         result = self.lda.write_value('OUT_SP_01', value)
         if result:
-            self.reset.set_quality(AttrQuality.ATTR_VALID)
-            self.reset.set_write_value(value)
+            self.pump.set_quality(AttrQuality.ATTR_VALID)
+            self.pump.set_write_value(value)
             return value
-        self.reset.set_quality(AttrQuality.ATTR_INVALID)
-        self.reset.set_write_value(float('Nan'))
+        self.pump.set_quality(AttrQuality.ATTR_INVALID)
+        self.pump.set_write_value(float('Nan'))
         msg = 'Pump Level write error'
+        self.set_fault(msg)
+        return False
+
+    def write_cooling_mode(self, value):
+        result = self.lda.write_value('OUT_SP_02', value)
+        if result:
+            self.pump.set_quality(AttrQuality.ATTR_VALID)
+            self.pump.set_write_value(value)
+            return value
+        self.pump.set_quality(AttrQuality.ATTR_INVALID)
+        self.pump.set_write_value(float('Nan'))
+        msg = 'Cooling operating mode write error'
         self.set_fault(msg)
         return False
 
@@ -281,9 +328,9 @@ class LaudaSmallServer(TangoServerPrototype):
     def set_fault(self, msg=None):
         if msg is None:
             if self.lda.initialized():
-                msg = f'R/W error!'
+                msg = 'R/W error'
             else:
-                msg = f'was not initialized'
+                msg = 'Not initialized'
         super().set_fault(msg)
 
     @command(dtype_in=str, doc_in='Directly send command to the LAUDA',
