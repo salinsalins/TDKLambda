@@ -192,9 +192,10 @@ class LaudaSmallServer(TangoServerPrototype):
         value = int(self.lda.read_value('IN_MODE_02'))
         if value is not None:
             self.run.set_quality(AttrQuality.ATTR_VALID)
-            if value != 0:
+            if value == 0:
                 self.set_state(DevState.RUNNING)
             else:
+                # self.log_info('standby %s', value)
                 self.set_state(DevState.STANDBY)
             return value == 0
         self.run.set_quality(AttrQuality.ATTR_INVALID)
@@ -305,6 +306,7 @@ class LaudaSmallServer(TangoServerPrototype):
         if result:
             self.pump.set_quality(AttrQuality.ATTR_VALID)
             self.pump.set_write_value(value)
+            # self.log_debug('write %s', value)
             return value
         self.pump.set_quality(AttrQuality.ATTR_INVALID)
         self.pump.set_write_value(float('Nan'))
@@ -315,11 +317,11 @@ class LaudaSmallServer(TangoServerPrototype):
     def write_cooling_mode(self, value):
         result = self.lda.write_value('OUT_SP_02', value)
         if result:
-            self.pump.set_quality(AttrQuality.ATTR_VALID)
-            self.pump.set_write_value(value)
+            self.cooling_mode.set_quality(AttrQuality.ATTR_VALID)
+            self.cooling_mode.set_write_value(value)
             return value
-        self.pump.set_quality(AttrQuality.ATTR_INVALID)
-        self.pump.set_write_value(float('Nan'))
+        self.cooling_mode.set_quality(AttrQuality.ATTR_INVALID)
+        self.cooling_mode.set_write_value(float('Nan'))
         msg = 'Cooling operating mode write error'
         self.set_fault(msg)
         return False
@@ -337,7 +339,7 @@ class LaudaSmallServer(TangoServerPrototype):
              dtype_out=str, doc_out='Response from LAUDA without final <CR>')
     def send_command(self, cmd):
         result = self.lda.send_command(cmd)
-        rsp = self.lda.get_response()
+        rsp = self.lda.resp
         if result:
             msg = f'Command {cmd} executed, result {rsp}'
             self.log_debug(msg)
