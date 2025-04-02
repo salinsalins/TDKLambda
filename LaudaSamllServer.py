@@ -117,7 +117,6 @@ class LaudaSmallServer(TangoServerPrototype):
                             doc="Error diagnosis response")
 
     def init_device(self):
-        self.lda = None
         super().init_device()
         self.pre = f'{self.get_name()} LAUDA'
         msg = f'Initialization'
@@ -158,7 +157,7 @@ class LaudaSmallServer(TangoServerPrototype):
 
     def read_port(self):
         if hasattr(self, 'lda') and hasattr(self.lda, 'ready') and self.lda.ready\
-                and hasattr(self.lda, 'port'):
+            and hasattr(self.lda, 'port'):
             self.port.set_quality(AttrQuality.ATTR_VALID)
             self.set_running()
             return self.lda.port
