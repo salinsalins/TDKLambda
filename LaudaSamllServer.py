@@ -117,6 +117,7 @@ class LaudaSmallServer(TangoServerPrototype):
                             doc="Error diagnosis response")
 
     def init_device(self):
+        self.lda = None
         super().init_device()
         self.pre = f'{self.get_name()} LAUDA'
         msg = f'Initialization'
