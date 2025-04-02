@@ -1,4 +1,5 @@
 import datetime
+import logging
 # import logging
 import os
 import time
@@ -372,11 +373,25 @@ class LaudaSmall(TDKLambda):
         self.debug(f'Unexpected response {response}')
         return False
 
+    def _log(self, level, message='', *args, **kwargs):
+        if hasattr(self, 'pre'):
+            message = f'{self.pre} {message}'
+        sl = kwargs.pop('stacklevel', 1)
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 8:
+            kwargs['stacklevel'] = sl + 2
+        self.logger.log(level, message, *args, **kwargs)
+
     def debug(self, msg, *args, **kwargs):
-        self.logger.debug(f'{self.pre} {msg}', *args, **kwargs)
+        self._log(logging.DEBUG, msg, *args, **kwargs)
 
     def info(self, msg, *args, **kwargs):
-        self.logger.info(f'{self.pre} {msg}', *args, **kwargs)
+        self._log(logging.INFO, msg, *args, **kwargs)
+
+    def warning(self, msg, *args, **kwargs):
+        self._log(logging.WARNING, msg, *args, **kwargs)
+
+    def error(self, msg, *args, **kwargs):
+        self._log(logging.ERROR, msg, *args, **kwargs)
 
     def _set_addr(self):
         return True
