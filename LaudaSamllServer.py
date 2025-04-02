@@ -224,9 +224,9 @@ class LaudaSmallServer(TangoServerPrototype):
     def read_cooling_mode(self):
         value = int(self.lda.read_value('IN_SP_02'))
         if value is not None:
-            self.pump.set_quality(AttrQuality.ATTR_VALID)
+            self.cooling_mode.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.pump.set_quality(AttrQuality.ATTR_INVALID)
+        self.cooling_mode.set_quality(AttrQuality.ATTR_INVALID)
         self.set_fault('Cooling operating mode read error')
         return value
 
@@ -241,30 +241,30 @@ class LaudaSmallServer(TangoServerPrototype):
         return float('Nan')
 
     def read_external_temp(self):
-        value = self.lda.read_value('IN_PV_00')
+        value = self.lda.read_value('IN_PV_01')
         if value is not None:
-            self.output_temp.set_quality(AttrQuality.ATTR_VALID)
+            self.external_temp.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.output_temp.set_quality(AttrQuality.ATTR_INVALID)
-        msg = f'Output temperature read error'
+        self.external_temp.set_quality(AttrQuality.ATTR_INVALID)
+        msg = f'External temperature read error'
         self.set_fault(msg)
         return float('Nan')
 
     def read_level(self):
         value = int(self.lda.read_value('IN_PV_05'))
         if value is not None:
-            self.pump.set_quality(AttrQuality.ATTR_VALID)
+            self.level.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.pump.set_quality(AttrQuality.ATTR_INVALID)
+        self.level.set_quality(AttrQuality.ATTR_INVALID)
         self.set_fault(f'Pump Level read error')
         return value
 
     def read_pressure(self):
         value = self.lda.read_value('IN_PV_02')
         if value is not None:
-            self.pump.set_quality(AttrQuality.ATTR_VALID)
+            self.pressure.set_quality(AttrQuality.ATTR_VALID)
             return value
-        self.pump.set_quality(AttrQuality.ATTR_INVALID)
+        self.pressure.set_quality(AttrQuality.ATTR_INVALID)
         self.set_fault(f'Pressure read error')
         return value
 
