@@ -156,16 +156,22 @@ class LaudaSmallServer(TangoServerPrototype):
         self.log_info(msg)
 
     def read_port(self):
-        if self.lda.ready:
+        if hasattr(self, 'lda') and hasattr(self.lda, 'ready') and self.lda.ready\
+                and hasattr(self.lda, 'port'):
+            self.port.set_quality(AttrQuality.ATTR_VALID)
             self.set_running()
+            return self.lda.port
         else:
             self.set_fault()
-        return self.lda.port
+            self.port.set_quality(AttrQuality.ATTR_INVALID)
+        return 'Undefined'
 
     def read_address(self):
         if self.lda.ready:
             self.set_running()
+            self.address.set_quality(AttrQuality.ATTR_VALID)
         else:
+            self.address.set_quality(AttrQuality.ATTR_INVALID)
             self.set_fault()
         return str(self.lda.addr)
 
@@ -213,22 +219,22 @@ class LaudaSmallServer(TangoServerPrototype):
         return self.lda.resp
 
     def read_pump(self):
-        value = int(self.lda.read_value('IN_SP_01'))
+        value = self.lda.read_value('IN_SP_01')
         if value is not None:
             self.pump.set_quality(AttrQuality.ATTR_VALID)
-            return value
+            return int(value)
         self.pump.set_quality(AttrQuality.ATTR_INVALID)
         self.set_fault('Pump Level read error')
-        return value
+        return -1
 
     def read_cooling_mode(self):
-        value = int(self.lda.read_value('IN_SP_02'))
+        value = self.lda.read_value('IN_SP_02')
         if value is not None:
             self.cooling_mode.set_quality(AttrQuality.ATTR_VALID)
-            return value
+            return int(value)
         self.cooling_mode.set_quality(AttrQuality.ATTR_INVALID)
         self.set_fault('Cooling operating mode read error')
-        return value
+        return -1
 
     def read_output_temp(self):
         value = self.lda.read_value('IN_PV_00')
@@ -251,13 +257,13 @@ class LaudaSmallServer(TangoServerPrototype):
         return float('Nan')
 
     def read_level(self):
-        value = int(self.lda.read_value('IN_PV_05'))
+        value = self.lda.read_value('IN_PV_05')
         if value is not None:
             self.level.set_quality(AttrQuality.ATTR_VALID)
-            return value
+            return int(value)
         self.level.set_quality(AttrQuality.ATTR_INVALID)
         self.set_fault(f'Pump Level read error')
-        return value
+        return -1
 
     def read_pressure(self):
         value = self.lda.read_value('IN_PV_02')
@@ -266,7 +272,7 @@ class LaudaSmallServer(TangoServerPrototype):
             return value
         self.pressure.set_quality(AttrQuality.ATTR_INVALID)
         self.set_fault(f'Pressure read error')
-        return value
+        return float('Nan')
 
     #   ---------------- custom attributes write --------------
     def write_set_point(self, value):
