@@ -6,10 +6,10 @@ LAUDA tango device server
 import os
 import sys
 
-from LaudaSmall import LaudaSmall
+
 
 if os.path.realpath('../TangoUtils') not in sys.path: sys.path.append(os.path.realpath('../TangoUtils'))
-
+from LaudaSmall import LaudaSmall
 from tango import Attribute, AttrQuality, AttrWriteType, DispLevel
 from tango import DevState
 from tango.server import attribute, command
