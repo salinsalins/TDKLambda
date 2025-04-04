@@ -195,15 +195,15 @@ class LaudaSmallServer(TangoServerPrototype):
         return float('Nan')
 
     def read_run(self):
-        value = int(self.lda.read_value('IN_MODE_02'))
+        value = self.lda.read_value('IN_MODE_02')
         if value is not None:
             self.run.set_quality(AttrQuality.ATTR_VALID)
-            if value == 0:
+            if int(value) == 0:
                 self.set_state(DevState.RUNNING)
             else:
                 # self.log_info('standby %s', value)
                 self.set_state(DevState.STANDBY)
-            return value == 0
+            return int(value) == 0
         self.run.set_quality(AttrQuality.ATTR_INVALID)
         self.set_fault('Running state read error')
         return False
