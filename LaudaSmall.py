@@ -1,15 +1,10 @@
 import datetime
 import logging
-# import logging
-import os
-import time
 import sys
+import time
 
+import Utils
 from ComPort import EmptyComPort
-
-if os.path.realpath('../TangoUtils') not in sys.path: sys.path.append(os.path.realpath('../TangoUtils'))
-# if os.path.realpath('../IT6900') not in sys.path: sys.path.append(os.path.realpath('../IT6900'))
-
 from config_logger import config_logger
 from log_exception import log_exception
 from Moxa import MoxaTCPComPort
@@ -257,7 +252,7 @@ class LaudaSmall(TDKLambda):
             try:
                 if (self.com.device is not MoxaTCPComPort and
                         self.com.device is not EmptyComPort and
-                        (self.addr) >= 0 and int(self.addr) < 128):
+                        int(self.addr) >= 0 and int(self.addr) < 128):
                     self.addr_prefix = ('A%03i_' % int(self.addr)).encode()
                 else:
                     self.state = -1
