@@ -218,24 +218,27 @@ if __name__ == "__main__":
     if not addr:
         addr = 5
     logger = config_logger()
-    logger.setLevel(logging.ERROR)
+    # logger.setLevel(logging.ERROR)
     lda = Lauda(port, int(addr))
-    while True:
-        command = input('Send command:')
-        command = command.strip()
-        if not command:
-            break
-        if command.startswith('read'):
-            command1 = command.replace('read ', '').strip()
-            if command1.startswith('setpoint'):
-                command = '1100'
-        elif command.startswith('write'):
-            command1 = command.replace('write ', '').strip()
-        t_0 = time.time()
-        v1 = lda.send_command(command)
-        r1 = lda.get_response()
-        dt1 = int((time.time() - t_0) * 1000.0)  # ms
-        a = f'{lda.pre} {command} -> {r1} in {dt1} ms'
-        print(a)
+    if lda.initialized():
+        while True:
+            command = input('Send command:')
+            command = command.strip()
+            if not command:
+                break
+            if command.startswith('read'):
+                command1 = command.replace('read ', '').strip()
+                if command1.startswith('setpoint'):
+                    command = '1100'
+            elif command.startswith('write'):
+                command1 = command.replace('write ', '').strip()
+            t_0 = time.time()
+            v1 = lda.send_command(command)
+            r1 = lda.get_response()
+            dt1 = int((time.time() - t_0) * 1000.0)  # ms
+            a = f'{lda.pre} {command} -> {r1} in {dt1} ms'
+            print(a)
+        else:
+            print('Lauda is not initialized')
     del lda
     print('Finished')
