@@ -180,10 +180,11 @@ class TDKLambda_Server(TangoServerPrototype):
             self.log_exception(msg)
             self.set_fault(msg)
 
-    def read_voltage(self, attr):
+    def read_voltage(self):
         if time.time() - self.time > self.READING_VALID_TIME:
             self.read_all()
         val = self.values[0]
+        attr = self.voltage
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
@@ -195,10 +196,11 @@ class TDKLambda_Server(TangoServerPrototype):
             self.set_running()
         return val
 
-    def read_current(self, attr):
+    def read_current(self):
         if time.time() - self.time > self.READING_VALID_TIME:
             self.read_all()
         val = self.values[2]
+        attr = self.current
         attr.set_value(val)
         if isnan(val):
             attr.set_quality(AttrQuality.ATTR_INVALID)
@@ -211,6 +213,7 @@ class TDKLambda_Server(TangoServerPrototype):
         return val
 
     def read_programmed_voltage(self):
+        # self.logger.info("enter %s", self.READING_VALID_TIME)
         if time.time() - self.time > self.READING_VALID_TIME:
             self.read_all()
         val = self.values[1]
