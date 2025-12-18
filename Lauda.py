@@ -238,7 +238,7 @@ if __name__ == "__main__":
             dt1 = int((time.time() - t_0) * 1000.0)  # ms
             a = f'{lda.pre} {command} -> {r1} in {dt1} ms'
             print(a)
-        else:
-            print('Lauda is not initialized')
+    else:
+        print('ERROR - Lauda is not initialized')
     del lda
     print('Finished')
