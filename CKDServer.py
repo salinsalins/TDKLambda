@@ -6,7 +6,7 @@ import os
 import sys
 import time
 
-from numpy.array_api import int64
+# from numpy.array_api import int64
 
 from CKD import CKD
 
@@ -209,7 +209,7 @@ class CKDServer(TangoServerPrototype):
         if not v:
             self.set_fault()
             self.k1_level.set_quality(AttrQuality.ATTR_INVALID)
-            return float('nan')
+            return 0.0
         self.set_running()
         self.k1_level.set_quality(AttrQuality.ATTR_VALID)
         return v / 64.
@@ -219,7 +219,7 @@ class CKDServer(TangoServerPrototype):
         if not v:
             self.set_fault()
             self.k2_level.set_quality(AttrQuality.ATTR_INVALID)
-            return float('nan')
+            return 0.0
         self.set_running()
         self.k2_level.set_quality(AttrQuality.ATTR_VALID)
         return v / 64.
@@ -289,7 +289,7 @@ class CKDServer(TangoServerPrototype):
             self.set_fault('ERROR State')
             return True
         self.set_running()
-        return  False
+        return False
 
     def read_operation_state(self):
         v = self.ckd.read_status()
