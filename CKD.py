@@ -8,7 +8,7 @@ APPLICATION_VERSION = '1.0'
 
 class CKD(ModbusDevice):
 
-    def __init__(self, port: str, **kwargs):
+    def __init__(self, port: str, addr: int=1, **kwargs):
         if 'baudrate' not in kwargs:
             kwargs['baudrate'] = 57600
         if 'parity' not in kwargs:

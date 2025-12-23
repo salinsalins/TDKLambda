@@ -92,6 +92,13 @@ class ModbusDevice:
                 ModbusDevice._devices.remove(self)
                 self.debug('has been deleted')
 
+    def remove(self):
+        with ModbusDevice._lock:
+            if self in ModbusDevice._devices:
+                self.close_com_port()
+                ModbusDevice._devices.remove(self)
+                self.debug('has been removed')
+
     def debug(self, msg, *args, **kwargs):
         sl = kwargs.pop('stacklevel', 1)
         if sys.version_info.major >= 3 and sys.version_info.minor >= 8:
@@ -154,8 +161,9 @@ class ModbusDevice:
         self.error = 0
         self.com.reset_input_buffer()
         self.com.reset_output_buffer()
-        while self.com.in_waiting > 0:
-            self.com.read()
+        self.com.read()
+        # while self.com.in_waiting > 0:
+        #     self.com.read()
         cmd = self.add_checksum(cmd)
         self.request = cmd
         n = self.com.write(cmd)
