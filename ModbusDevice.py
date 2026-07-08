@@ -319,6 +319,10 @@ def print_ints(arr, r, base=None):
 
 if __name__ == "__main__":
     print('')
+    devices = {'CKD': {'port': "COM10", 'addr': 1, 'baudrate': 57600, 'parity': 'E'},
+               'LAUDA': {'port': "192.168.1.204", 'addr': 5, 'baudrate': 38400}
+               }
+
     md1 = ModbusDevice("COM10", 1, baudrate=57600, parity='E')
 
     r1 = []
