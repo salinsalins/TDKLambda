@@ -32,105 +32,125 @@ class CKD(ModbusDevice):
         return
 
     def write_set_voltage(self, v:int):
-        return self.modbus_write(4105, [v,]) == 1
+        with self.com.lock:
+            return self.modbus_write(4105, [v]) == 1
 
     def write_set_current(self, v:int):
-        return self.modbus_write(4106, [v,]) == 1
+        with self.com.lock:
+            return self.modbus_write(4106, [v]) == 1
 
     def write_error_state(self, v:bool):
-        self.modbus_write(4096, [256,])
-        return self.modbus_write(4097, [1,]) == 1
+        with self.com.lock:
+            self.modbus_write(4096, [256,])
+            return self.modbus_write(4097, [1]) == 1
 
     def read_one(self, addr, length=1):
-        v = self.modbus_read(addr, length=1)
-        if v:
-            if length > 1:
-                return v
-            return v[0]
-        else:
-            return None
+        with self.com.lock:
+            retries = 3
+            while True:
+                v = self.modbus_read(addr, length=1)
+                if v:
+                    if length > 1:
+                        return v
+                    return v[0]
+                else:
+                    time.sleep(0.01)
+                    self.logger.debug(f'Retry {3 - retries}')
+                    retries -= 1
+                    if not retries:
+                        return None
 
     def read_set_voltage(self):
-        return self.read_one(4105)
+        with self.com.lock:
+            return self.read_one(4105)
 
     def read_set_current(self):
-        return self.read_one(4106)
+        with self.com.lock:
+            return self.read_one(4106)
 
     def read_out_voltage(self):
-        return self.read_one(6146)
+        with self.com.lock:
+            return self.read_one(6146)
 
     def read_out_current(self):
-        return self.read_one(6147)
+        with self.com.lock:
+            return self.read_one(6147)
 
     def read_rectifier_current_k(self):
-        return self.read_one(6148)
+        with self.com.lock:
+            return self.read_one(6148)
 
     def read_rectifier_current_l(self):
-        return self.read_one(6148)
+        with self.com.lock:
+            return self.read_one(6148)
 
     def read_status(self):
-        return self.read_one(6160)
+        with self.com.lock:
+            return self.read_one(6160)
 
     def read_error(self):
-        return self.read_status() > 127
+        with self.com.lock:
+            return self.read_status() > 127
 
     def modbus_write_ckd(self, start: int, data, length = False, address=None, command=38) -> int:
-        if isinstance(data, float):
-            data = [int(data * 64.),]
-        if isinstance(data, int):
-            data = [data,]
-        try:
-            if len(data) <= 0:
+        with self.com.lock:
+            if isinstance(data, float):
+                data = [int(data * 64.),]
+            if isinstance(data, int):
+                data = [data,]
+            try:
+                if len(data) <= 0:
+                    return 0
+            except:
                 return 0
-        except:
-            return 0
-        self.command = command
-        if address is None:
-            address = self.addr
-        msg = address.to_bytes(1, byteorder='big') + self.command.to_bytes(1, byteorder='big')
-        msg += int.to_bytes(start, 2, byteorder="big")
-        out = b''
-        for d in data:
-            if isinstance(d, int):
-                out += d.to_bytes(2, byteorder='big')
-            elif isinstance(d, bytes):
-                out += d
-            else:
-                self.debug('Wrong data format for write')
+            self.command = command
+            if address is None:
+                address = self.addr
+            msg = address.to_bytes(1, byteorder='big') + self.command.to_bytes(1, byteorder='big')
+            msg += int.to_bytes(start, 2, byteorder="big")
+            out = b''
+            for d in data:
+                if isinstance(d, int):
+                    out += d.to_bytes(2, byteorder='big')
+                elif isinstance(d, bytes):
+                    out += d
+                else:
+                    self.debug('Wrong data format for write')
+                    return 0
+            if length:
+                length = len(out)
+                msg += int.to_bytes(length // 2, 2, byteorder="big")
+                msg += int.to_bytes(length, 1, byteorder='big')
+            msg += out
+            if not self.write(msg):
                 return 0
-        if length:
-            length = len(out)
-            msg += int.to_bytes(length // 2, 2, byteorder="big")
-            msg += int.to_bytes(length, 1, byteorder='big')
-        msg += out
-        if not self.write(msg):
+            if not self.read():
+                return 0
+            data_out = int.from_bytes(self.response[4:6], byteorder='big')
+            if data[0] == data_out:
+                return 2 * len(data)
             return 0
-        if not self.read():
-            return 0
-        data_out = int.from_bytes(self.response[4:6], byteorder='big')
-        if data[0] == data_out:
-            return 2 * len(data)
-        return 0
 
     def modbus_read_ckd(self, start: int, length: int=1, address=None, command=35):
-        self.command = command
-        if address is None:
-            address = self.addr
-        msg = address.to_bytes(1, byteorder='big')
-        msg += self.command.to_bytes(1, byteorder='big')
-        msg += int.to_bytes(start, 2, byteorder='big')
-        msg += int.to_bytes(length, 2, byteorder='big')
-        data = []
-        if not self.write(msg):
+        with self.com.lock:
+            self.command = command
+            if address is None:
+                address = self.addr
+            msg = address.to_bytes(1, byteorder='big')
+            msg += self.command.to_bytes(1, byteorder='big')
+            msg += int.to_bytes(start, 2, byteorder='big')
+            msg += int.to_bytes(length, 2, byteorder='big')
+            data = []
+            if not self.write(msg):
+                return data
+            if not self.read():
+                return data
+            data_length = self.response[2]
+            for i in range(data_length):
+                data.append(self.response[3 + i])
+            if length == 1:
+                return data[0] * 256 + data[1]
             return data
-        if not self.read():
-            return data
-        data_length = self.response[2]
-        for i in range(data_length):
-            data.append(self.response[3 + i])
-        if length == 1:
-            return data[0] * 256 + data[1]
-        return data
 
 
 def print_ints(arr, r=None, d=3, base=None):

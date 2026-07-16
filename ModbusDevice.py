@@ -50,10 +50,12 @@ class ModbusDevice:
         self.command = 0
         self.request = b''
         self.response = b''
-        self.read_timeout = kwargs.pop('read_timeout', ModbusDevice.READ_TIMEOUT)
-        self.suspend_delay = kwargs.pop('suspend_delay', ModbusDevice.SUSPEND_DELAY)
+        self.read_timeout = kwargs.get('read_timeout', ModbusDevice.READ_TIMEOUT)
+        self.suspend_delay = kwargs.get('suspend_delay', ModbusDevice.SUSPEND_DELAY)
         # logger
         self.logger = kwargs.get('logger', config_logger(level=logging.DEBUG))
+        kwargs['logger'] = self.logger
+        self.logger.debug(f'Modbus device {self.id} creation started')
         # logs prefix
         self.pre = f'{self.id} at {self.port}: {self.addr} '
         # additional arguments for COM port creation
@@ -97,7 +99,7 @@ class ModbusDevice:
             if self in ModbusDevice._devices:
                 self.close_com_port()
                 ModbusDevice._devices.remove(self)
-                self.debug('has been removed')
+                self.debug('has been removed from ModbusDevice._devices')
 
     def debug(self, msg, *args, **kwargs):
         sl = kwargs.pop('stacklevel', 1)
@@ -287,7 +289,7 @@ class ModbusDevice:
             return False
         # was suspended try to init
         if self.suspend_to > 0.0:
-            self.__del__()
+            self.remove()
             self.__init__(self.port, self.addr, **self.kwargs)
         return self.suspend_to <= 0.0
 

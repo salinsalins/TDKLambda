@@ -61,7 +61,7 @@ class CKDServer(TangoServerPrototype):
     set_voltage = attribute(label="Set Voltage", dtype=int,
                     display_level=DispLevel.OPERATOR,
                     access=AttrWriteType.READ_WRITE,
-                    min_value=0,
+                    min_value=450,
                     max_value=3000,
                     unit="V",
                     doc="Set Voltage")
@@ -159,10 +159,14 @@ class CKDServer(TangoServerPrototype):
         self.ckd = CKD(port, **kwargs)
         # check if device OK
         if self.ckd.ready:
-            self.set_current.set_write_value(self.read_set_current())
+            self.write_set_current(0)   # first write faults ???
+            self.write_error_state(False) # reset error state
+            self.write_set_current(0)
+            self.write_set_voltage(450)
             self.set_voltage.set_write_value(self.read_set_voltage())
             self.k1_level.set_write_value(self.read_k1_level())
             self.k2_level.set_write_value(self.read_k2_level())
+            self.error_state.set_write_value(self.read_error_state())
             # set state to running
             msg = 'Created successfully'
             self.set_state(DevState.RUNNING, msg)
@@ -286,7 +290,7 @@ class CKDServer(TangoServerPrototype):
 
     def read_error_state(self):
         if self.ckd.read_error():
-            self.set_fault('ERROR State')
+            self.set_fault('CKD is in ERROR State')
             return True
         self.set_running()
         return False
@@ -327,6 +331,8 @@ class CKDServer(TangoServerPrototype):
     #     self.set_running()
     #     return v & 4
 
+    # endregion
+
     # region ---------------- custom attributes write --------------
 
     # def write_start(self, v):
@@ -346,7 +352,6 @@ class CKDServer(TangoServerPrototype):
     #     else:
     #         self.set_fault('Stop fault')
     #         return False
-
 
     def write_k1_level(self, v):
         data = int(v * 64.)
@@ -396,6 +401,7 @@ class CKDServer(TangoServerPrototype):
 
     def write_error_state(self, v):
         if self.ckd.write_error_state(v):
+            self.error_state.set_write_value(self.read_error_state())
             self.set_running()
             return True
         else:
