@@ -305,7 +305,7 @@ class CKDServer(TangoServerPrototype):
         self.set_fault('Unknown state')
         return "UNKNOWN"
 
-        # endregion
+    # endregion
 
     # def read_start(self):
     #     v = self.ckd._read(4096, 1)
