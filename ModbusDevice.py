@@ -83,7 +83,7 @@ class ModbusDevice:
             self.suspend()
             return
         self.id = 'Modbus device'
-        self.pre = f'{self.id} at {self.port}: {self.addr} '
+        self.pre = f'{self.id} at {self.port}:{self.addr} '
         self.debug(f'has been initialized')
         return
 
