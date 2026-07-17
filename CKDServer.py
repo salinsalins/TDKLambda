@@ -173,15 +173,15 @@ class CKDServer(TangoServerPrototype):
                 msg = 'Created successfully'
             else:
                 msg = 'Created in ERROR state'
-                self.set_state(DevState.RUNNING, msg)
-                self.log_info(msg)
+            self.set_state(DevState.RUNNING, msg)
+            self.log_info(msg)
         else:
             msg = 'Creation fault'
             self.set_state(DevState.FAULT, msg)
             self.log_error(msg)
 
     def delete_device(self):
-        self.tmr.__del__()
+        # self.tmr.__del__()
         super().delete_device()
         msg = 'Device has been deleted'
         self.log_info(msg)
