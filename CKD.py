@@ -15,20 +15,27 @@ class CKD(ModbusDevice):
             kwargs['parity'] = 'E'
         super().__init__(port, 1, **kwargs)
         self.id = 'CKD'
-        self.pre = f'{self.id} at {self.port}: {self.addr} '
-        self.config = {'settings': []}
-        errors = 0
-        v = self.modbus_write(0, self.config['settings'])
-        if v != len(self.config['settings']):
-            self.debug(f'Settings initialization error')
-            errors += 1
-        if errors == 0:
-            self.initialized = True
-            self.suspend_to = 0.0
-            self.info('has been initialized')
-        else:
-            self.initialized = False
+        self.pre = f'{self.id} at {self.port}:{self.addr} '
+        self.suspend_to = 0.0
+        self.initialized = True
+        if self.read_error():
             self.info('has been initialized with errors')
+        else:
+            self.info('has been initialized')
+
+        # self.config = {'settings': []}
+        # errors = 0
+        # v = self.modbus_write(0, self.config['settings'])
+        # if v != len(self.config['settings']):
+        #     self.debug(f'Settings initialization error')
+        #     errors += 1
+        # if errors == 0:
+        #     self.initialized = True
+        #     self.suspend_to = 0.0
+        #     self.info('has been initialized')
+        # else:
+        #     self.initialized = False
+        #     self.info('has been initialized with errors')
         return
 
     def write_set_voltage(self, v:int):
