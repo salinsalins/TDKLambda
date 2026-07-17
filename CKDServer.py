@@ -61,7 +61,7 @@ class CKDServer(TangoServerPrototype):
     set_voltage = attribute(label="Set Voltage", dtype=int,
                     display_level=DispLevel.OPERATOR,
                     access=AttrWriteType.READ_WRITE,
-                    min_value=450,
+                    min_value=0,
                     max_value=3000,
                     unit="V",
                     doc="Set Voltage")
@@ -160,9 +160,9 @@ class CKDServer(TangoServerPrototype):
         # check if device OK
         if self.ckd.ready:
             self.write_set_current(0)   # first write faults ???
+            self.write_set_voltage(450)
             self.write_error_state(False) # reset error state
             self.write_set_current(0)
-            self.write_set_voltage(450)
             self.set_voltage.set_write_value(self.read_set_voltage())
             self.k1_level.set_write_value(self.read_k1_level())
             self.k2_level.set_write_value(self.read_k2_level())

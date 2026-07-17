@@ -90,7 +90,10 @@ class CKD(ModbusDevice):
 
     def read_error(self):
         with self.com.lock:
-            return self.read_status() > 127
+            try:
+                return self.read_status() > 127
+            except:
+                return True
 
     def modbus_write_ckd(self, start: int, data, length = False, address=None, command=38) -> int:
         with self.com.lock:
