@@ -166,13 +166,17 @@ class CKDServer(TangoServerPrototype):
             self.set_voltage.set_write_value(self.read_set_voltage())
             self.k1_level.set_write_value(self.read_k1_level())
             self.k2_level.set_write_value(self.read_k2_level())
-            self.error_state.set_write_value(self.read_error_state())
-            # set state to running
-            msg = 'Created successfully'
-            self.set_state(DevState.RUNNING, msg)
-            self.log_info(msg)
+            es = self.read_error_state()
+            self.error_state.set_write_value(es)
+            if not es:
+                # set state to running
+                msg = 'Created successfully'
+            else:
+                msg = 'Created in ERROR state'
+                self.set_state(DevState.RUNNING, msg)
+                self.log_info(msg)
         else:
-            msg = 'Created with errors'
+            msg = 'Creation fault'
             self.set_state(DevState.FAULT, msg)
             self.log_error(msg)
 
